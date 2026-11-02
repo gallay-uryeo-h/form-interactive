@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport">
+  <title>User 내 데이터 편집 (모바일) - form-interactive</title>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#006a39",
+            "primary-container": "#008649",
+            "primary-fixed": "#82faab",
+            "on-primary-fixed": "#00210e",
+            "on-primary": "#ffffff",
+            "secondary": "#0058bb",
+            "secondary-container": "#1471e6",
+            "secondary-fixed": "#d8e2ff",
+            "on-secondary-fixed": "#001a41",
+            "tertiary": "#8d4b00",
+            "surface": "#f7fafd",
+            "surface-dim": "#d7dade",
+            "surface-container-lowest": "#ffffff",
+            "surface-container-low": "#f1f4f7",
+            "surface-container": "#ebeef2",
+            "surface-container-high": "#e5e8ec",
+            "surface-container-highest": "#e0e3e6",
+            "surface-variant": "#e0e3e6",
+            "on-surface": "#181c1f",
+            "on-surface-variant": "#3e4a3f",
+            "outline": "#6d7a6f",
+            "outline-variant": "#bdcabc",
+            "error": "#ba1a1a",
+            "error-container": "#ffdad6",
+            "on-error-container": "#93000a"
+          },
+          fontFamily: {
+            "sans": ["Inter", "sans-serif"],
+            "mono": ["JetBrains Mono", "monospace"]
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    @layer base {
+      html, body { width: 100%; margin: 0; padding: 0; }
+      body { overscroll-behavior-y: none; }
+      .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
+      .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface flex flex-col min-h-screen font-sans">
+
+  <!-- Mobile Top Navigation Header -->
+  <header class="fixed top-0 w-full z-50 pt-safe bg-surface/90 backdrop-blur-md shadow-xs border-b border-surface-container">
+    <div class="h-14 px-3 flex items-center justify-between gap-2 bg-surface-container-lowest">
+      <div class="flex items-center gap-2 min-w-0">
+        <a href="index.html" class="w-8 h-8 flex items-center justify-center rounded-full text-on-surface hover:bg-surface-container transition-colors" title="뒤로가기">
+          <span class="material-symbols-outlined text-[20px]">arrow_back</span>
+        </a>
+        <div class="flex flex-col min-w-0">
+          <div class="flex items-center gap-1.5">
+            <span class="text-[15px] font-semibold text-on-surface truncate max-w-[150px] sm:max-w-xs" id="mobileSheetTitle">내 데이터 편집</span>
+            <span class="material-symbols-outlined text-[16px] text-primary" id="saveIcon">cloud_done</span>
+            <span class="text-[11px] text-outline font-medium truncate" id="saveText">자동 저장</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- User Switcher & Info (Google ID 개인별 보기 지원) -->
+      <div class="flex items-center gap-1.5">
+        <select id="userSelector" class="text-[11px] bg-surface-container-low border border-surface-container rounded-lg px-2 py-1 font-medium text-on-surface outline-none cursor-pointer max-w-[135px] truncate">
+          <option value="ALL">전체 명렬 보기</option>
+        </select>
+        <button type="button" id="btnInputGoogleId" class="w-7 h-7 rounded-lg bg-surface-container hover:bg-surface-variant border border-surface-container text-[#ea4335] flex items-center justify-center cursor-pointer transition-colors shadow-2xs" title="내 구글 아이디 직접 입력 (개인별 전용 보기)">
+          <span class="material-symbols-outlined text-[15px]">alternate_email</span>
+        </button>
+        <div class="w-7 h-7 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold text-[11px] shrink-0" id="userAvatar">
+          전
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Cards -->
+  <main class="flex flex-col relative w-full pt-16 pb-20 bg-surface flex-1 max-w-md mx-auto px-3">
+    <div class="flex items-center justify-between py-2 text-[12px] text-outline">
+      <span id="filteredCountLabel">로딩 중...</span>
+      <span class="text-primary font-mono text-[11px]">Firestore 실시간 동기화</span>
+    </div>
+
+    <!-- Cards Container -->
+    <div class="flex flex-col gap-3" id="cardsContainer">
+      <div class="py-12 text-center text-outline">
+        <span class="inline-block animate-spin mr-2">⏳</span> Firestore에서 내 데이터를 불러오는 중...
+      </div>
+    </div>
+  </main>
+
+  <!-- Mobile Bottom Tab Bar -->
+  <nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/90 backdrop-blur-md border-t border-surface-container">
+    <div class="max-w-md mx-auto flex justify-around items-center h-14 px-3 bg-surface-container-lowest">
+      <a href="mobile.html" class="flex flex-col items-center justify-center min-w-[56px] text-primary font-semibold">
+        <span class="material-symbols-outlined text-[20px]">table_chart</span>
+        <span class="text-[10px] mt-0.5">내 입력</span>
+      </a>
+      <a href="admin.html" class="flex flex-col items-center justify-center min-w-[56px] text-on-surface-variant hover:text-on-surface">
+        <span class="material-symbols-outlined text-[20px]">grid_on</span>
+        <span class="text-[10px] mt-0.5">전체 시트</span>
+      </a>
+      <a href="dashboard.html" class="flex flex-col items-center justify-center min-w-[56px] text-on-surface-variant hover:text-on-surface">
+        <span class="material-symbols-outlined text-[20px]">insights</span>
+        <span class="text-[10px] mt-0.5">대시보드</span>
+      </a>
+      <a href="home.html" class="flex flex-col items-center justify-center min-w-[56px] text-on-surface-variant hover:text-on-surface">
+        <span class="material-symbols-outlined text-[20px]">folder</span>
+        <span class="text-[10px] mt-0.5">홈/목록</span>
+      </a>
+    </div>
+  </nav>
+
+  <script type="module">
+    import {
+      subscribeTasks,
+      subscribeColumnConfigs,
+      subscribeSheets,
+      subscribeColumnOrder,
+      updateTask,
+      DEFAULT_COLUMN_CONFIGS
+    } from "./firebase-service.js";
+
+    // URL에서 sheetId 파라미터 읽기 (기본값: "sheet_default")
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentSheetId = urlParams.get("sheetId") || "sheet_default";
+
+    let allTasks = [];
+    let columnConfigs = {};
+    let currentColumnOrder = [];
+
+    const cardsContainer = document.getElementById("cardsContainer");
+    const userSelector = document.getElementById("userSelector");
+    const userAvatar = document.getElementById("userAvatar");
+    const filteredCountLabel = document.getElementById("filteredCountLabel");
+    const saveIcon = document.getElementById("saveIcon");
+    const saveText = document.getElementById("saveText");
+    let saveTimeout = null;
+
+    // Admin 시트 기본 열 순서 (기본 시트용: C ➔ D ➔ E ➔ F ➔ G ➔ H ➔ I ➔ J)
+    const EDITABLE_COLUMNS = [
+      { key: "department", label: "부서/전공", icon: "domain" },
+      { key: "project", label: "배정 프로젝트", icon: "folder_shared" },
+      { key: "task", label: "담당 업무", icon: "task_alt" },
+      { key: "status", label: "진행 상태", icon: "flag" },
+      { key: "dueDate", label: "마감일", icon: "calendar_today" },
+      { key: "priority", label: "우선순위", icon: "priority_high" },
+      { key: "isApproved", label: "승인 여부", icon: "verified" },
+      { key: "progress", label: "진척도", icon: "trending_up" }
+    ];
+
+    function getColumnsToRender() {
+      if (currentSheetId === "sheet_default") {
+        return EDITABLE_COLUMNS;
+      }
+      const keys = (currentColumnOrder && currentColumnOrder.length)
+        ? currentColumnOrder
+        : Object.keys(columnConfigs);
+      return keys.map(k => {
+        const cfg = columnConfigs[k] || {};
+        return {
+          key: k,
+          label: cfg.label || k,
+          icon: "edit_note"
+        };
+      });
+    }
+
+    function getFieldSpan(colKey, type) {
+      if (colKey === "department" || colKey === "project" || colKey === "task") return "col-span-12";
+      if (type === "priority" || colKey === "priority") return "col-span-12";
+      return "col-span-6";
+    }
+
+    function indicateSaving() {
+      saveIcon.textContent = "sync";
+      saveIcon.classList.add("animate-spin");
+      saveText.textContent = "저장 중...";
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(() => {
+        saveIcon.textContent = "cloud_done";
+        saveIcon.classList.remove("animate-spin");
+        saveText.textContent = "수정 시 즉시 자동 저장";
+      }, 500);
+    }
+
+    subscribeTasks((tasks) => {
+      allTasks = tasks;
+      updateUserOptions(tasks);
+      renderCards();
+    }, (err) => console.error(err), currentSheetId);
+
+    subscribeColumnConfigs((configs) => {
+      columnConfigs = configs || {};
+      updateUserOptions(allTasks);
+      renderCards();
+    }, currentSheetId);
+
+    subscribeColumnOrder((order) => {
+      currentColumnOrder = order || [];
+      renderCards();
+    }, currentSheetId);
+
+    subscribeSheets((sheets) => {
+      const cur = sheets.find(s => s.id === currentSheetId);
+      if (cur) {
+        document.title = `${cur.name} (모바일) - form-interactive`;
+        const titleEl = document.getElementById("mobileSheetTitle");
+        if (titleEl) titleEl.textContent = cur.name;
+      }
+    });
+
+    function getIdentityColumn() {
+      // 1. 구글 아이디 타입으로 지정된 열 우선 탐색
+      const gColKey = Object.keys(columnConfigs).find(k => columnConfigs[k]?.type === "googleId");
+      if (gColKey) {
+        return { key: gColKey, label: columnConfigs[gColKey]?.label || "구글 아이디", isGoogleId: true };
+      }
+      // 2. 기본 업무 시트 호환성 (사원명/사번 기준)
+      if (columnConfigs["empNo"] || columnConfigs["name"]) {
+        return { key: "name", label: "이름", isGoogleId: false };
+      }
+      return null;
+    }
+
+    function updateUserOptions(tasks) {
+      const identityCol = getIdentityColumn();
+      const urlGoogleId = urlParams.get("googleId");
+      const savedGoogleId = localStorage.getItem("user_google_id");
+      let currentSelected = userSelector.value;
+
+      if (!currentSelected || currentSelected === "ALL") {
+        if (urlGoogleId) currentSelected = urlGoogleId;
+        else if (savedGoogleId) currentSelected = savedGoogleId;
+      }
+
+      if (identityCol && identityCol.isGoogleId) {
+        // 구글 아이디 열: 등록된 학생 명렬(options) 및 실제 행 데이터에서 모든 구글 계정 수집
+        const idsFromTasks = tasks.map(t => t[identityCol.key]).filter(Boolean);
+        const idsFromConfig = columnConfigs[identityCol.key]?.options || [];
+        const allGoogleIds = Array.from(new Set([...idsFromConfig, ...idsFromTasks])).filter(Boolean);
+
+        const optionsHtml = [
+          `<option value="ALL">전체 명렬 보기 (${allGoogleIds.length}명)</option>`,
+          ...allGoogleIds.map(gid => {
+            const isMatch = (gid === currentSelected);
+            return `<option value="${gid}" ${isMatch ? 'selected' : ''}>${gid}</option>`;
+          })
+        ].join("");
+        userSelector.innerHTML = optionsHtml;
+
+        if (currentSelected && allGoogleIds.includes(currentSelected)) {
+          userSelector.value = currentSelected;
+        }
+      } else {
+        const names = Array.from(new Set(tasks.map(t => t.name).filter(Boolean)));
+        const optionsHtml = [
+          '<option value="ALL">전체 담당자 보기</option>',
+          ...names.map(name => {
+            const t = tasks.find(x => x.name === name);
+            const emp = t?.empNo ? ` (${t.empNo})` : '';
+            return `<option value="${name}" ${name === currentSelected ? 'selected' : ''}>${name}${emp}</option>`;
+          })
+        ].join("");
+        userSelector.innerHTML = optionsHtml;
+      }
+
+      updateAvatarAndBadge();
+    }
+
+    function updateAvatarAndBadge() {
+      const selected = userSelector.value;
+      const identityCol = getIdentityColumn();
+
+      if (selected === "ALL" || !selected) {
+        userAvatar.textContent = "전";
+        userAvatar.className = "w-7 h-7 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold text-[11px] shrink-0";
+      } else if (identityCol && identityCol.isGoogleId) {
+        const initial = selected.replace(/[^a-zA-Z0-9가-힣]/g, "").charAt(0).toUpperCase() || "@";
+        userAvatar.textContent = initial;
+        userAvatar.className = "w-7 h-7 rounded-full bg-[#ea4335] text-white flex items-center justify-center font-bold text-[11px] shrink-0 shadow-xs";
+        localStorage.setItem("user_google_id", selected);
+      } else {
+        userAvatar.textContent = selected.charAt(0);
+        userAvatar.className = "w-7 h-7 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold text-[11px] shrink-0";
+      }
+    }
+
+    userSelector.addEventListener("change", () => {
+      updateAvatarAndBadge();
+      renderCards();
+    });
+
+    // 구글 아이디 직접 입력 버튼 (개인별 전용 보기)
+    document.getElementById("btnInputGoogleId")?.addEventListener("click", () => {
+      const cur = userSelector.value !== "ALL" ? userSelector.value : "";
+      const entered = prompt("개인별 조회를 위한 본인의 구글 아이디(이메일)를 입력하세요:", cur);
+      if (entered === null) return;
+      const clean = entered.trim();
+      if (!clean) {
+        userSelector.value = "ALL";
+      } else {
+        if (!Array.from(userSelector.options).some(o => o.value === clean)) {
+          const opt = document.createElement("option");
+          opt.value = clean;
+          opt.textContent = clean;
+          userSelector.appendChild(opt);
+        }
+        userSelector.value = clean;
+        localStorage.setItem("user_google_id", clean);
+      }
+      updateAvatarAndBadge();
+      renderCards();
+    });
+
+    function renderField(t, col) {
+      const cfg = columnConfigs[col.key] || DEFAULT_COLUMN_CONFIGS[col.key] || { type: "text" };
+      const type = cfg.type || "text";
+      const label = cfg.label || col.label;
+      const rawVal = t[col.key];
+      const val = rawVal != null ? String(rawVal) : "";
+      const span = getFieldSpan(col.key, type);
+
+      switch (type) {
+        case "locked":
+          return `
+            <div class="${span} flex flex-col gap-1">
+              <div class="flex flex-col bg-surface-container-low/80 px-2.5 py-1.5 rounded-lg border border-surface-container justify-center h-[58px]">
+                <div class="flex items-center justify-between text-[10px] text-outline">
+                  <span class="flex items-center gap-1 font-medium truncate"><span class="material-symbols-outlined text-[13px]">${col.icon}</span>${label}</span>
+                  <span class="material-symbols-outlined text-[12px] text-outline shrink-0">lock</span>
+                </div>
+                <p class="text-[12px] text-on-surface font-semibold leading-tight truncate mt-0.5" title="${val || "-"}">${val || "-"}</p>
+              </div>
+            </div>
+          `;
+
+        case "googleId":
+          return `
+            <div class="${span} flex flex-col gap-1">
+              <label class="text-[11px] text-on-surface-variant font-semibold flex items-center gap-1 truncate">
+                <span class="material-symbols-outlined text-[13px] text-[#ea4335]">alternate_email</span>${label}
+              </label>
+              <div class="flex items-center h-[38px] bg-surface-container-lowest border border-surface-container rounded-lg px-2.5 gap-1.5 shadow-2xs focus-within:border-primary">
+                <span class="material-symbols-outlined text-[15px] text-[#ea4335] shrink-0">alternate_email</span>
+                <input type="email" value="${val}" class="w-full bg-transparent font-mono text-[11px] text-on-surface outline-none font-semibold truncate placeholder:text-outline/60" placeholder="user@gmail.com" onchange="window.saveField('${t.id}', '${col.key}', this.value)">
+              </div>
+            </div>
+          `;
+
+        case "text":
+          return `
+            <div class="${span} flex flex-col gap-1">
+              <label class="text-[11px] text-on-surface-variant font-semibold flex items-center gap-1 truncate">
+                <span class="material-symbols-outlined text-[13px] text-primary">${col.icon}</span>${label}
+              </label>
+              <input type="text" value="${val}" class="w-full h-[38px] bg-surface-container-lowest text-on-surface text-[12px] px-2.5 rounded-lg border border-surface-container focus:border-secondary outline-none shadow-2xs" onchange="window.saveField('${t.id}', '${col.key}', this.value)">
+            </div>
+          `;
+
+        case "select":
+          const options = (cfg.options && cfg.options.length) ? cfg.options : ["진행중", "완료", "대기", "보류"];
+          const allOpts = [...options];
+          if (val && !allOpts.includes(val)) allOpts.unshift(val);
+
+          return `
+            <div class="${span} flex flex-col gap-1">
+              <label class="text-[11px] text-on-surface-variant font-semibold flex items-center gap-1 truncate">
+                <span class="material-symbols-outlined text-[13px] text-secondary">${col.icon}</span>${label}
+              </label>
+              <div class="relative">
+                <select class="w-full h-[38px] appearance-none bg-surface-container-lowest text-on-surface font-mono text-[11px] font-semibold px-2.5 rounded-lg border border-surface-container focus:border-secondary outline-none cursor-pointer pr-6 shadow-2xs truncate" onchange="window.saveField('${t.id}', '${col.key}', this.value)">
+                  ${allOpts.map(opt => `<option value="${opt}" ${opt === val ? "selected" : ""}>${opt}</option>`).join("")}
+                </select>
+                <span class="material-symbols-outlined absolute right-1.5 top-1/2 -translate-y-1/2 text-[16px] text-outline pointer-events-none">arrow_drop_down</span>
+              </div>
+            </div>
+          `;
+
+        case "date":
+          const dateVal = val.match(/\d{4}-\d{2}-\d{2}/) ? val.match(/\d{4}-\d{2}-\d{2}/)[0] : (val || "");
+          return `
+            <div class="${span} flex flex-col gap-1">
+              <label class="text-[11px] text-on-surface-variant font-semibold flex items-center gap-1 truncate">
+                <span class="material-symbols-outlined text-[13px] text-outline">${col.icon}</span>${label}
+              </label>
+              <div class="flex items-center h-[38px] bg-surface-container-lowest border border-surface-container rounded-lg px-2 shadow-2xs">
+                <input type="date" value="${dateVal}" class="w-full bg-transparent font-mono text-[11px] text-on-surface outline-none cursor-pointer font-medium" onchange="window.saveField('${t.id}', '${col.key}', this.value)">
+              </div>
+            </div>
+          `;
+
+        case "priority":
+          const pOptions = (cfg.options && cfg.options.length) ? cfg.options : ["높음 (P1)", "보통 (P2)", "낮음 (P3)"];
+          return `
+            <div class="${span} flex flex-col gap-1">
+              <label class="text-[11px] text-on-surface-variant font-semibold flex items-center gap-1 truncate">
+                <span class="material-symbols-outlined text-[13px] text-error">${col.icon}</span>${label}
+              </label>
+              <div class="grid grid-cols-3 gap-1.5">
+                ${pOptions.map(p => `
+                  <button type="button" class="h-[36px] px-1 rounded-lg text-[11px] font-medium border transition-colors flex items-center justify-center truncate ${
+                    val === p ? "bg-secondary-fixed text-on-secondary-fixed font-bold border-secondary/40 shadow-2xs" : "bg-surface-container-lowest text-on-surface-variant border-surface-container hover:bg-surface-container-low"
+                  }" onclick="window.saveField('${t.id}', '${col.key}', '${p}')">${p}</button>
+                `).join("")}
+              </div>
+            </div>
+          `;
+
+        case "checkbox":
+          const isChecked = val === "true" || val === true || val === "1" || val === "승인" || val === "완료";
+          return `
+            <div class="${span} flex flex-col gap-1">
+              <label class="text-[11px] text-on-surface-variant font-semibold flex items-center gap-1 truncate">
+                <span class="material-symbols-outlined text-[13px] text-primary">${col.icon}</span>${label}
+              </label>
+              <label class="flex items-center gap-2 h-[38px] px-2.5 rounded-lg bg-surface-container-lowest border border-surface-container text-on-surface cursor-pointer shadow-2xs hover:bg-surface">
+                <input type="checkbox" ${isChecked ? "checked" : ""} class="rounded text-primary focus:ring-0 accent-primary cursor-pointer w-4 h-4 shrink-0" onchange="window.saveField('${t.id}', '${col.key}', this.checked)">
+                <span class="text-[11px] text-on-surface font-medium truncate">${isChecked ? "완료 / 승인됨" : "미승인"}</span>
+              </label>
+            </div>
+          `;
+
+        case "progress":
+          const min = cfg.min != null ? cfg.min : 0;
+          const max = cfg.max != null ? cfg.max : 100;
+          const unit = cfg.unit || "%";
+          const numVal = Math.min(max, Math.max(min, parseInt(val, 10) || min));
+          return `
+            <div class="${span} flex flex-col gap-1">
+              <div class="flex items-center justify-between">
+                <label class="text-[11px] text-on-surface-variant font-semibold flex items-center gap-1 truncate">
+                  <span class="material-symbols-outlined text-[13px] text-primary">${col.icon}</span>${label}
+                </label>
+                <span class="font-mono text-[11px] font-bold text-primary" id="prog-val-${t.id}-${col.key}">${numVal}${unit}</span>
+              </div>
+              <div class="flex items-center h-[38px] px-2.5 bg-surface-container-lowest border border-surface-container rounded-lg shadow-2xs">
+                <input type="range" min="${min}" max="${max}" value="${numVal}" class="w-full accent-primary cursor-pointer" oninput="document.getElementById('prog-val-${t.id}-${col.key}').textContent = this.value + '${unit}'" onchange="window.saveField('${t.id}', '${col.key}', Number(this.value))">
+              </div>
+            </div>
+          `;
+
+        default:
+          return `
+            <div class="${span} flex flex-col gap-1">
+              <label class="text-[11px] text-on-surface-variant font-semibold truncate">${label}</label>
+              <input type="text" value="${val}" class="w-full h-[38px] bg-surface-container-lowest text-on-surface text-[12px] px-2.5 rounded-lg border border-surface-container focus:border-secondary outline-none shadow-2xs" onchange="window.saveField('${t.id}', '${col.key}', this.value)">
+            </div>
+          `;
+      }
+    }
+
+    function renderCards() {
+      const selectedUser = userSelector.value;
+      const identityCol = getIdentityColumn();
+
+      let filtered = allTasks;
+      if (selectedUser && selectedUser !== "ALL") {
+        if (identityCol && identityCol.isGoogleId) {
+          filtered = allTasks.filter(t => t[identityCol.key] === selectedUser);
+        } else {
+          filtered = allTasks.filter(t => t.name === selectedUser);
+        }
+      }
+
+      if (identityCol && identityCol.isGoogleId && selectedUser && selectedUser !== "ALL") {
+        filteredCountLabel.innerHTML = `<span class="inline-flex items-center gap-1 font-bold text-[#c5221f] bg-[#fce8e6] px-2 py-0.5 rounded-full text-[11px]"><span class="material-symbols-outlined text-[13px]">alternate_email</span>${selectedUser}</span> <span class="text-on-surface">개인별 배정 항목 (${filtered.length}건)</span>`;
+      } else {
+        filteredCountLabel.textContent = `총 ${filtered.length}건의 항목`;
+      }
+
+      if (!filtered.length) {
+        cardsContainer.innerHTML = `
+          <div class="bg-surface-container-lowest rounded-xl p-8 text-center text-outline border border-surface-container flex flex-col items-center gap-2">
+            <span class="material-symbols-outlined text-[36px] text-outline">search_off</span>
+            <span>${selectedUser === "ALL" ? "등록된 데이터가 없습니다." : `<strong>${selectedUser}</strong> 계정에 배정된 항목이 없습니다.`}</span>
+          </div>
+        `;
+        return;
+      }
+
+      const colsToRender = getColumnsToRender();
+      cardsContainer.innerHTML = filtered.map((t, idx) => {
+        const fieldsHtml = colsToRender.map(col => renderField(t, col)).join("");
+        const gidVal = identityCol?.isGoogleId ? t[identityCol.key] : null;
+        const displayName = gidVal || t.name || (t.col_1 ? String(t.col_1) : `항목 #${t.rowNumber || idx + 1}`);
+        const displaySub = t.name && gidVal ? t.name : (t.empNo ? `(${t.empNo})` : '');
+        const displayStatus = t.status || "";
+
+        return `
+          <article class="flex flex-col bg-surface-container-lowest rounded-xl border border-surface-container shadow-xs p-3.5 gap-2.5 transition-all" data-id="${t.id}">
+            <div class="flex items-center justify-between pb-1.5 border-b border-surface-container">
+              <div class="flex items-center gap-1.5 truncate">
+                <span class="font-mono font-bold text-primary px-2 py-0.5 bg-primary-fixed/40 rounded text-[11px] shrink-0">#${t.rowNumber || idx + 1}</span>
+                <span class="font-semibold text-[13px] text-on-surface truncate flex items-center gap-1">
+                  ${gidVal ? `<span class="material-symbols-outlined text-[14px] text-[#ea4335]">alternate_email</span>` : ""}
+                  ${displayName}
+                </span>
+                ${displaySub ? `<span class="text-[11px] text-outline font-mono truncate">${displaySub}</span>` : ""}
+              </div>
+              ${displayStatus ? `<span class="text-[11px] px-2 py-0.5 rounded-full font-medium ${
+                displayStatus === "완료" ? "bg-secondary-fixed text-on-secondary-fixed" :
+                displayStatus === "진행중" ? "bg-primary/10 text-primary" : "bg-surface-variant text-on-surface"
+              }">${displayStatus}</span>` : ""}
+            </div>
+
+            <!-- Dynamic 12-Column Responsive Grid -->
+            <div class="grid grid-cols-12 gap-2">
+              ${fieldsHtml}
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    window.saveField = async (id, field, value) => {
+      indicateSaving();
+      try {
+        await updateTask(id, { [field]: value });
+      } catch (err) {
+        alert("저장 오류: " + err.message);
+      }
+    };
+  </script>
+</body>
+</html>

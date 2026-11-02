@@ -1,0 +1,568 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><meta content="web_standard" name="shell-type"><title>Sheets Workspace</title><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-primary-container":"#f6fff4","outline-variant":"#bdcabc","on-surface":"#181c1f","error":"#ba1a1a","tertiary-fixed":"#ffdcc3","secondary":"#0058bb","error-container":"#ffdad6","surface-container-low":"#f1f4f7","surface-container":"#ebeef2","primary-container":"#008649","on-primary-fixed":"#00210e","on-primary-fixed-variant":"#00522b","tertiary-container":"#ad6214","surface-variant":"#e0e3e6","tertiary":"#8d4b00","surface-container-highest":"#e0e3e6","on-background":"#181c1f","primary-fixed-dim":"#64dd91","secondary-container":"#1471e6","on-secondary-fixed-variant":"#004493","primary":"#006a39","surface-tint":"#006d3a","on-tertiary-fixed":"#2f1500","background":"#f7fafd","on-secondary-fixed":"#001a41","on-tertiary":"#ffffff","surface-container-lowest":"#ffffff","outline":"#6d7a6f","secondary-fixed-dim":"#adc7ff","on-secondary":"#ffffff","on-tertiary-container":"#fffbff","on-secondary-container":"#fefcff","on-primary":"#ffffff","on-error":"#ffffff","primary-fixed":"#82faab","surface-bright":"#f7fafd","surface-dim":"#d7dade","on-error-container":"#93000a","inverse-primary":"#64dd91","on-tertiary-fixed-variant":"#6e3900","surface-container-high":"#e5e8ec","inverse-on-surface":"#eef1f5","inverse-surface":"#2d3134","tertiary-fixed-dim":"#ffb77d","secondary-fixed":"#d8e2ff","on-surface-variant":"#3e4a3f","surface":"#f7fafd"},borderRadius:{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},spacing:{"margin":"0px","space-xl":"1rem","space-sm":"0.25rem","space-lg":"0.75rem","space-md":"0.5rem","space-xs":"0.125rem","gutter":"0px"},fontFamily:{"label-code":["JetBrains Mono"],"headline-lg":["Inter"],"body-md":["Inter"],"label-header":["Inter"],"label-numeric":["JetBrains Mono"],"body-lg":["Inter"],"body-sm":["Inter"],"headline-md":["Inter"],"headline-sm":["Inter"]},fontSize:{"label-code":["11px",{"lineHeight":"14px","fontWeight":"500"}],"headline-lg":["20px",{"lineHeight":"28px","fontWeight":"600"}],"body-md":["13px",{"lineHeight":"18px","fontWeight":"400"}],"label-header":["11px",{"lineHeight":"14px","fontWeight":"500"}],"label-numeric":["12px",{"lineHeight":"16px","fontWeight":"400"}],"body-lg":["14px",{"lineHeight":"20px","fontWeight":"400"}],"body-sm":["12px",{"lineHeight":"16px","fontWeight":"400"}],"headline-md":["16px",{"lineHeight":"24px","fontWeight":"600"}],"headline-sm":["14px",{"lineHeight":"20px","fontWeight":"600"}]}}}}</script></head><body class="bg-surface text-on-surface font-body-md text-body-md"><header class="fixed top-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-md shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 w-full px-space-xl flex items-center justify-between gap-space-lg"><div class="flex items-center gap-space-lg shrink-0"><div class="flex items-center gap-space-md"><div class="w-9 h-9 rounded bg-primary flex items-center justify-center text-on-primary shadow-sm"><span class="material-symbols-outlined text-[20px]">table_chart</span></div><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-on-surface tracking-tight leading-none">Workspace Sheets</span><span class="font-label-header text-label-header text-on-surface-variant uppercase tracking-wider mt-space-xs">Enterprise Drive</span></div></div><div class="h-6 w-px bg-outline-variant/40 hidden sm:block"></div><nav class="hidden md:flex items-center gap-space-xs" data-active-classes="bg-primary-container text-on-primary-container font-semibold rounded"><a aria-current="page" class="px-space-md py-space-xs transition-colors bg-primary-container text-on-primary-container font-semibold rounded" data-path="drive-files" href="#">시트 목록</a><a class="px-space-md py-space-xs font-body-sm text-body-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors rounded" data-path="trash" href="#">휴지통</a></nav></div><div class="flex-1 max-w-xl mx-space-md"><div class="relative flex items-center w-full"><span class="material-symbols-outlined absolute left-space-md text-on-surface-variant pointer-events-none text-[18px]">search</span><input class="w-full h-9 pl-9 pr-space-lg bg-surface-container-low hover:bg-surface-container focus:bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant font-body-sm text-body-sm rounded-lg outline-none transition-colors" placeholder="스프레드시트, 문서 검색 및 필터..." type="text"><div class="absolute right-space-sm flex items-center gap-space-xs"><button class="w-6 h-6 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-variant rounded" title="고급 검색 필터" type="button"><span class="material-symbols-outlined text-[16px]">tune</span></button></div></div></div><div class="flex items-center gap-space-sm shrink-0"><div class="flex items-center gap-space-xs"><button class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded transition-colors" title="오프라인 동기화 상태" type="button"><span class="material-symbols-outlined text-[18px]">cloud_done</span></button><button class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded transition-colors" title="지원 및 단축키 도움말" type="button"><span class="material-symbols-outlined text-[18px]">help_outline</span></button><button class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded transition-colors" title="워크스페이스 환경설정" type="button"><span class="material-symbols-outlined text-[18px]">settings</span></button></div><div class="h-6 w-px bg-outline-variant/40 mx-space-xs"></div><div class="flex items-center gap-space-md pl-space-xs"><div class="hidden xl:flex flex-col text-right leading-tight"><span class="font-headline-sm text-headline-sm text-on-surface font-medium">김민수 대리</span><span class="font-label-header text-label-header text-on-surface-variant">영업1팀</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></div></header><main class="w-full pt-16 bg-surface min-h-[calc(100vh-48px)]"><div class="flex flex-col w-full">
+<!-- Template Gallery Section -->
+<section class="w-full bg-surface-container-low px-space-xl py-space-xl">
+<div class="max-w-7xl mx-auto flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-headline-sm text-on-surface">새 스프레드시트 시작</span>
+<div class="flex items-center gap-space-md">
+<button class="flex items-center gap-space-xs px-space-md py-space-xs text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded transition-colors font-body-sm text-body-sm" type="button">
+<span class="">템플릿 갤러리</span>
+<span class="material-symbols-outlined text-[16px]">unfold_more</span>
+</button>
+<div class="h-4 w-px bg-outline-variant/50"></div>
+<button class="w-7 h-7 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded transition-colors" title="템플릿 옵션" type="button">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-space-lg pt-space-xs">
+<!-- New Blank Sheet -->
+<a class="group flex flex-col gap-space-sm cursor-pointer" href="#">
+<div class="h-36 w-full rounded bg-surface-container-lowest shadow-sm group-hover:shadow-md transition-shadow flex items-center justify-center relative overflow-hidden">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-primary text-[28px]">add</span>
+</div>
+<div class="absolute inset-0 bg-primary/0 group-hover:bg-primary/[0.03] transition-colors"></div>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface font-medium truncate">빈 스프레드시트</span>
+</a>
+<!-- Preset 1 -->
+<a class="group flex flex-col gap-space-sm cursor-pointer" href="#">
+<div class="h-36 w-full rounded bg-surface-container-lowest shadow-sm group-hover:shadow-md transition-shadow p-space-md flex flex-col justify-between relative overflow-hidden">
+<div class="w-full space-y-space-xs opacity-80">
+<div class="h-2 w-3/4 bg-primary-container/30 rounded-sm"></div>
+<div class="grid grid-cols-4 gap-1 pt-space-xs">
+<div class="h-1.5 bg-surface-container-high rounded-sm"></div>
+<div class="h-1.5 bg-surface-container-high rounded-sm"></div>
+<div class="h-1.5 bg-surface-container-high rounded-sm"></div>
+<div class="h-1.5 bg-surface-container-high rounded-sm"></div>
+</div>
+<div class="grid grid-cols-4 gap-1">
+<div class="h-1.5 bg-surface-container rounded-sm"></div>
+<div class="h-1.5 bg-surface-container rounded-sm"></div>
+<div class="h-1.5 bg-surface-container rounded-sm"></div>
+<div class="h-1.5 bg-surface-container rounded-sm"></div>
+</div>
+<div class="grid grid-cols-4 gap-1">
+<div class="h-1.5 bg-surface-container rounded-sm"></div>
+<div class="h-1.5 bg-surface-container rounded-sm"></div>
+<div class="h-1.5 bg-surface-container rounded-sm"></div>
+<div class="h-1.5 bg-surface-container rounded-sm"></div>
+</div>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant">
+<span class="font-label-header text-label-header text-primary font-semibold tracking-wider">ACTIVE</span>
+<span class="material-symbols-outlined text-[16px] text-primary">bookmark</span>
+</div>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface truncate">전사 업무 데이터 관리 시트</span>
+</a>
+<!-- Preset 2 -->
+<a class="group flex flex-col gap-space-sm cursor-pointer" href="#">
+<div class="h-36 w-full rounded bg-surface-container-lowest shadow-sm group-hover:shadow-md transition-shadow p-space-md flex flex-col justify-between relative overflow-hidden">
+<div class="w-full space-y-space-xs opacity-70">
+<div class="h-2 w-1/2 bg-secondary/30 rounded-sm"></div>
+<div class="space-y-1 pt-space-xs">
+<div class="h-1.5 bg-surface-container-high rounded-sm w-full"></div>
+<div class="h-1.5 bg-surface-container rounded-sm w-5/6"></div>
+<div class="h-1.5 bg-surface-container rounded-sm w-4/6"></div>
+<div class="h-1.5 bg-surface-container rounded-sm w-full"></div>
+</div>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant">
+<span class="font-label-header text-label-header uppercase">교육/명부</span>
+<span class="material-symbols-outlined text-[16px]">school</span>
+</div>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface truncate">2025 학생/과제 관리 대장</span>
+</a>
+<!-- Preset 3 -->
+<a class="group flex flex-col gap-space-sm cursor-pointer" href="#">
+<div class="h-36 w-full rounded bg-surface-container-lowest shadow-sm group-hover:shadow-md transition-shadow p-space-md flex flex-col justify-between relative overflow-hidden">
+<div class="w-full space-y-space-xs opacity-70">
+<div class="h-2 w-2/3 bg-tertiary/30 rounded-sm"></div>
+<div class="flex gap-1 pt-space-xs">
+<div class="flex-1 h-12 bg-surface-container-low rounded-sm p-1 flex flex-col justify-end">
+<div class="h-6 w-full bg-tertiary/20 rounded-sm"></div>
+</div>
+<div class="flex-1 h-12 bg-surface-container-low rounded-sm p-1 flex flex-col justify-end">
+<div class="h-9 w-full bg-primary/30 rounded-sm"></div>
+</div>
+<div class="flex-1 h-12 bg-surface-container-low rounded-sm p-1 flex flex-col justify-end">
+<div class="h-4 w-full bg-secondary/20 rounded-sm"></div>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant">
+<span class="font-label-header text-label-header uppercase">주간 보고</span>
+<span class="material-symbols-outlined text-[16px]">date_range</span>
+</div>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface truncate">팀 주간 스프레드시트</span>
+</a>
+<!-- Preset 4 -->
+<a class="group hidden lg:flex flex-col gap-space-sm cursor-pointer" href="#">
+<div class="h-36 w-full rounded bg-surface-container-lowest shadow-sm group-hover:shadow-md transition-shadow p-space-md flex flex-col justify-between relative overflow-hidden">
+<div class="w-full space-y-space-xs opacity-70">
+<div class="h-2 w-1/2 bg-outline-variant rounded-sm"></div>
+<div class="grid grid-cols-3 gap-1 pt-space-xs">
+<div class="h-7 bg-surface-container rounded-sm"></div>
+<div class="h-7 bg-surface-container rounded-sm"></div>
+<div class="h-7 bg-surface-container rounded-sm"></div>
+</div>
+<div class="h-1.5 bg-surface-container-high rounded-sm w-full"></div>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant">
+<span class="font-label-header text-label-header uppercase">재무/회계</span>
+<span class="material-symbols-outlined text-[16px]">payments</span>
+</div>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface truncate">연간 예산 및 정산표</span>
+</a>
+</div>
+</div>
+</section>
+<!-- Recent Spreadsheets Section -->
+<section class="w-full px-space-xl py-space-lg flex-1">
+<div class="max-w-7xl mx-auto flex flex-col">
+<!-- Section Header & Controls Toolbar -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md pb-space-md">
+<div class="flex items-center gap-space-md">
+<span class="font-headline-sm text-headline-sm text-on-surface">최근 스프레드시트</span>
+<!-- Filter Dropdown -->
+<div class="relative">
+<button class="flex items-center gap-space-xs px-space-md py-space-xs bg-surface-container hover:bg-surface-container-high text-on-surface font-body-sm text-body-sm rounded transition-colors" id="filterBtn" type="button">
+<span id="currentFilterText" class="">내가 소유한 시트</span>
+<span class="material-symbols-outlined text-[16px]">arrow_drop_down</span>
+</button>
+<div class="hidden absolute top-full left-0 mt-1 w-44 bg-surface-container-lowest shadow-md rounded py-1 z-20" id="filterMenu">
+<button class="w-full px-space-md py-space-xs text-left text-on-surface hover:bg-surface-container-low font-body-sm text-body-sm" data-filter="all" type="button">전체 시트</button>
+<button class="w-full px-space-md py-space-xs text-left text-on-surface hover:bg-surface-container-low font-body-sm text-body-sm font-semibold" data-filter="me" type="button">내가 소유한 시트</button>
+<button class="w-full px-space-md py-space-xs text-left text-on-surface hover:bg-surface-container-low font-body-sm text-body-sm" data-filter="shared" type="button">공유된 시트</button>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-space-xs self-end sm:self-auto">
+<!-- View Toggle -->
+<div class="flex items-center bg-surface-container rounded p-0.5">
+<button class="w-7 h-7 flex items-center justify-center rounded bg-surface-container-lowest text-on-surface shadow-xs transition-colors" id="viewListBtn" title="목록 보기" type="button">
+<span class="material-symbols-outlined text-[18px]">view_list</span>
+</button>
+<button class="w-7 h-7 flex items-center justify-center rounded text-on-surface-variant hover:text-on-surface transition-colors" id="viewGridBtn" title="그리드 보기" type="button">
+<span class="material-symbols-outlined text-[18px]">grid_view</span>
+</button>
+</div>
+<div class="h-4 w-px bg-outline-variant/40 mx-space-xs"></div>
+<!-- Sort Button -->
+<button class="flex items-center gap-space-xs px-space-md py-space-xs text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded transition-colors font-body-sm text-body-sm" title="정렬 옵션" type="button">
+<span class="material-symbols-outlined text-[18px]">sort_by_alpha</span>
+<span class="hidden md:inline">마지막으로 열어본 시간</span>
+<span class="material-symbols-outlined text-[16px]">arrow_drop_down</span>
+</button>
+<!-- Drive Folder Quick Link -->
+<button class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded transition-colors" title="폴더 열기" type="button">
+<span class="material-symbols-outlined text-[18px]">folder_open</span>
+</button>
+</div>
+</div>
+<!-- Spreadsheets Table (List View) -->
+<div class="w-full overflow-x-auto" id="sheetsListView">
+<table class="w-full text-left font-body-sm text-body-sm">
+<thead>
+<tr class="text-on-surface-variant font-label-header text-label-header bg-surface-container-low/60">
+<th class="py-space-sm pl-space-md pr-space-xs w-10" scope="col"></th>
+<th class="py-space-sm px-space-md" scope="col">이름</th>
+<th class="py-space-sm px-space-md w-40 hidden sm:table-cell" scope="col">소유자</th>
+<th class="py-space-sm px-space-md w-44 hidden md:table-cell" scope="col">마지막 수정</th>
+<th class="py-space-sm pr-space-md pl-space-xs w-28 text-right" scope="col">작업</th>
+</tr>
+</thead>
+<tbody class="text-on-surface">
+<!-- Row 1: Active Workspace Sheet -->
+<tr class="group hover:bg-surface-container transition-colors cursor-pointer bg-primary/[0.02]">
+<td class="py-space-md pl-space-md pr-space-xs text-center">
+<span class="material-symbols-outlined text-primary text-[20px] align-middle">table_chart</span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-space-sm min-w-0">
+<span class="font-medium truncate text-on-surface">전사 업무 데이터 관리 시트</span>
+<span class="px-space-xs py-0.5 rounded text-[10px] bg-primary text-on-primary font-semibold tracking-wide">ACTIVE</span>
+<button class="text-tertiary-container hover:text-tertiary ml-space-xs shrink-0" title="별표 표시 해제" type="button">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+</button>
+</div>
+</td>
+<td class="py-space-md px-space-md text-on-surface-variant hidden sm:table-cell">
+<div class="flex items-center gap-space-xs">
+<div class="w-5 h-5 rounded-full bg-primary text-on-primary flex items-center justify-center text-[10px] font-medium">나</div>
+<span class="truncate">나</span>
+</div>
+</td>
+<td class="py-space-md px-space-md text-on-surface-variant font-label-code text-label-code hidden md:table-cell">
+                10분 전
+              </td>
+<td class="py-space-md pr-space-md pl-space-xs text-right">
+<div class="flex items-center justify-end gap-space-xs">
+<a class="px-space-sm py-space-xs rounded bg-primary text-on-primary text-body-sm font-medium hover:bg-primary-container transition-colors shrink-0" href="#">열기</a>
+<button class="w-7 h-7 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded transition-colors row-menu-btn" title="추가 작업" type="button">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="group hover:bg-surface-container transition-colors cursor-pointer">
+<td class="py-space-md pl-space-md pr-space-xs text-center">
+<span class="material-symbols-outlined text-primary text-[20px] align-middle">table_chart</span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-space-sm min-w-0">
+<span class="truncate text-on-surface">2025학년도 1학기 컴퓨터공학 전공생 명부</span>
+<button class="text-outline-variant hover:text-tertiary-container ml-space-xs shrink-0" title="별표 표시" type="button">
+<span class="material-symbols-outlined text-[18px]">star</span>
+</button>
+</div>
+</td>
+<td class="py-space-md px-space-md text-on-surface-variant hidden sm:table-cell">
+<div class="flex items-center gap-space-xs">
+<div class="w-5 h-5 rounded-full bg-primary text-on-primary flex items-center justify-center text-[10px] font-medium">나</div>
+<span class="truncate">나</span>
+</div>
+</td>
+<td class="py-space-md px-space-md text-on-surface-variant font-label-code text-label-code hidden md:table-cell">
+                어제
+              </td>
+<td class="py-space-md pr-space-md pl-space-xs text-right">
+<div class="flex items-center justify-end">
+<button class="w-7 h-7 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded transition-colors row-menu-btn" title="추가 작업" type="button">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="group hover:bg-surface-container transition-colors cursor-pointer">
+<td class="py-space-md pl-space-md pr-space-xs text-center">
+<span class="material-symbols-outlined text-primary text-[20px] align-middle">table_chart</span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-space-sm min-w-0">
+<span class="truncate text-on-surface">APAC 파트너십 구축 및 분산 DB 샤딩 트래킹</span>
+<button class="text-outline-variant hover:text-tertiary-container ml-space-xs shrink-0" title="별표 표시" type="button">
+<span class="material-symbols-outlined text-[18px]">star</span>
+</button>
+</div>
+</td>
+<td class="py-space-md px-space-md text-on-surface-variant hidden sm:table-cell">
+<div class="flex items-center gap-space-xs">
+<div class="w-5 h-5 rounded-full bg-secondary text-on-secondary flex items-center justify-center text-[10px] font-medium">정</div>
+<span class="truncate">정태양</span>
+</div>
+</td>
+<td class="py-space-md px-space-md text-on-surface-variant font-label-code text-label-code hidden md:table-cell">
+                2025. 04. 12
+              </td>
+<td class="py-space-md pr-space-md pl-space-xs text-right">
+<div class="flex items-center justify-end">
+<button class="w-7 h-7 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded transition-colors row-menu-btn" title="추가 작업" type="button">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="group hover:bg-surface-container transition-colors cursor-pointer">
+<td class="py-space-md pl-space-md pr-space-xs text-center">
+<span class="material-symbols-outlined text-primary text-[20px] align-middle">table_chart</span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-space-sm min-w-0">
+<span class="truncate text-on-surface">글로벌 디자인 토큰 통합 태스크보드</span>
+<button class="text-tertiary-container hover:text-tertiary ml-space-xs shrink-0" title="별표 표시" type="button">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+</button>
+</div>
+</td>
+<td class="py-space-md px-space-md text-on-surface-variant hidden sm:table-cell">
+<div class="flex items-center gap-space-xs">
+<div class="w-5 h-5 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-[10px] font-medium">이</div>
+<span class="truncate">이지은</span>
+</div>
+</td>
+<td class="py-space-md px-space-md text-on-surface-variant font-label-code text-label-code hidden md:table-cell">
+                2025. 04. 10
+              </td>
+<td class="py-space-md pr-space-md pl-space-xs text-right">
+<div class="flex items-center justify-end">
+<button class="w-7 h-7 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded transition-colors row-menu-btn" title="추가 작업" type="button">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 5 -->
+<tr class="group hover:bg-surface-container transition-colors cursor-pointer">
+<td class="py-space-md pl-space-md pr-space-xs text-center">
+<span class="material-symbols-outlined text-primary text-[20px] align-middle">table_chart</span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-space-sm min-w-0">
+<span class="truncate text-on-surface">전사 평가 체계 리뉴얼 OKR 관리표</span>
+<button class="text-outline-variant hover:text-tertiary-container ml-space-xs shrink-0" title="별표 표시" type="button">
+<span class="material-symbols-outlined text-[18px]">star</span>
+</button>
+</div>
+</td>
+<td class="py-space-md px-space-md text-on-surface-variant hidden sm:table-cell">
+<div class="flex items-center gap-space-xs">
+<div class="w-5 h-5 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center text-[10px] font-medium">강</div>
+<span class="truncate">강서연</span>
+</div>
+</td>
+<td class="py-space-md px-space-md text-on-surface-variant font-label-code text-label-code hidden md:table-cell">
+                2025. 04. 05
+              </td>
+<td class="py-space-md pr-space-md pl-space-xs text-right">
+<div class="flex items-center justify-end">
+<button class="w-7 h-7 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded transition-colors row-menu-btn" title="추가 작업" type="button">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 6 -->
+<tr class="group hover:bg-surface-container transition-colors cursor-pointer">
+<td class="py-space-md pl-space-md pr-space-xs text-center">
+<span class="material-symbols-outlined text-primary text-[20px] align-middle">table_chart</span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-space-sm min-w-0">
+<span class="truncate text-on-surface">DevOps 인프라 CI/CD 빌드 최적화 로그</span>
+<button class="text-outline-variant hover:text-tertiary-container ml-space-xs shrink-0" title="별표 표시" type="button">
+<span class="material-symbols-outlined text-[18px]">star</span>
+</button>
+</div>
+</td>
+<td class="py-space-md px-space-md text-on-surface-variant hidden sm:table-cell">
+<div class="flex items-center gap-space-xs">
+<div class="w-5 h-5 rounded-full bg-inverse-surface text-inverse-on-surface flex items-center justify-center text-[10px] font-medium">윤</div>
+<span class="truncate">윤도현</span>
+</div>
+</td>
+<td class="py-space-md px-space-md text-on-surface-variant font-label-code text-label-code hidden md:table-cell">
+                2025. 04. 01
+              </td>
+<td class="py-space-md pr-space-md pl-space-xs text-right">
+<div class="flex items-center justify-end">
+<button class="w-7 h-7 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded transition-colors row-menu-btn" title="추가 작업" type="button">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Spreadsheets Grid View (Hidden by default) -->
+<div class="hidden grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-space-lg pt-space-md" id="sheetsGridView">
+<!-- Grid Card 1 -->
+<div class="bg-surface-container-lowest rounded shadow-sm hover:shadow-md transition-shadow p-space-md flex flex-col justify-between h-48 cursor-pointer relative group">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">table_chart</span>
+<span class="font-headline-sm text-headline-sm truncate text-on-surface max-w-[180px]">전사 업무 데이터 관리 시트</span>
+</div>
+<span class="material-symbols-outlined text-tertiary-container text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+<div class="h-20 bg-surface-container-low rounded p-2 flex flex-col gap-1 justify-center opacity-60">
+<div class="h-2 w-full bg-primary/20 rounded"></div>
+<div class="h-2 w-3/4 bg-primary/10 rounded"></div>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant font-body-sm text-body-sm pt-space-xs">
+<div class="flex items-center gap-space-xs">
+<div class="w-4 h-4 rounded-full bg-primary text-on-primary text-[8px] flex items-center justify-center">나</div>
+<span class="">10분 전</span>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface" type="button">
+<span class="material-symbols-outlined text-[16px]">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Grid Card 2 -->
+<div class="bg-surface-container-lowest rounded shadow-sm hover:shadow-md transition-shadow p-space-md flex flex-col justify-between h-48 cursor-pointer relative group">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">table_chart</span>
+<span class="font-headline-sm text-headline-sm truncate text-on-surface max-w-[180px]">2025 학생/과제 관리 대장</span>
+</div>
+<span class="material-symbols-outlined text-outline-variant text-[18px]">star</span>
+</div>
+<div class="h-20 bg-surface-container-low rounded p-2 flex flex-col gap-1 justify-center opacity-60">
+<div class="h-2 w-full bg-secondary/20 rounded"></div>
+<div class="h-2 w-1/2 bg-secondary/10 rounded"></div>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant font-body-sm text-body-sm pt-space-xs">
+<div class="flex items-center gap-space-xs">
+<div class="w-4 h-4 rounded-full bg-primary text-on-primary text-[8px] flex items-center justify-center">나</div>
+<span class="">어제</span>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface" type="button">
+<span class="material-symbols-outlined text-[16px]">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Grid Card 3 -->
+<div class="bg-surface-container-lowest rounded shadow-sm hover:shadow-md transition-shadow p-space-md flex flex-col justify-between h-48 cursor-pointer relative group">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">table_chart</span>
+<span class="font-headline-sm text-headline-sm truncate text-on-surface max-w-[180px]">APAC 파트너십 구축...</span>
+</div>
+<span class="material-symbols-outlined text-outline-variant text-[18px]">star</span>
+</div>
+<div class="h-20 bg-surface-container-low rounded p-2 flex flex-col gap-1 justify-center opacity-60">
+<div class="h-2 w-full bg-surface-variant rounded"></div>
+<div class="h-2 w-4/5 bg-surface-variant rounded"></div>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant font-body-sm text-body-sm pt-space-xs">
+<div class="flex items-center gap-space-xs">
+<div class="w-4 h-4 rounded-full bg-secondary text-on-secondary text-[8px] flex items-center justify-center">정</div>
+<span class="">04. 12</span>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface" type="button">
+<span class="material-symbols-outlined text-[16px]">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Grid Card 4 -->
+<div class="bg-surface-container-lowest rounded shadow-sm hover:shadow-md transition-shadow p-space-md flex flex-col justify-between h-48 cursor-pointer relative group">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">table_chart</span>
+<span class="font-headline-sm text-headline-sm truncate text-on-surface max-w-[180px]">글로벌 디자인 토큰</span>
+</div>
+<span class="material-symbols-outlined text-tertiary-container text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+<div class="h-20 bg-surface-container-low rounded p-2 flex flex-col gap-1 justify-center opacity-60">
+<div class="h-2 w-full bg-secondary-container/20 rounded"></div>
+<div class="h-2 w-3/5 bg-secondary-container/10 rounded"></div>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant font-body-sm text-body-sm pt-space-xs">
+<div class="flex items-center gap-space-xs">
+<div class="w-4 h-4 rounded-full bg-secondary-container text-on-secondary-container text-[8px] flex items-center justify-center">이</div>
+<span class="">04. 10</span>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface" type="button">
+<span class="material-symbols-outlined text-[16px]">more_vert</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Context Menu Popup (Shared Floating Modal) -->
+<div class="hidden fixed bg-surface-container-lowest shadow-md rounded py-1 z-50 w-44 font-body-sm text-body-sm" id="rowContextMenu">
+<button class="w-full px-space-md py-space-xs flex items-center gap-space-sm text-on-surface hover:bg-surface-container-low text-left" type="button">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">edit</span>
+<span class="">이름 바꾸기</span>
+</button>
+<button class="w-full px-space-md py-space-xs flex items-center gap-space-sm text-on-surface hover:bg-surface-container-low text-left" type="button">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">person_add</span>
+<span class="">공유</span>
+</button>
+<button class="w-full px-space-md py-space-xs flex items-center gap-space-sm text-on-surface hover:bg-surface-container-low text-left" type="button">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">link</span>
+<span class="">링크 복사</span>
+</button>
+<div class="h-px bg-outline-variant/30 my-1"></div>
+<button class="w-full px-space-md py-space-xs flex items-center gap-space-sm text-error hover:bg-error-container/30 text-left" type="button">
+<span class="material-symbols-outlined text-[16px] text-error">delete</span>
+<span class="">삭제</span>
+</button>
+</div>
+<!-- Bottom Workspace Status Band -->
+<section class="w-full px-space-xl py-space-md bg-surface-container-lowest mt-space-xl">
+<div class="max-w-7xl mx-auto flex items-center justify-between text-on-surface-variant font-label-header text-label-header">
+<div class="flex items-center gap-space-md">
+<span class="flex items-center gap-space-xs text-primary font-medium">
+<span class="material-symbols-outlined text-[16px]">cloud_done</span>
+<span class="">동기화됨</span>
+</span>
+<span class="hidden sm:inline">•</span>
+<span class="hidden sm:flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[16px] text-outline">verified_user</span>
+<span class="">Google Workspace 안전 보관</span>
+</span>
+</div>
+<div class="flex items-center gap-space-md">
+<span class="">총 6개 항목 표시됨</span>
+<a class="text-primary hover:underline" href="#">저장용량 15.4 GB 중 4.2 GB 사용</a>
+</div>
+</div>
+</section>
+</div>
+<script>
+  // View Toggle Interactive Logic
+  const listBtn = document.getElementById('viewListBtn');
+  const gridBtn = document.getElementById('viewGridBtn');
+  const listView = document.getElementById('sheetsListView');
+  const gridView = document.getElementById('sheetsGridView');
+
+  listBtn.addEventListener('click', () => {
+    listView.classList.remove('hidden');
+    gridView.classList.add('hidden');
+    listBtn.classList.add('bg-surface-container-lowest', 'text-on-surface', 'shadow-xs');
+    listBtn.classList.remove('text-on-surface-variant');
+    gridBtn.classList.remove('bg-surface-container-lowest', 'text-on-surface', 'shadow-xs');
+    gridBtn.classList.add('text-on-surface-variant');
+  });
+
+  gridBtn.addEventListener('click', () => {
+    gridView.classList.remove('hidden');
+    listView.classList.add('hidden');
+    gridBtn.classList.add('bg-surface-container-lowest', 'text-on-surface', 'shadow-xs');
+    gridBtn.classList.remove('text-on-surface-variant');
+    listBtn.classList.remove('bg-surface-container-lowest', 'text-on-surface', 'shadow-xs');
+    listBtn.classList.add('text-on-surface-variant');
+  });
+
+  // Filter Dropdown Logic
+  const filterBtn = document.getElementById('filterBtn');
+  const filterMenu = document.getElementById('filterMenu');
+  const filterText = document.getElementById('currentFilterText');
+
+  filterBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    filterMenu.classList.toggle('hidden');
+  });
+
+  filterMenu.querySelectorAll('button').forEach(item => {
+    item.addEventListener('click', () => {
+      filterText.textContent = item.textContent.trim();
+      filterMenu.querySelectorAll('button').forEach(b => b.classList.remove('font-semibold'));
+      item.classList.add('font-semibold');
+      filterMenu.classList.add('hidden');
+    });
+  });
+
+  // Context Menu Toggle Logic
+  const contextMenu = document.getElementById('rowContextMenu');
+  document.querySelectorAll('.row-menu-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const rect = btn.getBoundingClientRect();
+      contextMenu.style.top = `${rect.bottom + 4}px`;
+      contextMenu.style.left = `${Math.min(rect.left, window.innerWidth - 180)}px`;
+      contextMenu.classList.remove('hidden');
+    });
+  });
+
+  // Global Click to close popups
+  document.addEventListener('click', () => {
+    if (filterMenu) filterMenu.classList.add('hidden');
+    if (contextMenu) contextMenu.classList.add('hidden');
+  });
+</script></main><footer class="w-full bg-surface-container-low py-space-md"><div class="w-full px-space-xl flex flex-col sm:flex-row items-center justify-between gap-space-sm text-on-surface-variant font-label-header text-label-header"><span class="">© 2025 Enterprise Sheets Workspace • 영업1팀 김민수 대리 세션 활성화됨</span><div class="flex items-center gap-space-lg"><span class="flex items-center gap-space-xs"><span class="w-2 h-2 rounded-full bg-primary inline-block"></span> 동기화 완료</span><a class="hover:text-on-surface transition-colors" data-path="shortcuts" href="#">단축키 가이드</a><a class="hover:text-on-surface transition-colors" data-path="status" href="#">시스템 상태</a></div></div></footer>
+
+</body></html>

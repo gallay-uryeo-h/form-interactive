@@ -1,0 +1,2672 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Admin 시트 관리 (웹) - form-interactive</title>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#006a39",
+            "primary-container": "#008649",
+            "primary-fixed": "#82faab",
+            "on-primary-fixed": "#00210e",
+            "on-primary": "#ffffff",
+            "secondary": "#0058bb",
+            "secondary-container": "#1471e6",
+            "secondary-fixed": "#d8e2ff",
+            "on-secondary-fixed": "#001a41",
+            "tertiary": "#8d4b00",
+            "surface": "#f7fafd",
+            "surface-dim": "#d7dade",
+            "surface-container-lowest": "#ffffff",
+            "surface-container-low": "#f1f4f7",
+            "surface-container": "#ebeef2",
+            "surface-container-high": "#e5e8ec",
+            "surface-container-highest": "#e0e3e6",
+            "surface-variant": "#e0e3e6",
+            "on-surface": "#181c1f",
+            "on-surface-variant": "#3e4a3f",
+            "outline": "#6d7a6f",
+            "outline-variant": "#bdcabc",
+            "error": "#ba1a1a",
+            "error-container": "#ffdad6",
+            "on-error-container": "#93000a"
+          },
+          fontFamily: {
+            "sans": ["Inter", "sans-serif"],
+            "mono": ["JetBrains Mono", "monospace"]
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    @layer base {
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+    }
+    .cell-focus {
+      outline: 2px solid #006a39 !important;
+      outline-offset: -2px;
+      z-index: 25;
+      position: relative;
+    }
+    .cell-range-selected {
+      background-color: rgba(0, 106, 57, 0.12) !important;
+    }
+    .cell-range-selected.cell-focus {
+      background-color: #ffffff !important;
+    }
+    .header-active {
+      background-color: rgba(0, 106, 57, 0.22) !important;
+      color: #006a39 !important;
+      font-weight: 700 !important;
+    }
+    .col-highlight {
+      animation: colFlash 0.8s ease-out;
+    }
+    @keyframes colFlash {
+      0% { background-color: rgba(130, 250, 171, 0.45); }
+      100% { background-color: transparent; }
+    }
+    /* Google Sheets Drag & Drop Column Reorder */
+    .column-dragging {
+      opacity: 0.45 !important;
+      background-color: rgba(0, 106, 57, 0.15) !important;
+    }
+    .drop-indicator-left {
+      box-shadow: inset 4px 0 0 0 #006a39 !important;
+      background-color: rgba(0, 106, 57, 0.08) !important;
+    }
+    .drop-indicator-right {
+      box-shadow: inset -4px 0 0 0 #006a39 !important;
+      background-color: rgba(0, 106, 57, 0.08) !important;
+    }
+    .drag-handle-header {
+      cursor: grab;
+    }
+    .drag-handle-header:active {
+      cursor: grabbing;
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface h-screen flex flex-col font-sans select-none overflow-hidden">
+
+  <!-- 1. Top Ribbon: App Bar & Main Menus (고정 44px) -->
+  <header class="h-11 w-full flex items-center justify-between px-3 bg-surface-container-lowest border-b border-surface-variant shrink-0 z-30">
+    <div class="flex items-center gap-3">
+      <a href="home.html" class="flex items-center gap-2 hover:opacity-85 transition-opacity" title="시트 목록 홈으로 이동">
+        <div class="w-7 h-7 bg-primary text-on-primary rounded flex items-center justify-center font-bold text-sm shadow-xs">
+          <span class="material-symbols-outlined text-[18px]">table_view</span>
+        </div>
+        <div class="flex flex-col">
+          <div class="flex items-center gap-2">
+            <span class="font-semibold text-[13px] text-on-surface truncate max-w-xs" id="topSheetTitle">전사 업무 데이터 관리 시트</span>
+            <span class="text-[10px] bg-primary/10 text-primary font-mono px-1.5 py-0.2 rounded font-semibold">Live Admin</span>
+          </div>
+        </div>
+      </a>
+
+      <!-- Sheet Switcher Dropdown -->
+      <div class="relative flex items-center">
+        <select id="sheetSelectorDropdown" class="text-[11px] font-semibold bg-surface-container-low hover:bg-surface-container border border-surface-variant rounded-lg px-2 py-1 pr-6 cursor-pointer outline-none appearance-none text-on-surface shadow-2xs">
+          <!-- Populated by JS -->
+        </select>
+        <span class="material-symbols-outlined absolute right-1.5 pointer-events-none text-[15px] text-outline">arrow_drop_down</span>
+      </div>
+
+      <a href="home.html" class="flex items-center gap-1 text-[11px] text-primary hover:underline font-semibold px-2 py-1 rounded bg-primary/5 hover:bg-primary/10 transition-colors" title="시트 목록 전체 보기">
+        <span class="material-symbols-outlined text-[14px]">folder_open</span>
+        <span>시트 목록</span>
+      </a>
+
+      <div class="h-4 w-px bg-surface-variant mx-1 hidden md:block"></div>
+      <!-- Standard Sheet Menus -->
+      <nav class="hidden lg:flex items-center gap-1 text-[12px] text-on-surface-variant">
+        <button class="px-2 py-0.5 hover:bg-surface-container rounded transition-colors">파일</button>
+        <button class="px-2 py-0.5 hover:bg-surface-container rounded transition-colors">수정</button>
+        <button class="px-2 py-0.5 hover:bg-surface-container rounded transition-colors">보기</button>
+        <button class="px-2 py-0.5 hover:bg-surface-container rounded transition-colors">삽입</button>
+        <button class="px-2 py-0.5 hover:bg-surface-container rounded transition-colors font-medium text-primary">서식/유효성</button>
+        <button class="px-2 py-0.5 hover:bg-surface-container rounded transition-colors">데이터</button>
+      </nav>
+    </div>
+
+    <!-- Right Quick Actions -->
+    <div class="flex items-center gap-2 text-[12px]">
+      <div class="flex items-center gap-1.5 px-2 py-1 rounded-full bg-surface-container text-on-surface-variant font-mono text-[11px]" id="syncBadge">
+        <span class="material-symbols-outlined text-[14px] text-primary" id="syncIcon">cloud_done</span>
+        <span id="syncText">Firestore 실시간 연결됨</span>
+      </div>
+      <button id="btnResetData" class="px-2.5 py-1 text-outline hover:text-error hover:bg-error-container/30 rounded transition-colors text-[11px] font-medium" title="데이터가 꼬였을 때 초기 샘플로 복원합니다">
+        데이터 초기화
+      </button>
+      <a id="btnOpenMobileView" href="mobile.html" target="_blank" class="flex items-center gap-1 px-2.5 py-1 bg-surface-container hover:bg-surface-variant text-on-surface rounded transition-colors font-medium text-[11px]" title="모바일 폼 뷰 새 창 열기">
+        <span class="material-symbols-outlined text-[14px]">smartphone</span>
+        <span>사용자 모바일 뷰</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- 2. Minimal Action Ribbon / Quick Controls (고정 36px) -->
+  <div class="h-9 w-full px-3 flex items-center justify-between bg-surface-container-low border-b border-surface-variant text-[12px] text-on-surface-variant shrink-0 z-20">
+    <div class="flex items-center gap-1">
+      <button id="btnAddRow" class="flex items-center gap-1 px-2.5 py-1 bg-primary text-on-primary hover:bg-primary-container rounded transition-colors font-medium text-[11px] cursor-pointer shadow-2xs">
+        <span class="material-symbols-outlined text-[15px]">add</span>
+        <span>새 행 추가</span>
+      </button>
+      <button id="btnAddColumn" class="flex items-center gap-1 px-2.5 py-1 bg-surface-container hover:bg-surface-variant text-on-surface border border-surface-variant rounded transition-colors font-medium text-[11px] cursor-pointer shadow-2xs" title="시트에 새 열을 추가합니다">
+        <span class="material-symbols-outlined text-[15px] text-primary">view_column</span>
+        <span>+ 열 추가</span>
+      </button>
+      <div class="h-4 w-px bg-surface-variant mx-1"></div>
+      <button class="p-1 hover:bg-surface-variant rounded" title="실행취소"><span class="material-symbols-outlined text-[16px]">undo</span></button>
+      <button class="p-1 hover:bg-surface-variant rounded" title="다시실행"><span class="material-symbols-outlined text-[16px]">redo</span></button>
+      <div class="h-4 w-px bg-surface-variant mx-1"></div>
+      <button class="p-1 hover:bg-surface-variant rounded font-bold" title="굵게"><span class="material-symbols-outlined text-[16px]">format_bold</span></button>
+      <button class="p-1 hover:bg-surface-variant rounded italic" title="기울임꼴"><span class="material-symbols-outlined text-[16px]">format_italic</span></button>
+      <button class="p-1 hover:bg-surface-variant rounded" title="정렬"><span class="material-symbols-outlined text-[16px]">format_align_left</span></button>
+    </div>
+
+    <div class="flex items-center gap-3 text-[11px] font-mono">
+      <span class="flex items-center gap-1 px-2 py-0.5 rounded bg-primary/10 text-primary font-medium font-sans">
+        <span class="material-symbols-outlined text-[14px]">tune</span>상단 칩을 클릭하여 폼타입 및 드롭다운 선택지를 직접 설정할 수 있습니다
+      </span>
+      <span class="flex items-center gap-1 text-secondary font-medium font-sans">
+        <span class="material-symbols-outlined text-[14px]">sync</span>Firestore 실시간 동기화
+      </span>
+    </div>
+  </div>
+
+  <!-- 3. Formula Bar (수식입력줄 - 고정 32px) -->
+  <div class="h-8 w-full flex items-center bg-surface-container-lowest border-b border-surface-variant px-3 gap-2 text-[12px] shrink-0 z-20">
+    <div class="w-14 text-center font-mono font-bold text-on-surface bg-surface-container-low py-0.5 rounded border border-surface-variant text-[11px]" id="activeCellAddress">
+      A2
+    </div>
+    <div class="flex items-center justify-center text-outline font-mono font-semibold italic px-1 text-[13px]">
+      fx
+    </div>
+    <div class="h-4 w-px bg-surface-variant"></div>
+    <input class="flex-1 h-6 px-2 text-on-surface bg-transparent font-mono text-[12px] focus:outline-none border-none placeholder-outline-variant" id="formulaInput" placeholder="셀을 클릭하여 내용 확인 및 편집" type="text">
+    <div class="hidden sm:flex items-center gap-1 px-2 py-0.5 bg-surface-container text-primary font-mono text-[11px] rounded" id="selectionBadge">
+      <span>단일 셀 선택</span>
+    </div>
+  </div>
+
+  <!-- 4. Spreadsheet Scroll Container (독립 스크롤 영역) -->
+  <main class="flex-1 overflow-auto relative bg-surface-container-lowest select-none focus:outline-none" id="scrollContainer" tabindex="0">
+    <table class="border-collapse text-left text-[12px] table-fixed w-max" id="spreadsheetTable">
+      <colgroup id="tableColGroup">
+        <col style="width: 44px;">  <!-- No -->
+        <col style="width: 105px;"> <!-- A: 학번/사번 -->
+        <col style="width: 110px;"> <!-- B: 사원명 -->
+        <col style="width: 135px;"> <!-- C: 부서/전공 -->
+        <col style="width: 185px;"> <!-- D: 배정 프로젝트 -->
+        <col style="width: 220px;"> <!-- E: 담당 업무 -->
+        <col style="width: 125px;"> <!-- F: 진행 상태 -->
+        <col style="width: 130px;"> <!-- G: 마감일 -->
+        <col style="width: 120px;"> <!-- H: 우선순위 -->
+        <col style="width: 80px;">  <!-- I: 승인 여부 -->
+        <col style="width: 135px;"> <!-- J: 진척도 -->
+        <col style="width: 55px;">  <!-- 작업 (삭제) -->
+      </colgroup>
+
+      <!-- Sticky Table Header (top-0) -->
+      <thead class="bg-surface-container text-on-surface-variant font-medium sticky top-0 z-10 border-b border-surface-variant shadow-xs">
+        <!-- 1행: 속성/유효성 검사 칩 행 (데이터타입/폼타입 & 옵션 상세 설정 버튼) -->
+        <tr class="h-7 bg-surface-container-low border-b border-surface-variant text-[10px] text-on-surface-variant select-none" id="typeRow">
+          <!-- Dynamically populated by renderTypeRowChips() -->
+        </tr>
+
+        <!-- 2행: 컬럼 A-J 라벨 행 (셀처럼 직접 이름 편집 가능 + 정렬/필터 버튼 제공 + 드래그 앤 드롭 이동) -->
+        <tr class="h-7 text-[11px] bg-surface-container select-none" id="headerLabelRow">
+          <!-- Dynamically populated by renderHeaderLabelRow() -->
+        </tr>
+      </thead>
+
+      <tbody class="divide-y divide-surface-variant text-on-surface font-mono" id="gridBody">
+        <tr>
+          <td colspan="12" class="py-12 text-center text-on-surface-variant font-sans">
+            <span class="inline-block animate-spin mr-2">⏳</span> Firestore에서 데이터를 불러오는 중...
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </main>
+
+  <!-- 5. Bottom Sheet Status Band (고정 28px) -->
+  <footer class="h-7 bg-surface-container-low border-t border-surface-variant px-4 flex items-center justify-between text-[11px] text-on-surface-variant shrink-0 z-20">
+    <div class="flex items-center gap-3">
+      <a href="home.html" class="flex items-center gap-1 text-primary font-bold hover:underline" title="시트 목록으로 이동">
+        <span class="material-symbols-outlined text-[14px]">table_chart</span>
+        <span id="footerSheetName">전사 업무 데이터 관리 시트</span>
+      </a>
+      <span>•</span>
+      <span id="rowCountLabel">0개 행 로드됨</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="text-outline">Google Cloud Firestore:</span>
+      <span class="font-mono text-primary font-semibold">studio-2726051254-c02c9</span>
+      <span class="text-outline">/</span>
+      <span class="font-mono text-primary font-semibold">form-interactive</span>
+    </div>
+  </footer>
+
+  <!-- Column Type & Data Validation Settings Modal (Floating Dialog) -->
+  <div id="typeMenuModal" class="hidden fixed z-50 bg-surface-container-lowest border-2 border-primary/40 rounded-2xl shadow-2xl p-4 w-[400px] max-w-[95vw] text-[12px] font-sans">
+    <!-- Header -->
+    <div class="flex items-center justify-between pb-2 border-b border-surface-container">
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined text-[18px]">tune</span>
+        </div>
+        <div>
+          <h3 class="font-bold text-on-surface text-[13px] leading-tight" id="modalColTitle">[A열] 열 설정</h3>
+          <p class="text-[10px] text-outline leading-tight mt-0.5">데이터 타입 및 입력 유효성 설정</p>
+        </div>
+      </div>
+      <button id="btnCloseTypeMenu" class="w-6 h-6 flex items-center justify-center text-outline hover:text-on-surface rounded-full hover:bg-surface-container transition-colors cursor-pointer" title="닫기">
+        <span class="material-symbols-outlined text-[16px] leading-none">close</span>
+      </button>
+    </div>
+
+    <!-- Modal Body -->
+    <div class="py-2.5 flex flex-col gap-3 max-h-[68vh] overflow-y-auto pr-1">
+      <!-- 1. Form Type Selector Grid -->
+      <div>
+        <label class="block text-[11px] font-bold text-on-surface-variant mb-1.5 flex items-center gap-1">
+          <span class="material-symbols-outlined text-[14px] text-primary">category</span>
+          <span>입력 폼 타입 선택</span>
+        </label>
+        <div class="grid grid-cols-2 gap-1.5" id="typeOptionsGrid">
+          <!-- Injected by JS -->
+        </div>
+      </div>
+
+      <!-- 2. Dynamic Dropdown Options Manager (Select / Priority) -->
+      <div id="dropdownConfigSection" class="p-2.5 bg-surface-container-low rounded-xl border border-surface-container flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <label class="text-[11px] font-bold text-on-surface flex items-center gap-1">
+            <span class="material-symbols-outlined text-[14px] text-secondary">format_list_bulleted</span>
+            <span>드롭다운 선택지 (<span id="optCountBadge" class="text-primary font-bold">0</span>개)</span>
+          </label>
+          <button type="button" id="btnExtractUniqueVals" class="text-[10px] text-primary hover:underline font-semibold flex items-center gap-0.5 cursor-pointer" title="현재 시트에 입력되어 있는 고유값을 자동으로 가져옵니다">
+            <span class="material-symbols-outlined text-[13px]">auto_awesome</span>현재 시트값 자동 추출
+          </button>
+        </div>
+
+        <!-- Option Tags Chips Container -->
+        <div class="flex flex-wrap gap-1.5 min-h-[46px] p-2 bg-surface-container-lowest rounded-lg border border-surface-container max-h-36 overflow-y-auto" id="optionsChipContainer">
+          <!-- Option chips injected by JS -->
+        </div>
+
+        <!-- Add Option Input -->
+        <div class="flex items-center gap-1.5">
+          <input type="text" id="newOptionInput" placeholder="새 드롭다운 옵션 입력 후 Enter..." class="flex-1 bg-surface-container-lowest text-on-surface text-[11px] px-2.5 py-1.5 rounded-lg border border-surface-container focus:border-secondary outline-none shadow-2xs">
+          <button type="button" id="btnAddOption" class="px-3 py-1.5 bg-secondary text-on-secondary rounded-lg font-semibold text-[11px] hover:bg-secondary-container transition-colors shrink-0">
+            추가
+          </button>
+        </div>
+        <p class="text-[10px] text-outline leading-tight">
+          💡 각 행에서 사용자가 선택할 수 있는 드롭다운 목록입니다. (X 버튼으로 삭제 가능)
+        </p>
+      </div>
+
+      <!-- 3. Progress Settings Section -->
+      <div id="progressConfigSection" class="hidden p-2.5 bg-surface-container-low rounded-xl border border-surface-container flex flex-col gap-2">
+        <label class="text-[11px] font-bold text-on-surface flex items-center gap-1">
+          <span class="material-symbols-outlined text-[14px] text-primary">linear_scale</span>
+          <span>진척도 범위 및 단위 설정</span>
+        </label>
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <span class="text-[10px] text-outline block mb-0.5">최소값</span>
+            <input type="number" id="progressMinInput" value="0" class="w-full bg-surface-container-lowest text-on-surface text-[11px] px-2 py-1 rounded border border-surface-container outline-none">
+          </div>
+          <div>
+            <span class="text-[10px] text-outline block mb-0.5">최대값</span>
+            <input type="number" id="progressMaxInput" value="100" class="w-full bg-surface-container-lowest text-on-surface text-[11px] px-2 py-1 rounded border border-surface-container outline-none">
+          </div>
+          <div>
+            <span class="text-[10px] text-outline block mb-0.5">표시 단위</span>
+            <input type="text" id="progressUnitInput" value="%" class="w-full bg-surface-container-lowest text-on-surface text-[11px] px-2 py-1 rounded border border-surface-container outline-none">
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Google ID & Student Roster Import Section -->
+      <div id="googleIdConfigSection" class="hidden p-2.5 bg-surface-container-low rounded-xl border border-surface-container flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <label class="text-[11px] font-bold text-on-surface flex items-center gap-1">
+            <span class="material-symbols-outlined text-[15px] text-[#ea4335]">alternate_email</span>
+            <span>구글 아이디 / 학생 명렬 목록 불러오기</span>
+          </label>
+          <span class="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded font-mono font-semibold" id="rosterCountBadge">0명 감지</span>
+        </div>
+
+        <!-- Quick Preset Buttons -->
+        <div class="flex items-center gap-1 flex-wrap">
+          <button type="button" id="btnPresetStudents20" class="text-[10px] px-2 py-1 rounded bg-surface-container hover:bg-surface-variant text-on-surface border border-surface-variant font-medium transition-colors cursor-pointer flex items-center gap-1 shadow-2xs">
+            <span class="material-symbols-outlined text-[13px] text-primary">groups</span>
+            <span>학생 명렬 샘플 (10명)</span>
+          </button>
+          <button type="button" id="btnPresetClassroom" class="text-[10px] px-2 py-1 rounded bg-surface-container hover:bg-surface-variant text-on-surface border border-surface-variant font-medium transition-colors cursor-pointer flex items-center gap-1 shadow-2xs">
+            <span class="material-symbols-outlined text-[13px] text-secondary">school</span>
+            <span>학교 계정 샘플 (@school.kr)</span>
+          </button>
+          <button type="button" id="btnClearRosterInput" class="text-[10px] px-1.5 py-1 rounded text-outline hover:text-error hover:bg-error-container/30 transition-colors cursor-pointer">
+            지우기
+          </button>
+        </div>
+
+        <!-- Textarea for Bulk Paste / Import -->
+        <textarea id="rosterBulkInput" rows="5" class="w-full bg-surface-container-lowest text-on-surface font-mono text-[11px] p-2 rounded-lg border border-surface-container focus:border-primary outline-none resize-none leading-relaxed" placeholder="줄바꿈(엔터) 또는 쉼표(,)로 구분하여 학생들의 구글 계정(이메일)을 붙여넣으세요.
+예시:
+student01@gmail.com
+student02@gmail.com
+kim.minsu@school.kr"></textarea>
+
+        <!-- Actions -->
+        <div class="flex items-center gap-1.5 pt-1">
+          <button type="button" id="btnApplyRosterToRows" class="flex-1 text-[11px] py-1.5 px-2 bg-secondary text-on-secondary rounded-lg font-semibold hover:bg-secondary-container transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-2xs" title="가져온 명렬 목록으로 현재 시트의 행에 구글 아이디를 순서대로 채우거나 새 행을 자동 생성합니다">
+            <span class="material-symbols-outlined text-[14px]">table_rows</span>
+            <span>시트 행에 학생 명렬 자동 채우기</span>
+          </button>
+        </div>
+        <p class="text-[10px] text-outline leading-tight">
+          💡 이 열은 <strong>모바일 사용자 화면에서 구글 계정별 맞춤 조회/작성</strong> 기준으로 연동됩니다.
+        </p>
+      </div>
+    </div>
+
+    <!-- Footer Actions -->
+    <div class="pt-2.5 border-t border-surface-container flex items-center justify-between gap-2">
+      <button type="button" id="btnCancelTypeModal" class="px-3 py-1.5 rounded-lg text-outline hover:text-on-surface hover:bg-surface-container text-[11px] font-medium transition-colors">
+        취소
+      </button>
+      <button type="button" id="btnSaveColumnConfig" class="px-4 py-1.5 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-bold text-[12px] shadow-sm flex items-center gap-1.5 transition-all cursor-pointer">
+        <span class="material-symbols-outlined text-[16px]">save</span>
+        <span>설정 저장 및 적용</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Column Filter & Sort Modal (Google Sheets Style) -->
+  <div id="colFilterModal" class="hidden fixed z-50 bg-surface-container-lowest border border-surface-variant rounded-xl shadow-2xl p-3 w-[270px] text-[12px] font-sans">
+    <!-- Header with Column title -->
+    <div class="flex items-center justify-between pb-2 border-b border-surface-container">
+      <div class="flex items-center gap-1.5 font-bold text-on-surface text-[12px] truncate">
+        <span class="material-symbols-outlined text-[16px] text-primary">filter_list</span>
+        <span id="filterModalColTitle" class="truncate">[A열] 정렬 및 필터</span>
+      </div>
+      <button id="btnCloseFilterModal" class="w-5 h-5 flex items-center justify-center text-outline hover:text-on-surface rounded-full hover:bg-surface-container transition-colors cursor-pointer" title="닫기">
+        <span class="material-symbols-outlined text-[14px]">close</span>
+      </button>
+    </div>
+
+    <!-- Sort Options -->
+    <div class="py-2 flex flex-col gap-1 border-b border-surface-container">
+      <button type="button" id="btnSortAsc" class="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-container transition-colors text-left font-medium text-on-surface text-[11px] cursor-pointer">
+        <span class="material-symbols-outlined text-[16px] text-primary">arrow_upward</span>
+        <span>오름차순 정렬 (A ➔ Z / 1 ➔ 9)</span>
+      </button>
+      <button type="button" id="btnSortDesc" class="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-container transition-colors text-left font-medium text-on-surface text-[11px] cursor-pointer">
+        <span class="material-symbols-outlined text-[16px] text-primary">arrow_downward</span>
+        <span>내림차순 정렬 (Z ➔ A / 9 ➔ 1)</span>
+      </button>
+      <button type="button" id="btnClearSort" class="w-full flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-surface-container transition-colors text-left text-outline hover:text-on-surface text-[11px] cursor-pointer">
+        <span class="material-symbols-outlined text-[15px]">restart_alt</span>
+        <span>정렬 초기화</span>
+      </button>
+    </div>
+
+    <!-- Filter by Values -->
+    <div class="pt-2 flex flex-col gap-1.5">
+      <div class="flex items-center justify-between">
+        <span class="text-[11px] font-bold text-on-surface-variant flex items-center gap-1">
+          <span class="material-symbols-outlined text-[14px] text-secondary">tune</span>
+          <span>값으로 필터</span>
+        </span>
+        <div class="flex items-center gap-1.5 text-[10px]">
+          <button type="button" id="btnFilterSelectAll" class="text-primary hover:underline font-semibold cursor-pointer">모두 선택</button>
+          <span class="text-outline">•</span>
+          <button type="button" id="btnFilterClearAll" class="text-outline hover:text-error hover:underline cursor-pointer">모두 해제</button>
+        </div>
+      </div>
+
+      <input type="text" id="filterSearchInput" placeholder="값 검색..." class="w-full text-[11px] px-2 py-1 bg-surface-container-low border border-surface-container rounded-lg outline-none focus:border-primary">
+
+      <!-- Scrollable Checkbox List -->
+      <div id="filterCheckboxList" class="flex flex-col gap-0.5 max-h-36 overflow-y-auto pr-1 border border-surface-container rounded-lg p-1.5 bg-surface-container-lowest text-[11px]">
+        <!-- Injected by JS -->
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex items-center justify-between pt-2.5 mt-2 border-t border-surface-container">
+      <button type="button" id="btnResetColFilter" class="text-[11px] px-2 py-1 text-outline hover:text-error rounded hover:bg-surface-container transition-colors cursor-pointer">
+        필터 지우기
+      </button>
+      <div class="flex gap-1.5">
+        <button type="button" id="btnCancelColFilter" class="text-[11px] px-2.5 py-1 text-on-surface-variant hover:bg-surface-container rounded transition-colors cursor-pointer">
+          취소
+        </button>
+        <button type="button" id="btnApplyColFilter" class="text-[11px] px-3 py-1 bg-primary text-on-primary font-bold rounded-lg shadow-2xs hover:bg-primary/90 transition-colors cursor-pointer">
+          적용
+        </button>
+      </div>
+    </div>
+
+    <!-- Column Delete Button -->
+    <div class="pt-2 mt-2 border-t border-surface-container">
+      <button type="button" id="btnDeleteColumnModal" class="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-error hover:bg-error-container/30 transition-colors text-[11px] font-semibold cursor-pointer" title="이 열을 시트에서 완전히 삭제합니다">
+        <span class="material-symbols-outlined text-[15px]">delete</span>
+        <span>이 열 삭제</span>
+      </button>
+    </div>
+  </div>
+
+  <script type="module">
+    import {
+      subscribeTasks,
+      subscribeColumnConfigs,
+      subscribeSheets,
+      subscribeColumnOrder,
+      updateColumnConfig,
+      updateColumnOrder,
+      addColumn,
+      deleteColumn,
+      updateTask,
+      addTask,
+      deleteTask,
+      resetCollection,
+      AVAILABLE_TYPES,
+      DEFAULT_COLUMN_CONFIGS
+    } from "./firebase-service.js";
+
+    // URL에서 sheetId 파라미터 읽기 (기본값: "sheet_default")
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentSheetId = urlParams.get("sheetId") || "sheet_default";
+
+    // 모바일 뷰 바로가기에 현재 sheetId 동기화
+    const btnOpenMobileView = document.getElementById("btnOpenMobileView");
+    if (btnOpenMobileView) {
+      btnOpenMobileView.href = `mobile.html?sheetId=${currentSheetId}`;
+    }
+
+    // 기본 열 정의 (A~J) - 구글 시트 기본 너비 100px
+    const DEFAULT_COLUMNS = [
+      { key: "empNo", letter: "A", title: "학번/사번", width: 100 },
+      { key: "name", letter: "B", title: "이름", width: 100 },
+      { key: "department", letter: "C", title: "부서/전공", width: 100 },
+      { key: "project", letter: "D", title: "배정 프로젝트", width: 100 },
+      { key: "task", letter: "E", title: "담당 업무", width: 100 },
+      { key: "status", letter: "F", title: "진행 상태", width: 100 },
+      { key: "dueDate", letter: "G", title: "마감일", width: 100 },
+      { key: "priority", letter: "H", title: "우선순위", width: 100 },
+      { key: "isApproved", letter: "I", title: "승인", width: 80 },
+      { key: "progress", letter: "J", title: "진척도", width: 100 }
+    ];
+
+    let COLUMNS = [];
+    let currentTasks = [];
+    let currentColumnConfigs = {};
+    let currentColumnOrder = null;
+    let activeCell = null;
+
+    function reassignColumnLetters() {
+      COLUMNS.forEach((col, idx) => {
+        col.letter = String.fromCharCode(65 + (idx % 26));
+      });
+    }
+
+    function renderColGroup() {
+      const colGroup = document.getElementById("tableColGroup");
+      if (!colGroup) return;
+      colGroup.innerHTML = `
+        <col style="width: 44px;">
+        ${COLUMNS.map(c => `<col style="width: ${c.width || 100}px;" data-colkey="${c.key}">`).join("")}
+        <col style="width: 55px;">
+      `;
+    }
+
+    // Filter & Sort State
+    const filterSortState = {
+      sortCol: null,   // key of COLUMNS (e.g. "empNo")
+      sortDir: null,   // "asc" | "desc"
+      filters: {}      // { [colKey]: Set of allowed strings }
+    };
+
+    // Modal Temporary State (Column Type / Validation)
+    let modalColKey = null;
+    let modalSelectedType = "text";
+    let modalOptions = [];
+    let modalMin = 0;
+    let modalMax = 100;
+    let modalUnit = "%";
+
+    // Filter Modal Temporary State
+    let filterModalColKey = null;
+    let filterModalSearchText = "";
+    let filterModalAllValues = [];
+    let filterModalSelectedValues = new Set();
+
+    const formulaInput = document.getElementById("formulaInput");
+    const activeCellAddress = document.getElementById("activeCellAddress");
+    const gridBody = document.getElementById("gridBody");
+    const rowCountLabel = document.getElementById("rowCountLabel");
+    const syncIcon = document.getElementById("syncIcon");
+    const syncText = document.getElementById("syncText");
+    const typeRow = document.getElementById("typeRow");
+    const headerLabelRow = document.getElementById("headerLabelRow");
+
+    // Type Settings Modal DOM Elements
+    const typeMenuModal = document.getElementById("typeMenuModal");
+    const modalColTitle = document.getElementById("modalColTitle");
+    const btnCloseTypeMenu = document.getElementById("btnCloseTypeMenu");
+    const btnCancelTypeModal = document.getElementById("btnCancelTypeModal");
+    const btnSaveColumnConfig = document.getElementById("btnSaveColumnConfig");
+    const typeOptionsGrid = document.getElementById("typeOptionsGrid");
+    const dropdownConfigSection = document.getElementById("dropdownConfigSection");
+    const progressConfigSection = document.getElementById("progressConfigSection");
+    const optionsChipContainer = document.getElementById("optionsChipContainer");
+    const optCountBadge = document.getElementById("optCountBadge");
+    const newOptionInput = document.getElementById("newOptionInput");
+    const btnAddOption = document.getElementById("btnAddOption");
+    const btnExtractUniqueVals = document.getElementById("btnExtractUniqueVals");
+    const progressMinInput = document.getElementById("progressMinInput");
+    const progressMaxInput = document.getElementById("progressMaxInput");
+    const progressUnitInput = document.getElementById("progressUnitInput");
+    const googleIdConfigSection = document.getElementById("googleIdConfigSection");
+    const rosterCountBadge = document.getElementById("rosterCountBadge");
+    const rosterBulkInput = document.getElementById("rosterBulkInput");
+    const btnPresetStudents20 = document.getElementById("btnPresetStudents20");
+    const btnPresetClassroom = document.getElementById("btnPresetClassroom");
+    const btnClearRosterInput = document.getElementById("btnClearRosterInput");
+    const btnApplyRosterToRows = document.getElementById("btnApplyRosterToRows");
+
+    // Filter & Sort Modal DOM Elements
+    const colFilterModal = document.getElementById("colFilterModal");
+    const filterModalColTitle = document.getElementById("filterModalColTitle");
+    const btnCloseFilterModal = document.getElementById("btnCloseFilterModal");
+    const btnSortAsc = document.getElementById("btnSortAsc");
+    const btnSortDesc = document.getElementById("btnSortDesc");
+    const btnClearSort = document.getElementById("btnClearSort");
+    const btnFilterSelectAll = document.getElementById("btnFilterSelectAll");
+    const btnFilterClearAll = document.getElementById("btnFilterClearAll");
+    const filterSearchInput = document.getElementById("filterSearchInput");
+    const filterCheckboxList = document.getElementById("filterCheckboxList");
+    const btnResetColFilter = document.getElementById("btnResetColFilter");
+    const btnCancelColFilter = document.getElementById("btnCancelColFilter");
+    const btnApplyColFilter = document.getElementById("btnApplyColFilter");
+    const btnDeleteColumnModal = document.getElementById("btnDeleteColumnModal");
+
+    // UI Helper for Saving Status
+    function setSaving(isSaving) {
+      if (isSaving) {
+        syncIcon.textContent = "sync";
+        syncIcon.classList.add("animate-spin");
+        syncText.textContent = "저장 중...";
+      } else {
+        syncIcon.textContent = "cloud_done";
+        syncIcon.classList.remove("animate-spin");
+        syncText.textContent = "Firestore 실시간 연결됨";
+      }
+    }
+
+    // Unified Column Synchronization
+    function syncColumns() {
+      let keys = [];
+      if (Array.isArray(currentColumnOrder) && currentColumnOrder.length) {
+        keys = [...currentColumnOrder];
+      } else if (currentColumnConfigs && Object.keys(currentColumnConfigs).length) {
+        keys = Object.keys(currentColumnConfigs);
+      } else if (currentSheetId === "sheet_default") {
+        keys = DEFAULT_COLUMNS.map(c => c.key);
+      } else {
+        keys = ["col_1", "col_2", "col_3"];
+      }
+
+      COLUMNS = keys.map((k, idx) => {
+        const cfg = currentColumnConfigs[k] || {};
+        const defaultCol = DEFAULT_COLUMNS.find(c => c.key === k);
+        return {
+          key: k,
+          letter: String.fromCharCode(65 + (idx % 26)),
+          title: cfg.label || (defaultCol ? defaultCol.title : `열 ${idx + 1}`),
+          width: cfg.width || (defaultCol ? defaultCol.width : 100)
+        };
+      });
+
+      reassignColumnLetters();
+      renderColGroup();
+      renderTypeRowChips();
+      renderHeaderLabelRow();
+      renderTable();
+      updateSelectionUI();
+    }
+
+    // Subscribe to Column Configs (Types + Dropdown Options + Settings)
+    subscribeColumnConfigs((configs) => {
+      currentColumnConfigs = configs || {};
+      syncColumns();
+    }, currentSheetId);
+
+    // Subscribe to Column Order (구글 시트 열 순서 드래그 앤 드롭 동기화)
+    subscribeColumnOrder((orderKeys) => {
+      currentColumnOrder = orderKeys;
+      syncColumns();
+    }, currentSheetId);
+
+    // 새 열 추가 핸들러
+    async function handleAddColumn() {
+      const defaultTitle = `열 ${COLUMNS.length + 1}`;
+      const colTitle = prompt("새로 추가할 열의 이름을 입력하세요:", defaultTitle);
+      if (colTitle === null) return; // 사용자가 취소함
+
+      const title = colTitle.trim() || defaultTitle;
+      setSaving(true);
+      try {
+        await addColumn(currentSheetId, title, "text");
+      } catch (err) {
+        alert("열 추가 실패: " + err.message);
+      } finally {
+        setSaving(false);
+      }
+    }
+
+    const btnAddCol = document.getElementById("btnAddColumn");
+    if (btnAddCol) {
+      btnAddCol.addEventListener("click", handleAddColumn);
+    }
+
+    // 열 삭제 핸들러 (필터 모달 내 '이 열 삭제' 버튼)
+    if (btnDeleteColumnModal) {
+      btnDeleteColumnModal.addEventListener("click", async () => {
+        if (!filterModalColKey) return;
+        const col = COLUMNS.find(c => c.key === filterModalColKey);
+        const displayTitle = currentColumnConfigs[filterModalColKey]?.label || col?.title || filterModalColKey;
+        const letter = col?.letter || "";
+
+        if (COLUMNS.length <= 1) {
+          alert("시트에는 최소 1개의 열이 남아 있어야 합니다.");
+          return;
+        }
+
+        if (!confirm(`'${displayTitle}' (${letter}열)을(를) 삭제하시겠습니까?\n이 열에 포함된 셀 데이터도 모두 삭제됩니다.`)) {
+          return;
+        }
+
+        setSaving(true);
+        try {
+          await deleteColumn(currentSheetId, filterModalColKey);
+          closeFilterModal();
+        } catch (err) {
+          alert("열 삭제 실패: " + err.message);
+        } finally {
+          setSaving(false);
+        }
+      });
+    }
+
+    // Subscribe to Tasks
+    subscribeTasks(
+      (tasks) => {
+        currentTasks = tasks;
+        renderHeaderLabelRow();
+        renderTable();
+        updateRowCountStatus();
+      },
+      (err) => {
+        syncIcon.textContent = "error";
+        syncIcon.classList.remove("animate-spin");
+        syncText.textContent = "Firestore 오류: " + err.message;
+      },
+      currentSheetId
+    );
+
+    // Subscribe to Sheets (시트 목록 및 스위처 실시간 동기화)
+    subscribeSheets((sheets) => {
+      const cur = sheets.find(s => s.id === currentSheetId) || { name: "전사 업무 데이터 관리 시트" };
+      const topTitle = document.getElementById("topSheetTitle");
+      const footerTitle = document.getElementById("footerSheetName");
+      if (topTitle) topTitle.textContent = cur.name;
+      if (footerTitle) footerTitle.textContent = cur.name;
+      document.title = `${cur.name} (웹 Admin) - form-interactive`;
+
+      // 시트 선택 드롭다운 갱신
+      const selector = document.getElementById("sheetSelectorDropdown");
+      if (selector) {
+        selector.innerHTML = sheets.map(s => `
+          <option value="${s.id}" ${s.id === currentSheetId ? "selected" : ""}>📄 ${s.name}</option>
+        `).join("");
+      }
+    });
+
+    // 시트 스위처 변경 이벤트
+    document.getElementById("sheetSelectorDropdown")?.addEventListener("change", (e) => {
+      window.location.href = `admin.html?sheetId=${e.target.value}`;
+    });
+
+    // Visible Tasks computation (Filter & Sort applied)
+    function getVisibleTasks() {
+      let result = [...currentTasks];
+
+      // 1. Column filters
+      const activeFilterKeys = Object.keys(filterSortState.filters);
+      if (activeFilterKeys.length > 0) {
+        result = result.filter(task => {
+          return activeFilterKeys.every(k => {
+            const allowed = filterSortState.filters[k];
+            if (!allowed) return true;
+            const val = task[k] != null ? String(task[k]) : "(비어 있음)";
+            return allowed.has(val);
+          });
+        });
+      }
+
+      // 2. Column sort
+      if (filterSortState.sortCol && filterSortState.sortDir) {
+        const key = filterSortState.sortCol;
+        const dir = filterSortState.sortDir === "asc" ? 1 : -1;
+        result.sort((a, b) => {
+          const valA = a[key] != null ? a[key] : "";
+          const valB = b[key] != null ? b[key] : "";
+          const numA = Number(valA);
+          const numB = Number(valB);
+          if (!isNaN(numA) && !isNaN(numB) && valA !== "" && valB !== "") {
+            return (numA - numB) * dir;
+          }
+          return String(valA).localeCompare(String(valB), "ko") * dir;
+        });
+      }
+
+      return result;
+    }
+
+    function updateRowCountStatus() {
+      const visibleCount = getVisibleTasks().length;
+      const totalCount = currentTasks.length;
+      const isFiltered = Object.keys(filterSortState.filters).length > 0;
+      if (isFiltered) {
+        rowCountLabel.innerHTML = `<span><strong>${visibleCount}개</strong> 표시됨 (전체 ${totalCount}개)</span> <button id="btnResetAllFilters" class="ml-2 text-[10px] text-error hover:underline cursor-pointer font-bold">전체 필터 초기화</button>`;
+        const resetBtn = document.getElementById("btnResetAllFilters");
+        if (resetBtn) {
+          resetBtn.onclick = () => {
+            filterSortState.filters = {};
+            renderHeaderLabelRow();
+            renderTable();
+          };
+        }
+      } else {
+        rowCountLabel.textContent = `${totalCount}개 행 로드됨`;
+      }
+    }
+
+    // Render Type Row Chips (헤더 위의 데이터타입/폼타입 변경 칩)
+    function renderTypeRowChips() {
+      typeRow.innerHTML = `
+        <th class="border-r border-surface-variant text-center text-outline">
+          <span class="material-symbols-outlined text-[13px]">tune</span>
+        </th>
+        ${COLUMNS.map(col => `<th class="px-1 border-r border-surface-variant" data-colkey="${col.key}"></th>`).join("")}
+        <th class="text-center text-outline text-[10px]">-</th>
+      `;
+
+      COLUMNS.forEach((col) => {
+        const th = typeRow.querySelector(`th[data-colkey="${col.key}"]`);
+        if (!th) return;
+
+        const cfg = currentColumnConfigs[col.key] || DEFAULT_COLUMN_CONFIGS[col.key] || { type: "text" };
+        const typeId = cfg.type || "text";
+        const typeInfo = AVAILABLE_TYPES.find(t => t.id === typeId) || AVAILABLE_TYPES[0];
+
+        const styleMap = {
+          "locked": "text-outline bg-surface-variant/70 hover:bg-surface-variant border border-outline/30 font-medium",
+          "text": "text-on-surface bg-surface-container hover:bg-surface-variant border border-surface-variant font-medium",
+          "googleId": "text-[#c5221f] bg-[#fce8e6] hover:bg-[#fad2cf] border border-[#ea4335]/40 font-bold",
+          "select": "text-primary bg-primary/10 hover:bg-primary/20 border border-primary/30 font-bold",
+          "date": "text-secondary bg-secondary-fixed/60 hover:bg-secondary-fixed border border-secondary/30 font-bold",
+          "priority": "text-tertiary bg-tertiary-fixed/60 hover:bg-tertiary-fixed border border-tertiary/30 font-bold",
+          "checkbox": "text-on-surface bg-surface-container hover:bg-surface-variant border border-surface-variant font-medium",
+          "progress": "text-primary bg-primary/10 hover:bg-primary/20 border border-primary/30 font-bold"
+        };
+        const chipClass = styleMap[typeId] || "text-on-surface bg-surface-container";
+
+        const optBadge = (typeId === "select" || typeId === "priority" || typeId === "googleId") && cfg.options && cfg.options.length
+          ? `<span class="text-[9px] px-1 rounded bg-black/5 opacity-80 ml-0.5">${cfg.options.length}${typeId === "googleId" ? "명" : ""}</span>`
+          : "";
+
+        th.innerHTML = `
+          <button type="button" class="col-type-btn w-full flex items-center justify-between px-1.5 py-0.5 rounded transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-[0.98] ${chipClass}" data-colkey="${col.key}" data-title="${col.title}" title="클릭하여 [${col.letter}열: ${col.title}] 타입 및 드롭다운 옵션 설정">
+            <span class="inline-flex items-center gap-1 truncate text-[10px]">
+              <span class="material-symbols-outlined text-[12px]">${typeInfo.icon}</span>
+              <span class="truncate">${typeInfo.label}</span>
+              ${optBadge}
+            </span>
+            <span class="material-symbols-outlined text-[13px] opacity-70">arrow_drop_down</span>
+          </button>
+        `;
+      });
+
+      // Bind Click to Open Settings Modal
+      document.querySelectorAll(".col-type-btn").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const colKey = btn.dataset.colkey;
+          const colTitle = btn.dataset.title;
+          openTypeSettingsModal(btn, colKey, colTitle);
+        });
+      });
+    }
+
+    // Render Header Label Row (A-J 열 라벨: 셀처럼 직접 이름 인라인 편집 + 정렬/필터 버튼 + 구글시트식 드래그 앤 드롭 열 이동)
+    function renderHeaderLabelRow() {
+      if (!headerLabelRow) return;
+
+      const headerHtml = `
+        <th class="border-r border-surface-variant text-center text-outline w-10">#</th>
+        ${COLUMNS.map((col) => {
+          const cfg = currentColumnConfigs[col.key] || DEFAULT_COLUMN_CONFIGS[col.key] || {};
+          const displayTitle = cfg.label || col.title;
+          const isSorted = filterSortState.sortCol === col.key;
+          const isFiltered = !!filterSortState.filters[col.key];
+
+          let filterIcon = "arrow_drop_down";
+          let filterBtnClass = "text-outline opacity-60 hover:opacity-100 hover:text-primary";
+          if (isSorted) {
+            filterIcon = filterSortState.sortDir === "asc" ? "arrow_upward" : "arrow_downward";
+            filterBtnClass = "text-primary font-bold bg-primary/10";
+          } else if (isFiltered) {
+            filterIcon = "filter_alt";
+            filterBtnClass = "text-primary font-bold bg-primary/10";
+          }
+
+          return `
+            <th class="px-2 border-r border-surface-variant group relative drag-handle-header transition-all select-none" draggable="true" data-colletter="${col.letter}" data-colkey="${col.key}" title="[${col.letter}열: ${displayTitle}] 좌우로 드래그하여 열 순서 변경">
+              <div class="flex items-center justify-between w-full h-full gap-1">
+                <div class="flex items-center gap-1 overflow-hidden flex-1 min-w-0" data-colkey="${col.key}">
+                  <span class="material-symbols-outlined text-[13px] text-outline opacity-40 group-hover:opacity-100 cursor-grab shrink-0 select-none pointer-events-none" title="드래그하여 열 이동">drag_indicator</span>
+                  <span class="text-outline font-mono text-[10px] shrink-0 font-bold">${col.letter}</span>
+                  <span class="header-col-title truncate font-semibold cursor-pointer hover:bg-black/10 px-1 py-0.5 rounded transition-colors text-[11px]" data-colkey="${col.key}" title="클릭 또는 더블클릭하여 열 이름 수정">${displayTitle}</span>
+                  <span class="material-symbols-outlined text-[11px] text-outline opacity-0 group-hover:opacity-70 transition-opacity pointer-events-none shrink-0">edit</span>
+                </div>
+                <button type="button" class="col-filter-btn p-0.5 rounded hover:bg-black/10 transition-colors cursor-pointer shrink-0 ${filterBtnClass}" data-colkey="${col.key}" title="[${col.letter}열] 정렬 및 필터">
+                  <span class="material-symbols-outlined text-[15px] leading-none">${filterIcon}</span>
+                </button>
+              </div>
+              <!-- Column Resize Handle (Google Sheets Style) -->
+              <div class="col-resize-handle absolute -right-1 top-0 bottom-0 w-2.5 cursor-col-resize hover:bg-primary/70 active:bg-primary z-20 transition-colors" data-colkey="${col.key}" draggable="false" title="드래그하여 [${col.letter}열] 너비 조절"></div>
+            </th>
+          `;
+        }).join("")}
+        <th class="px-2 text-center text-outline">작업</th>
+      `;
+
+      headerLabelRow.innerHTML = headerHtml;
+
+      // 1. Bind Header Title Inline Editing (헤더 이름도 하나의 셀이므로 편집 가능!)
+      headerLabelRow.querySelectorAll(".header-col-title").forEach(titleEl => {
+        const startHeaderEdit = (e) => {
+          e.stopPropagation();
+          const colKey = titleEl.dataset.colkey;
+          const col = COLUMNS.find(c => c.key === colKey);
+          if (!col) return;
+          const currentTitle = currentColumnConfigs[col.key]?.label || col.title;
+
+          const container = titleEl.parentElement;
+          const input = document.createElement("input");
+          input.type = "text";
+          input.value = currentTitle;
+          input.className = "header-title-edit-input w-24 h-6 px-1 text-[11px] font-semibold bg-white text-on-surface border-2 border-primary rounded outline-none shadow-xs";
+
+          container.replaceChild(input, titleEl);
+          input.focus();
+          input.select();
+
+          let committed = false;
+          const commitHeaderEdit = async () => {
+            if (committed) return;
+            committed = true;
+            const newTitle = input.value.trim();
+            if (newTitle && newTitle !== currentTitle) {
+              currentColumnConfigs[col.key] = {
+                ...currentColumnConfigs[col.key],
+                label: newTitle
+              };
+              col.title = newTitle;
+              renderHeaderLabelRow();
+              renderTypeRowChips();
+
+              setSaving(true);
+              try {
+                await updateColumnConfig(col.key, { label: newTitle }, currentSheetId);
+              } catch (err) {
+                alert("열 이름 저장 실패: " + err.message);
+              } finally {
+                setSaving(false);
+              }
+            } else {
+              renderHeaderLabelRow();
+            }
+          };
+
+          input.addEventListener("keydown", (ev) => {
+            if (ev.key === "Enter") {
+              ev.preventDefault();
+              commitHeaderEdit();
+            } else if (ev.key === "Escape") {
+              ev.preventDefault();
+              committed = true;
+              renderHeaderLabelRow();
+            }
+          });
+
+          input.addEventListener("blur", commitHeaderEdit);
+        };
+
+        titleEl.addEventListener("click", startHeaderEdit);
+      });
+
+      // 2. Bind Filter Button
+      headerLabelRow.querySelectorAll(".col-filter-btn").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const colKey = btn.dataset.colkey;
+          openFilterModal(btn, colKey);
+        });
+      });
+
+      // 3. Bind Column Drag & Drop Reordering (구글 시트 열 순서 드래그 앤 드롭)
+      let draggedColKey = null;
+
+      headerLabelRow.querySelectorAll("th[data-colkey]").forEach(th => {
+        th.addEventListener("dragstart", (e) => {
+          if (e.target.tagName === "INPUT" || e.target.tagName === "BUTTON" || e.target.closest("button") || e.target.closest("input") || e.target.classList.contains("col-resize-handle")) {
+            e.preventDefault();
+            return;
+          }
+          draggedColKey = th.dataset.colkey;
+          e.dataTransfer.setData("text/plain", draggedColKey);
+          e.dataTransfer.effectAllowed = "move";
+          th.classList.add("column-dragging");
+        });
+
+        th.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          if (!draggedColKey || draggedColKey === th.dataset.colkey) return;
+          e.dataTransfer.dropEffect = "move";
+
+          const rect = th.getBoundingClientRect();
+          const isRightHalf = (e.clientX - rect.left) > (rect.width / 2);
+
+          if (isRightHalf) {
+            th.classList.add("drop-indicator-right");
+            th.classList.remove("drop-indicator-left");
+          } else {
+            th.classList.add("drop-indicator-left");
+            th.classList.remove("drop-indicator-right");
+          }
+        });
+
+        th.addEventListener("dragleave", () => {
+          th.classList.remove("drop-indicator-left", "drop-indicator-right");
+        });
+
+        th.addEventListener("drop", (e) => {
+          e.preventDefault();
+          th.classList.remove("drop-indicator-left", "drop-indicator-right");
+          const targetColKey = th.dataset.colkey;
+          if (!draggedColKey || !targetColKey || draggedColKey === targetColKey) return;
+
+          const rect = th.getBoundingClientRect();
+          const isRightHalf = (e.clientX - rect.left) > (rect.width / 2);
+
+          const srcIdx = COLUMNS.findIndex(c => c.key === draggedColKey);
+          if (srcIdx === -1) return;
+          const [movedCol] = COLUMNS.splice(srcIdx, 1);
+
+          let dstIdx = COLUMNS.findIndex(c => c.key === targetColKey);
+          if (isRightHalf) {
+            dstIdx += 1;
+          }
+          COLUMNS.splice(dstIdx, 0, movedCol);
+
+          reassignColumnLetters();
+          renderColGroup();
+          renderTypeRowChips();
+          renderHeaderLabelRow();
+          renderTable();
+          updateSelectionUI();
+
+          // Persist to Firestore
+          const newOrder = COLUMNS.map(c => c.key);
+          updateColumnOrder(newOrder, currentSheetId);
+
+          const syncText = document.getElementById("syncText");
+          if (syncText) {
+            syncText.textContent = `[${movedCol.title}] ➔ ${movedCol.letter}열 이동 완료`;
+            setTimeout(() => syncText.textContent = "Firestore 실시간 연결됨", 2000);
+          }
+        });
+
+        th.addEventListener("dragend", () => {
+          draggedColKey = null;
+          headerLabelRow.querySelectorAll("th").forEach(t => {
+            t.classList.remove("column-dragging", "drop-indicator-left", "drop-indicator-right");
+          });
+        });
+      });
+
+      // 4. Bind Column Resizing (구글 시트 스타일 열 너비 드래그 조절)
+      headerLabelRow.querySelectorAll(".col-resize-handle").forEach(handle => {
+        handle.addEventListener("mousedown", (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+
+          const colKey = handle.dataset.colkey;
+          const colDef = COLUMNS.find(c => c.key === colKey);
+          if (!colDef) return;
+
+          const startX = e.clientX;
+          const startWidth = colDef.width || 100;
+          const colTag = document.querySelector(`#tableColGroup col[data-colkey="${colKey}"]`);
+
+          document.body.style.cursor = "col-resize";
+          document.body.style.userSelect = "none";
+
+          const onMouseMove = (moveEv) => {
+            const deltaX = moveEv.clientX - startX;
+            const newWidth = Math.max(50, Math.min(800, startWidth + deltaX));
+            colDef.width = newWidth;
+            if (colTag) {
+              colTag.style.width = `${newWidth}px`;
+            }
+          };
+
+          const onMouseUp = async (upEv) => {
+            window.removeEventListener("mousemove", onMouseMove);
+            window.removeEventListener("mouseup", onMouseUp);
+            document.body.style.cursor = "";
+            document.body.style.userSelect = "";
+
+            const deltaX = upEv.clientX - startX;
+            const finalWidth = Math.max(50, Math.min(800, startWidth + deltaX));
+            colDef.width = finalWidth;
+            if (colTag) {
+              colTag.style.width = `${finalWidth}px`;
+            }
+            if (currentColumnConfigs[colKey]) {
+              currentColumnConfigs[colKey].width = finalWidth;
+            }
+
+            setSaving(true);
+            try {
+              await updateColumnConfig(colKey, { width: finalWidth }, currentSheetId);
+            } catch (err) {
+              console.error("열 너비 저장 오류:", err);
+            } finally {
+              setSaving(false);
+            }
+          };
+
+          window.addEventListener("mousemove", onMouseMove);
+          window.addEventListener("mouseup", onMouseUp);
+        });
+      });
+    }
+
+    // Open Filter & Sort Modal
+    function openFilterModal(btn, colKey) {
+      filterModalColKey = colKey;
+      const col = COLUMNS.find(c => c.key === colKey);
+      const displayTitle = currentColumnConfigs[colKey]?.label || col?.title || colKey;
+      filterModalColTitle.textContent = `[${col?.letter || ''}열] ${displayTitle} 정렬/필터`;
+
+      // Extract unique values from currentTasks
+      const valCounts = new Map();
+      currentTasks.forEach(t => {
+        const raw = t[colKey];
+        const str = raw != null && String(raw).trim() !== "" ? String(raw) : "(비어 있음)";
+        valCounts.set(str, (valCounts.get(str) || 0) + 1);
+      });
+
+      // Sort unique values
+      filterModalAllValues = Array.from(valCounts.keys()).sort((a, b) => {
+        if (a === "(비어 있음)") return 1;
+        if (b === "(비어 있음)") return -1;
+        return a.localeCompare(b, "ko");
+      });
+
+      // Initialize selected values
+      if (filterSortState.filters[colKey]) {
+        filterModalSelectedValues = new Set(filterSortState.filters[colKey]);
+      } else {
+        filterModalSelectedValues = new Set(filterModalAllValues);
+      }
+
+      filterSearchInput.value = "";
+      filterModalSearchText = "";
+      renderFilterCheckboxes(valCounts);
+
+      // Position modal near button
+      const rect = btn.getBoundingClientRect();
+      const modalLeft = Math.max(10, Math.min(rect.left, window.innerWidth - 290));
+      colFilterModal.style.left = `${modalLeft}px`;
+      colFilterModal.style.top = `${Math.min(rect.bottom + 4, window.innerHeight - 380)}px`;
+      colFilterModal.classList.remove("hidden");
+    }
+
+    function renderFilterCheckboxes(valCounts = null) {
+      if (!valCounts) {
+        valCounts = new Map();
+        currentTasks.forEach(t => {
+          const raw = t[filterModalColKey];
+          const str = raw != null && String(raw).trim() !== "" ? String(raw) : "(비어 있음)";
+          valCounts.set(str, (valCounts.get(str) || 0) + 1);
+        });
+      }
+
+      const q = filterModalSearchText.toLowerCase();
+      const filteredList = filterModalAllValues.filter(v => v.toLowerCase().includes(q));
+
+      if (!filteredList.length) {
+        filterCheckboxList.innerHTML = `<span class="text-[11px] text-outline p-2 text-center">검색 결과 없음</span>`;
+        return;
+      }
+
+      filterCheckboxList.innerHTML = filteredList.map((val) => {
+        const isChecked = filterModalSelectedValues.has(val);
+        const count = valCounts.get(val) || 0;
+        return `
+          <label class="flex items-center gap-1.5 px-1 py-0.5 rounded hover:bg-surface-container cursor-pointer select-none">
+            <input type="checkbox" value="${val}" ${isChecked ? "checked" : ""} class="filter-val-checkbox rounded text-primary focus:ring-0 accent-primary w-3.5 h-3.5">
+            <span class="truncate text-[11px] text-on-surface flex-1">${val}</span>
+            <span class="text-[10px] text-outline font-mono">(${count})</span>
+          </label>
+        `;
+      }).join("");
+
+      // Bind checkbox change
+      filterCheckboxList.querySelectorAll(".filter-val-checkbox").forEach(chk => {
+        chk.addEventListener("change", () => {
+          const v = chk.value;
+          if (chk.checked) {
+            filterModalSelectedValues.add(v);
+          } else {
+            filterModalSelectedValues.delete(v);
+          }
+        });
+      });
+    }
+
+    filterSearchInput.addEventListener("input", () => {
+      filterModalSearchText = filterSearchInput.value.trim();
+      renderFilterCheckboxes();
+    });
+
+    btnFilterSelectAll.addEventListener("click", () => {
+      filterModalAllValues.forEach(v => filterModalSelectedValues.add(v));
+      renderFilterCheckboxes();
+    });
+
+    btnFilterClearAll.addEventListener("click", () => {
+      filterModalSelectedValues.clear();
+      renderFilterCheckboxes();
+    });
+
+    // Close Filter Modal
+    function closeFilterModal() {
+      colFilterModal.classList.add("hidden");
+      filterModalColKey = null;
+    }
+
+    btnCloseFilterModal.addEventListener("click", closeFilterModal);
+    btnCancelColFilter.addEventListener("click", closeFilterModal);
+
+    colFilterModal.addEventListener("click", (e) => e.stopPropagation());
+
+    document.addEventListener("click", (e) => {
+      if (colFilterModal.classList.contains("hidden")) return;
+      if (!e.target.isConnected) return;
+      if (!colFilterModal.contains(e.target) && !e.target.closest(".col-filter-btn")) {
+        closeFilterModal();
+      }
+    });
+
+    // Sort Actions
+    btnSortAsc.addEventListener("click", () => {
+      if (!filterModalColKey) return;
+      filterSortState.sortCol = filterModalColKey;
+      filterSortState.sortDir = "asc";
+      closeFilterModal();
+      renderHeaderLabelRow();
+      renderTable();
+    });
+
+    btnSortDesc.addEventListener("click", () => {
+      if (!filterModalColKey) return;
+      filterSortState.sortCol = filterModalColKey;
+      filterSortState.sortDir = "desc";
+      closeFilterModal();
+      renderHeaderLabelRow();
+      renderTable();
+    });
+
+    btnClearSort.addEventListener("click", () => {
+      filterSortState.sortCol = null;
+      filterSortState.sortDir = null;
+      closeFilterModal();
+      renderHeaderLabelRow();
+      renderTable();
+    });
+
+    // Apply Filter Action
+    btnApplyColFilter.addEventListener("click", () => {
+      if (!filterModalColKey) return;
+      if (filterModalSelectedValues.size >= filterModalAllValues.length) {
+        delete filterSortState.filters[filterModalColKey];
+      } else {
+        filterSortState.filters[filterModalColKey] = new Set(filterModalSelectedValues);
+      }
+      closeFilterModal();
+      renderHeaderLabelRow();
+      renderTable();
+      updateRowCountStatus();
+    });
+
+    // Reset Column Filter Action
+    btnResetColFilter.addEventListener("click", () => {
+      if (!filterModalColKey) return;
+      delete filterSortState.filters[filterModalColKey];
+      closeFilterModal();
+      renderHeaderLabelRow();
+      renderTable();
+      updateRowCountStatus();
+    });
+
+    // Open Type & Validation Settings Modal
+    function openTypeSettingsModal(buttonEl, colKey, colTitle) {
+      modalColKey = colKey;
+      const colDef = COLUMNS.find(c => c.key === colKey);
+      const letter = colDef ? colDef.letter : "";
+      modalColTitle.textContent = `[${letter}열] ${colTitle} 속성 및 유효성 설정`;
+
+      const cfg = currentColumnConfigs[colKey] || DEFAULT_COLUMN_CONFIGS[colKey] || { type: "text" };
+      modalSelectedType = cfg.type || "text";
+      modalOptions = Array.isArray(cfg.options) ? [...cfg.options] : [];
+      modalMin = cfg.min != null ? cfg.min : 0;
+      modalMax = cfg.max != null ? cfg.max : 100;
+      modalUnit = cfg.unit || "%";
+
+      // If empty options for select/priority, prefill standard defaults or empty
+      if ((modalSelectedType === "select" || modalSelectedType === "priority") && !modalOptions.length) {
+        modalOptions = modalSelectedType === "select"
+          ? ["진행중", "완료", "대기", "보류"]
+          : ["높음 (P1)", "보통 (P2)", "낮음 (P3)"];
+      }
+
+      if (modalSelectedType === "googleId") {
+        rosterBulkInput.value = (modalOptions || []).join("\n");
+        const list = parseRosterInput(rosterBulkInput.value);
+        rosterCountBadge.textContent = `${list.length}명 감지`;
+      } else {
+        rosterBulkInput.value = "";
+        rosterCountBadge.textContent = "0명 감지";
+      }
+
+      progressMinInput.value = modalMin;
+      progressMaxInput.value = modalMax;
+      progressUnitInput.value = modalUnit;
+      newOptionInput.value = "";
+
+      renderModalTypeCards();
+      renderModalOptionChips();
+      updateModalSectionsVisibility();
+
+      // Position modal near button
+      const rect = buttonEl.getBoundingClientRect();
+      const modalLeft = Math.max(10, Math.min(rect.left, window.innerWidth - 420));
+      typeMenuModal.style.left = `${modalLeft}px`;
+      typeMenuModal.style.top = `${Math.min(rect.bottom + 6, window.innerHeight - 520)}px`;
+      typeMenuModal.classList.remove("hidden");
+    }
+
+    // Render Type Selection Cards inside Modal
+    function renderModalTypeCards() {
+      typeOptionsGrid.innerHTML = AVAILABLE_TYPES.map(opt => {
+        const isSelected = opt.id === modalSelectedType;
+        return `
+          <button type="button" class="p-2 rounded-xl text-left border transition-all cursor-pointer flex flex-col gap-0.5 ${
+            isSelected
+              ? "bg-primary/10 border-primary/50 text-primary font-bold shadow-2xs ring-1 ring-primary/40"
+              : "bg-surface-container-lowest border-surface-container text-on-surface hover:bg-surface-container"
+          }" onclick="window.selectModalType('${opt.id}')">
+            <div class="flex items-center justify-between w-full">
+              <span class="material-symbols-outlined text-[16px] ${isSelected ? "text-primary" : "text-outline"}">${opt.icon}</span>
+              ${isSelected ? '<span class="material-symbols-outlined text-[14px] text-primary">check_circle</span>' : ''}
+            </div>
+            <span class="text-[11px] leading-tight font-semibold mt-0.5">${opt.label}</span>
+            <span class="text-[9px] text-outline font-normal leading-tight truncate">${opt.desc}</span>
+          </button>
+        `;
+      }).join("");
+    }
+
+    // Modal Type Switch Handler
+    window.selectModalType = (typeId) => {
+      modalSelectedType = typeId;
+      if ((typeId === "select" || typeId === "priority") && !modalOptions.length) {
+        // Automatically prefill from column defaults or existing row values
+        const existingVals = Array.from(new Set(currentTasks.map(t => t[modalColKey]).filter(Boolean)));
+        if (existingVals.length) {
+          modalOptions = existingVals;
+        } else {
+          modalOptions = typeId === "select"
+            ? ["진행중", "완료", "대기", "보류"]
+            : ["높음 (P1)", "보통 (P2)", "낮음 (P3)"];
+        }
+      }
+      renderModalTypeCards();
+      renderModalOptionChips();
+      updateModalSectionsVisibility();
+    };
+
+    // Visibility toggle for dynamic sections
+    function updateModalSectionsVisibility() {
+      if (modalSelectedType === "select" || modalSelectedType === "priority") {
+        dropdownConfigSection.classList.remove("hidden");
+      } else {
+        dropdownConfigSection.classList.add("hidden");
+      }
+
+      if (modalSelectedType === "progress") {
+        progressConfigSection.classList.remove("hidden");
+      } else {
+        progressConfigSection.classList.add("hidden");
+      }
+
+      if (modalSelectedType === "googleId") {
+        googleIdConfigSection.classList.remove("hidden");
+        const list = parseRosterInput(rosterBulkInput.value);
+        rosterCountBadge.textContent = `${list.length}명 감지`;
+      } else {
+        googleIdConfigSection.classList.add("hidden");
+      }
+    }
+
+    // Helper: Parse Google ID / Student Roster text
+    function parseRosterInput(raw) {
+      if (!raw) return [];
+      return raw
+        .split(/[\n,;]+/)
+        .map(s => s.trim())
+        .filter(Boolean);
+    }
+
+    // Sample Roster Presets
+    const SAMPLE_STUDENTS = [
+      "student01@gmail.com",
+      "student02@gmail.com",
+      "student03@gmail.com",
+      "student04@gmail.com",
+      "student05@gmail.com",
+      "student06@gmail.com",
+      "student07@gmail.com",
+      "student08@gmail.com",
+      "student09@gmail.com",
+      "student10@gmail.com"
+    ];
+
+    const SAMPLE_CLASSROOM = [
+      "2025101@school.kr",
+      "2025102@school.kr",
+      "2025103@school.kr",
+      "2025104@school.kr",
+      "2025105@school.kr",
+      "2025106@school.kr",
+      "2025107@school.kr",
+      "2025108@school.kr"
+    ];
+
+    btnPresetStudents20?.addEventListener("click", () => {
+      rosterBulkInput.value = SAMPLE_STUDENTS.join("\n");
+      rosterCountBadge.textContent = `${SAMPLE_STUDENTS.length}명 감지`;
+    });
+
+    btnPresetClassroom?.addEventListener("click", () => {
+      rosterBulkInput.value = SAMPLE_CLASSROOM.join("\n");
+      rosterCountBadge.textContent = `${SAMPLE_CLASSROOM.length}명 감지`;
+    });
+
+    btnClearRosterInput?.addEventListener("click", () => {
+      rosterBulkInput.value = "";
+      rosterCountBadge.textContent = "0명 감지";
+    });
+
+    rosterBulkInput?.addEventListener("input", () => {
+      const list = parseRosterInput(rosterBulkInput.value);
+      rosterCountBadge.textContent = `${list.length}명 감지`;
+    });
+
+    // Apply Roster Directly to Rows (자동 채우기 및 새 행 생성)
+    btnApplyRosterToRows?.addEventListener("click", async () => {
+      const roster = parseRosterInput(rosterBulkInput.value);
+      if (!roster.length) {
+        alert("불러올 학생 명렬(구글 계정) 목록을 입력하거나 샘플 버튼을 눌러주세요.");
+        return;
+      }
+
+      const colKey = modalColKey;
+      if (!colKey) return;
+
+      if (!confirm(`총 ${roster.length}명의 구글 아이디를 현재 시트 행에 순서대로 자동 배정하시겠습니까?\n(기존 행에는 채워지고, 부족한 인원만큼 새 행이 자동 추가됩니다)`)) {
+        return;
+      }
+
+      setSaving(true);
+      try {
+        // 1. 기존 행 업데이트
+        const updatePromises = [];
+        for (let i = 0; i < Math.min(currentTasks.length, roster.length); i++) {
+          const t = currentTasks[i];
+          updatePromises.push(updateTask(t.id, { [colKey]: roster[i] }));
+        }
+        await Promise.all(updatePromises);
+
+        // 2. 명렬 인원이 더 많으면 새 행 추가
+        if (roster.length > currentTasks.length) {
+          let maxRow = currentTasks.length ? Math.max(...currentTasks.map(t => t.rowNumber || 0)) : 0;
+          for (let i = currentTasks.length; i < roster.length; i++) {
+            maxRow += 1;
+            const newRow = {
+              rowNumber: maxRow,
+              [colKey]: roster[i]
+            };
+            COLUMNS.forEach(c => {
+              if (c.key !== colKey && !newRow[c.key]) {
+                const cfg = currentColumnConfigs[c.key] || {};
+                newRow[c.key] = cfg.type === "progress" ? 0 : (cfg.type === "checkbox" ? false : "");
+              }
+            });
+            await addTask(newRow, currentSheetId);
+          }
+        }
+
+        // 3. 열 설정을 googleId 타입 및 옵션으로 영구 저장
+        await updateColumnConfig(colKey, {
+          type: "googleId",
+          options: roster
+        }, currentSheetId);
+
+        modalOptions = roster;
+        modalSelectedType = "googleId";
+        closeModal();
+        alert(`총 ${roster.length}명의 학생 명렬이 시트 행에 성공적으로 배정되었습니다!`);
+      } catch (err) {
+        alert("명렬 배정 실패: " + err.message);
+      } finally {
+        setSaving(false);
+      }
+    });
+
+    // Render Option Tag Chips inside Modal
+    function renderModalOptionChips() {
+      optCountBadge.textContent = modalOptions.length;
+      if (!modalOptions.length) {
+        optionsChipContainer.innerHTML = `<span class="text-[11px] text-outline p-1">등록된 옵션이 없습니다. 아래 입력창에서 추가해주세요.</span>`;
+        return;
+      }
+
+      optionsChipContainer.innerHTML = modalOptions.map((opt, idx) => `
+        <span class="inline-flex items-center pl-2.5 pr-1 py-0.5 rounded-full text-[11px] font-medium bg-surface-container border border-surface-variant text-on-surface hover:border-outline transition-all shadow-2xs">
+          <span class="leading-none">${opt}</span>
+          <button type="button" class="btn-remove-option w-4 h-4 ml-0.5 rounded-full text-outline hover:text-error hover:bg-black/10 transition-colors cursor-pointer flex items-center justify-center p-0 shrink-0" data-idx="${idx}" onclick="window.removeModalOption(${idx}, event)" title="[${opt}] 삭제">
+            <span class="material-symbols-outlined text-[11px] leading-none pointer-events-none">close</span>
+          </button>
+        </span>
+      `).join("");
+    }
+
+    // Event Delegation for Option Removal (이중 안전장치)
+    optionsChipContainer.addEventListener("click", (e) => {
+      const btn = e.target.closest(".btn-remove-option");
+      if (!btn) return;
+      e.stopPropagation();
+      e.preventDefault();
+      const idx = parseInt(btn.dataset.idx, 10);
+      if (!isNaN(idx) && idx >= 0 && idx < modalOptions.length) {
+        modalOptions.splice(idx, 1);
+        renderModalOptionChips();
+      }
+    });
+
+    // Remove Option Global Handler
+    window.removeModalOption = (idx, event) => {
+      if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+      }
+      if (idx >= 0 && idx < modalOptions.length) {
+        modalOptions.splice(idx, 1);
+        renderModalOptionChips();
+      }
+    };
+
+    // Add New Option
+    function addOptionFromInput() {
+      const val = newOptionInput.value.trim();
+      if (!val) return;
+      if (modalOptions.includes(val)) {
+        alert("이미 존재하는 옵션입니다: " + val);
+        return;
+      }
+      modalOptions.push(val);
+      newOptionInput.value = "";
+      renderModalOptionChips();
+      newOptionInput.focus();
+    }
+
+    btnAddOption.addEventListener("click", (e) => {
+      e.stopPropagation();
+      addOptionFromInput();
+    });
+    newOptionInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopPropagation();
+        addOptionFromInput();
+      }
+    });
+
+    // Smart Extraction: Extract Unique Values from Existing Rows
+    btnExtractUniqueVals.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (!modalColKey) return;
+      const extracted = Array.from(new Set(currentTasks.map(t => t[modalColKey]).filter(v => v != null && String(v).trim() !== "")));
+      if (!extracted.length) {
+        alert("현재 시트에 입력된 데이터가 없습니다.");
+        return;
+      }
+      let addedCount = 0;
+      extracted.forEach(v => {
+        const str = String(v).trim();
+        if (!modalOptions.includes(str)) {
+          modalOptions.push(str);
+          addedCount++;
+        }
+      });
+      renderModalOptionChips();
+      if (addedCount > 0) {
+        const badge = document.createElement("span");
+        badge.className = "text-[10px] text-primary font-bold animate-pulse";
+        badge.textContent = ` (+${addedCount}개 추출됨)`;
+        btnExtractUniqueVals.appendChild(badge);
+        setTimeout(() => badge.remove(), 2000);
+      }
+    });
+
+    // Close Modal
+    function closeModal() {
+      typeMenuModal.classList.add("hidden");
+      modalColKey = null;
+    }
+    btnCloseTypeMenu.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeModal();
+    });
+    btnCancelTypeModal.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeModal();
+    });
+
+    // Modal 내부 클릭 이벤트가 외부로 전파되어 모달이 닫히거나 오작동하는 것 방지
+    typeMenuModal.addEventListener("click", (e) => {
+      e.stopPropagation();
+    });
+
+    // Modal 외부 클릭 시 닫기
+    document.addEventListener("click", (e) => {
+      if (typeMenuModal.classList.contains("hidden")) return;
+      if (!e.target.isConnected) return; // 렌더링 중 제거된 요소 무시
+      if (!typeMenuModal.contains(e.target) && !e.target.closest(".col-type-btn")) {
+        closeModal();
+      }
+    });
+
+    // Save Column Configuration (Firestore 반영 + 실시간 낙관적 렌더링)
+    btnSaveColumnConfig.addEventListener("click", async () => {
+      const colKey = modalColKey;
+      if (!colKey) return;
+
+      let finalOptions = [];
+      if (modalSelectedType === "googleId") {
+        finalOptions = parseRosterInput(rosterBulkInput.value);
+      } else if (modalSelectedType === "select" || modalSelectedType === "priority") {
+        finalOptions = [...modalOptions];
+      } else {
+        finalOptions = DEFAULT_COLUMN_CONFIGS[colKey]?.options || [];
+      }
+
+      const newConfig = {
+        type: modalSelectedType,
+        options: finalOptions,
+        min: modalSelectedType === "progress" ? Number(progressMinInput.value || 0) : 0,
+        max: modalSelectedType === "progress" ? Number(progressMaxInput.value || 100) : 100,
+        unit: modalSelectedType === "progress" ? (progressUnitInput.value || "%") : "%"
+      };
+
+      closeModal();
+
+      // 1. 즉시 로컬 낙관적 업데이트 & 하이라이트
+      currentColumnConfigs[colKey] = {
+        ...DEFAULT_COLUMN_CONFIGS[colKey],
+        ...newConfig
+      };
+      renderTypeRowChips();
+      renderTable();
+      highlightColumn(colKey);
+
+      // 2. Firestore 비동기 저장
+      setSaving(true);
+      try {
+        await updateColumnConfig(colKey, newConfig, currentSheetId);
+      } catch (err) {
+        alert("설정 저장 실패: " + err.message);
+      } finally {
+        setSaving(false);
+      }
+    });
+
+    function highlightColumn(colKey) {
+      const cells = document.querySelectorAll(`td[data-field="${colKey}"]`);
+      cells.forEach(c => {
+        c.classList.add("col-highlight");
+        setTimeout(() => c.classList.remove("col-highlight"), 800);
+      });
+    }
+
+    // ========================================================
+    // ★ SPREADSHEET KEYBOARD NAVIGATION & RANGE SELECTION ENGINE ★
+    // ========================================================
+    const gridState = {
+      anchorR: 0,
+      anchorC: 0,
+      activeR: 0,
+      activeC: 0,
+      isEditing: false,
+      isDragging: false,
+      editOriginalVal: ""
+    };
+
+    function getCell(r, c) {
+      return document.querySelector(`td.sheet-cell[data-r="${r}"][data-c="${c}"]`);
+    }
+
+    function getTask(r) {
+      return getVisibleTasks()[r];
+    }
+
+    // Update Visual Selection Highlights & Formula Bar
+    function updateSelectionUI() {
+      // 1. Clear previous highlights
+      document.querySelectorAll(".sheet-cell.cell-focus, .sheet-cell.cell-range-selected").forEach(el => {
+        el.classList.remove("cell-focus", "cell-range-selected");
+      });
+      document.querySelectorAll("th.header-active, td.header-active").forEach(el => {
+        el.classList.remove("header-active");
+      });
+
+      const visibleTasks = getVisibleTasks();
+      if (!visibleTasks.length) {
+        formulaInput.value = "";
+        activeCellAddress.textContent = "-";
+        selectionBadge.innerHTML = `<span>데이터 없음</span>`;
+        return;
+      }
+
+      // Clamp active / anchor coordinates within visible bounds
+      gridState.anchorR = Math.max(0, Math.min(visibleTasks.length - 1, gridState.anchorR));
+      gridState.activeR = Math.max(0, Math.min(visibleTasks.length - 1, gridState.activeR));
+
+      const minR = Math.max(0, Math.min(gridState.anchorR, gridState.activeR));
+      const maxR = Math.min(visibleTasks.length - 1, Math.max(gridState.anchorR, gridState.activeR));
+      const minC = Math.max(0, Math.min(gridState.anchorC, gridState.activeC));
+      const maxC = Math.min(COLUMNS.length - 1, Math.max(gridState.anchorC, gridState.activeC));
+
+      // 2. Mark range cells
+      for (let r = minR; r <= maxR; r++) {
+        for (let c = minC; c <= maxC; c++) {
+          const cell = getCell(r, c);
+          if (cell) cell.classList.add("cell-range-selected");
+        }
+      }
+
+      // 3. Mark active cell focus
+      const activeCell = getCell(gridState.activeR, gridState.activeC);
+      if (activeCell) {
+        activeCell.classList.add("cell-focus");
+        activeCell.scrollIntoView({ block: "nearest", inline: "nearest" });
+      }
+
+      // 4. Highlight active column headers & row numbers
+      for (let c = minC; c <= maxC; c++) {
+        const colHeader = document.querySelector(`th[data-colletter="${COLUMNS[c].letter}"]`);
+        if (colHeader) colHeader.classList.add("header-active");
+      }
+      for (let r = minR; r <= maxR; r++) {
+        const rowHeader = document.querySelector(`tr[data-id="${visibleTasks[r]?.id}"] td:first-child`);
+        if (rowHeader) rowHeader.classList.add("header-active");
+      }
+
+      // 5. Update Address & Formula Bar (행 번호 1부터 시작!)
+      const activeCol = COLUMNS[gridState.activeC];
+      const activeRowNumber = gridState.activeR + 1;
+      activeCellAddress.textContent = `${activeCol.letter}${activeRowNumber}`;
+
+      const activeTask = getTask(gridState.activeR);
+      const activeVal = activeTask ? (activeTask[activeCol.key] ?? "") : "";
+      if (!gridState.isEditing && document.activeElement !== formulaInput) {
+        formulaInput.value = activeVal != null ? String(activeVal) : "";
+      }
+
+      // 6. Update Selection Badge (행 번호 1부터 시작!)
+      const isMulti = (minR !== maxR) || (minC !== maxC);
+      if (isMulti) {
+        const rowSpan = maxR - minR + 1;
+        const colSpan = maxC - minC + 1;
+        const total = rowSpan * colSpan;
+        selectionBadge.innerHTML = `<span>${COLUMNS[minC].letter}${minR + 1}:${COLUMNS[maxC].letter}${maxR + 1} (${rowSpan}행 × ${colSpan}열, ${total}개 선택)</span>`;
+      } else {
+        selectionBadge.innerHTML = `<span>단일 셀 선택</span>`;
+      }
+    }
+
+    // Move Active Cell
+    function moveActiveCell(dr, dc, extendSelection = false) {
+      const visibleTasks = getVisibleTasks();
+      if (!visibleTasks.length) return;
+      const newR = Math.max(0, Math.min(visibleTasks.length - 1, gridState.activeR + dr));
+      const newC = Math.max(0, Math.min(COLUMNS.length - 1, gridState.activeC + dc));
+
+      gridState.activeR = newR;
+      gridState.activeC = newC;
+      if (!extendSelection) {
+        gridState.anchorR = newR;
+        gridState.anchorC = newC;
+      }
+      updateSelectionUI();
+    }
+
+    // Start Editing
+    function startEditing(initialChar = null, cursorAtEnd = true) {
+      if (!currentTasks.length) return;
+      const col = COLUMNS[gridState.activeC];
+      const cfg = currentColumnConfigs[col.key] || DEFAULT_COLUMN_CONFIGS[col.key] || { type: "text" };
+      const td = getCell(gridState.activeR, gridState.activeC);
+      if (!td) return;
+
+      // 1. Locked: Cannot edit
+      if (cfg.type === "locked") {
+        const span = td.querySelector(".truncate");
+        if (span) {
+          span.classList.add("text-error");
+          setTimeout(() => span.classList.remove("text-error"), 400);
+        }
+        return;
+      }
+
+      // 2. Checkbox: Toggle on Enter / Space
+      if (cfg.type === "checkbox") {
+        const chk = td.querySelector('input[type="checkbox"]');
+        if (chk) {
+          chk.checked = !chk.checked;
+          chk.dispatchEvent(new Event("change"));
+        }
+        return;
+      }
+
+      // 3. Dropdown / Priority: Focus select box
+      if (cfg.type === "select" || cfg.type === "priority") {
+        const sel = td.querySelector("select");
+        if (sel) {
+          sel.focus();
+        }
+        return;
+      }
+
+      // 4. Date: Focus date input
+      if (cfg.type === "date") {
+        const dateInp = td.querySelector('input[type="date"]');
+        if (dateInp) {
+          dateInp.focus();
+          if (typeof dateInp.showPicker === "function") {
+            try { dateInp.showPicker(); } catch (e) {}
+          }
+        }
+        return;
+      }
+
+      // 5. Progress: Focus slider
+      if (cfg.type === "progress") {
+        const rng = td.querySelector('input[type="range"]');
+        if (rng) rng.focus();
+        return;
+      }
+
+      // 6. Text (and default): Start Overlay Editor!
+      if (gridState.isEditing) return;
+      gridState.isEditing = true;
+
+      const currentTask = getTask(gridState.activeR);
+      gridState.editOriginalVal = currentTask ? (currentTask[col.key] ?? "") : "";
+
+      td.style.position = "relative";
+      const overlayInput = document.createElement("input");
+      overlayInput.type = "text";
+      overlayInput.className = "cell-overlay-editor absolute inset-0 w-full h-full px-2 font-sans text-[12px] bg-white text-on-surface border-2 border-primary outline-none z-30 shadow-lg";
+
+      if (cfg.type === "googleId" && Array.isArray(cfg.options) && cfg.options.length) {
+        let dl = document.getElementById("rosterDatalist");
+        if (!dl) {
+          dl = document.createElement("datalist");
+          dl.id = "rosterDatalist";
+          document.body.appendChild(dl);
+        }
+        dl.innerHTML = cfg.options.map(opt => `<option value="${opt}">`).join("");
+        overlayInput.setAttribute("list", "rosterDatalist");
+      }
+
+      if (initialChar !== null) {
+        overlayInput.value = initialChar;
+      } else {
+        overlayInput.value = gridState.editOriginalVal;
+      }
+
+      td.appendChild(overlayInput);
+      overlayInput.focus();
+
+      if (cursorAtEnd) {
+        const len = overlayInput.value.length;
+        overlayInput.setSelectionRange(len, len);
+      } else {
+        overlayInput.select();
+      }
+
+      // Mirror to formula bar live
+      overlayInput.addEventListener("input", () => {
+        formulaInput.value = overlayInput.value;
+      });
+
+      overlayInput.addEventListener("blur", () => {
+        if (gridState.isEditing) {
+          commitEditing({ dr: 0, dc: 0 });
+        }
+      });
+    }
+
+    // Commit Editing
+    function commitEditing(moveDelta = { dr: 0, dc: 0 }) {
+      if (!gridState.isEditing) {
+        if (moveDelta.dr !== 0 || moveDelta.dc !== 0) {
+          moveActiveCell(moveDelta.dr, moveDelta.dc, false);
+        }
+        return;
+      }
+      gridState.isEditing = false;
+
+      const editor = document.querySelector(".cell-overlay-editor");
+      if (editor) {
+        const newVal = editor.value.trim();
+        editor.remove();
+
+        const task = getTask(gridState.activeR);
+        const col = COLUMNS[gridState.activeC];
+        if (task && task[col.key] !== newVal) {
+          task[col.key] = newVal;
+          const td = getCell(gridState.activeR, gridState.activeC);
+          const textView = td?.querySelector(".cell-text-view");
+          if (textView) textView.textContent = newVal;
+
+          // Asynchronous background save (UI does not block)
+          setSaving(true);
+          updateTask(task.id, { [col.key]: newVal })
+            .catch(err => alert("저장 실패: " + err.message))
+            .finally(() => setSaving(false));
+        }
+      }
+
+      if (moveDelta.dr !== 0 || moveDelta.dc !== 0) {
+        moveActiveCell(moveDelta.dr, moveDelta.dc, false);
+      } else {
+        updateSelectionUI();
+      }
+    }
+
+    // Cancel Editing
+    function cancelEditing() {
+      const editor = document.querySelector(".cell-overlay-editor");
+      if (editor) {
+        editor.remove();
+        gridState.isEditing = false;
+        formulaInput.value = gridState.editOriginalVal;
+        updateSelectionUI();
+      }
+    }
+
+    // Delete / Clear Selected Range
+    async function deleteSelectedRange() {
+      const visibleTasks = getVisibleTasks();
+      if (!visibleTasks.length) return;
+      const minR = Math.max(0, Math.min(gridState.anchorR, gridState.activeR));
+      const maxR = Math.min(visibleTasks.length - 1, Math.max(gridState.anchorR, gridState.activeR));
+      const minC = Math.max(0, Math.min(gridState.anchorC, gridState.activeC));
+      const maxC = Math.min(COLUMNS.length - 1, Math.max(gridState.anchorC, gridState.activeC));
+
+      setSaving(true);
+      try {
+        const promises = [];
+        for (let r = minR; r <= maxR; r++) {
+          const task = getTask(r);
+          if (!task) continue;
+          const updates = {};
+          let hasUpdate = false;
+
+          for (let c = minC; c <= maxC; c++) {
+            const col = COLUMNS[c];
+            const cfg = currentColumnConfigs[col.key] || DEFAULT_COLUMN_CONFIGS[col.key] || { type: "text" };
+            if (cfg.type === "locked") continue;
+
+            if (cfg.type === "checkbox") {
+              updates[col.key] = false;
+              task[col.key] = false;
+            } else if (cfg.type === "progress") {
+              updates[col.key] = 0;
+              task[col.key] = 0;
+            } else {
+              updates[col.key] = "";
+              task[col.key] = "";
+            }
+            hasUpdate = true;
+          }
+
+          if (hasUpdate) {
+            promises.push(updateTask(task.id, updates));
+          }
+        }
+        await Promise.all(promises);
+        renderTable();
+      } catch (err) {
+        alert("삭제 실패: " + err.message);
+      } finally {
+        setSaving(false);
+      }
+    }
+
+    // Copy Selected Range to Clipboard (TSV Format)
+    function copySelectionToClipboard() {
+      const visibleTasks = getVisibleTasks();
+      if (!visibleTasks.length) return;
+      const minR = Math.max(0, Math.min(gridState.anchorR, gridState.activeR));
+      const maxR = Math.min(visibleTasks.length - 1, Math.max(gridState.anchorR, gridState.activeR));
+      const minC = Math.max(0, Math.min(gridState.anchorC, gridState.activeC));
+      const maxC = Math.min(COLUMNS.length - 1, Math.max(gridState.anchorC, gridState.activeC));
+
+      const rows = [];
+      for (let r = minR; r <= maxR; r++) {
+        const task = getTask(r);
+        const rowVals = [];
+        for (let c = minC; c <= maxC; c++) {
+          const col = COLUMNS[c];
+          rowVals.push(task ? (task[col.key] ?? "") : "");
+        }
+        rows.push(rowVals.join("\t"));
+      }
+      const tsv = rows.join("\n");
+      navigator.clipboard.writeText(tsv).then(() => {
+        const prevText = selectionBadge.innerHTML;
+        const totalCount = (maxR - minR + 1) * (maxC - minC + 1);
+        selectionBadge.innerHTML = `<span class="text-primary font-bold">📋 ${totalCount}개 셀 복사 완료!</span>`;
+        setTimeout(() => selectionBadge.innerHTML = prevText, 1500);
+      });
+    }
+
+    // Paste Matrix to Grid (Ctrl+V / Native Paste)
+    async function pasteTextToGrid(clipboardText) {
+      if (!clipboardText) return;
+      const visibleTasks = getVisibleTasks();
+      if (!visibleTasks.length) return;
+
+      const lines = clipboardText.split(/\r?\n/).filter((l, i, arr) => i < arr.length - 1 || l !== "");
+      if (!lines.length) return;
+      const matrix = lines.map(line => line.split("\t"));
+
+      const pasteH = matrix.length;
+      const pasteW = matrix[0].length;
+
+      const minR = Math.max(0, Math.min(gridState.anchorR, gridState.activeR));
+      const maxR = Math.min(visibleTasks.length - 1, Math.max(gridState.anchorR, gridState.activeR));
+      const minC = Math.max(0, Math.min(gridState.anchorC, gridState.activeC));
+      const maxC = Math.min(COLUMNS.length - 1, Math.max(gridState.anchorC, gridState.activeC));
+
+      const selH = maxR - minR + 1;
+      const selW = maxC - minC + 1;
+
+      setSaving(true);
+      const taskUpdates = new Map();
+
+      function pasteValToTask(task, col, rawVal) {
+        const cfg = currentColumnConfigs[col.key] || DEFAULT_COLUMN_CONFIGS[col.key] || { type: "text" };
+        if (cfg.type === "locked") return;
+
+        let finalVal = rawVal;
+        if (cfg.type === "checkbox") {
+          finalVal = (rawVal === "true" || rawVal === true || rawVal === "1" || rawVal === "승인" || rawVal === "완료");
+        } else if (cfg.type === "progress") {
+          const min = cfg.min != null ? cfg.min : 0;
+          const max = cfg.max != null ? cfg.max : 100;
+          finalVal = Math.min(max, Math.max(min, parseInt(rawVal, 10) || min));
+        } else if (cfg.type === "date") {
+          const m = String(rawVal).match(/\d{4}-\d{2}-\d{2}/);
+          finalVal = m ? m[0] : rawVal;
+        }
+
+        task[col.key] = finalVal;
+        if (!taskUpdates.has(task.id)) {
+          taskUpdates.set(task.id, {});
+        }
+        taskUpdates.get(task.id)[col.key] = finalVal;
+      }
+
+      // Pattern 1: Single cell copied (1x1), and user selected a multi-cell range
+      // Fill all cells in selection!
+      if (pasteH === 1 && pasteW === 1 && (selH > 1 || selW > 1)) {
+        const fillVal = matrix[0][0];
+        for (let r = minR; r <= maxR; r++) {
+          const task = visibleTasks[r];
+          if (!task) continue;
+          for (let c = minC; c <= maxC; c++) {
+            pasteValToTask(task, COLUMNS[c], fillVal);
+          }
+        }
+      } else {
+        // Pattern 2: Multi-cell block pasted starting at active cell
+        const startR = gridState.activeR;
+        const startC = gridState.activeC;
+
+        for (let rOffset = 0; rOffset < pasteH; rOffset++) {
+          const r = startR + rOffset;
+          if (r >= visibleTasks.length) break;
+          const task = visibleTasks[r];
+          if (!task) continue;
+
+          for (let cOffset = 0; cOffset < pasteW; cOffset++) {
+            const c = startC + cOffset;
+            if (c >= COLUMNS.length) break;
+            const val = matrix[rOffset][cOffset];
+            pasteValToTask(task, COLUMNS[c], val);
+          }
+        }
+
+        gridState.anchorR = startR;
+        gridState.anchorC = startC;
+        gridState.activeR = Math.min(visibleTasks.length - 1, startR + pasteH - 1);
+        gridState.activeC = Math.min(COLUMNS.length - 1, startC + pasteW - 1);
+      }
+
+      // 0ms instant optimistic UI render
+      renderTable();
+      updateSelectionUI();
+
+      // Async batch update to Firestore
+      try {
+        const promises = [];
+        for (const [taskId, updates] of taskUpdates.entries()) {
+          promises.push(updateTask(taskId, updates));
+        }
+        await Promise.all(promises);
+
+        let totalPastedCells = 0;
+        taskUpdates.forEach(u => totalPastedCells += Object.keys(u).length);
+        selectionBadge.innerHTML = `<span class="text-primary font-bold">📋 ${totalPastedCells}개 셀 붙여넣기 완료!</span>`;
+        setTimeout(() => updateSelectionUI(), 2000);
+      } catch (err) {
+        alert("붙여넣기 저장 실패: " + err.message);
+      } finally {
+        setSaving(false);
+      }
+    }
+
+    // Native Window Paste Listener
+    window.addEventListener("paste", (e) => {
+      if (gridState.isEditing || document.activeElement.tagName === "INPUT" || document.activeElement.tagName === "TEXTAREA") {
+        return;
+      }
+      e.preventDefault();
+      const text = e.clipboardData ? e.clipboardData.getData("text/plain") : "";
+      if (text) {
+        pasteTextToGrid(text);
+      }
+    });
+
+    window.pasteTextToGrid = pasteTextToGrid;
+    window.copySelectionToClipboard = copySelectionToClipboard;
+
+    // Global Keyboard Listener
+    window.addEventListener("keydown", (e) => {
+      // 1. If Type Settings Modal is open, do not handle grid navigation
+      if (!typeMenuModal.classList.contains("hidden")) return;
+
+      // 2. If focus is in Formula Input Bar
+      if (document.activeElement === formulaInput) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          const task = getTask(gridState.activeR);
+          const col = COLUMNS[gridState.activeC];
+          if (task) {
+            window.handleFieldUpdate(task.id, col.key, formulaInput.value);
+          }
+          moveActiveCell(1, 0, false);
+          scrollContainer.focus();
+        } else if (e.key === "Escape") {
+          formulaInput.blur();
+          scrollContainer.focus();
+          updateSelectionUI();
+        }
+        return;
+      }
+
+      // 3. If currently in cell Overlay Edit Mode
+      if (gridState.isEditing) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          commitEditing({ dr: e.shiftKey ? -1 : 1, dc: 0 });
+        } else if (e.key === "Tab") {
+          e.preventDefault();
+          commitEditing({ dr: 0, dc: e.shiftKey ? -1 : 1 });
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          cancelEditing();
+        }
+        return;
+      }
+
+      // 4. If focus is inside a cell form control (select dropdown or date input)
+      if (document.activeElement && (document.activeElement.tagName === "SELECT" || document.activeElement.tagName === "INPUT")) {
+        if (e.key === "Tab") {
+          e.preventDefault();
+          moveActiveCell(0, e.shiftKey ? -1 : 1, false);
+          scrollContainer.focus();
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          moveActiveCell(e.shiftKey ? -1 : 1, 0, false);
+          scrollContainer.focus();
+        } else if (e.key === "Escape") {
+          document.activeElement.blur();
+          scrollContainer.focus();
+        }
+        return;
+      }
+
+      // 5. Navigation Mode Shortcuts
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === "c" || e.key === "C") {
+          e.preventDefault();
+          copySelectionToClipboard();
+          return;
+        }
+        if (e.key === "v" || e.key === "V") {
+          e.preventDefault();
+          navigator.clipboard.readText().then(text => {
+            if (text) pasteTextToGrid(text);
+          }).catch(err => console.warn("Clipboard read:", err));
+          return;
+        }
+        if (e.key === "a" || e.key === "A") {
+          e.preventDefault();
+          const visibleTasks = getVisibleTasks();
+          gridState.anchorR = 0;
+          gridState.anchorC = 0;
+          gridState.activeR = Math.max(0, visibleTasks.length - 1);
+          gridState.activeC = COLUMNS.length - 1;
+          updateSelectionUI();
+          return;
+        }
+      }
+
+      // Arrow navigation
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        moveActiveCell(1, 0, e.shiftKey);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        moveActiveCell(-1, 0, e.shiftKey);
+        return;
+      }
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        moveActiveCell(0, 1, e.shiftKey);
+        return;
+      }
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        moveActiveCell(0, -1, e.shiftKey);
+        return;
+      }
+
+      // Tab navigation
+      if (e.key === "Tab") {
+        e.preventDefault();
+        moveActiveCell(0, e.shiftKey ? -1 : 1, false);
+        return;
+      }
+
+      // Enter key: F2 or Enter starts editing
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (e.shiftKey) {
+          moveActiveCell(-1, 0, false);
+        } else {
+          startEditing(null, true);
+        }
+        return;
+      }
+
+      // F2 key: Enter edit mode with cursor at end
+      if (e.key === "F2") {
+        e.preventDefault();
+        startEditing(null, true);
+        return;
+      }
+
+      // Space: Toggle checkbox or start editing
+      if (e.key === " ") {
+        const col = COLUMNS[gridState.activeC];
+        const cfg = currentColumnConfigs[col.key] || DEFAULT_COLUMN_CONFIGS[col.key] || {};
+        if (cfg.type === "checkbox") {
+          e.preventDefault();
+          startEditing();
+          return;
+        }
+      }
+
+      // Delete / Backspace: Clear cell or range
+      if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        deleteSelectedRange();
+        return;
+      }
+
+      // ★ TYPE-TO-EDIT IMMEDIATELY: Any printable character typed in navigation mode immediately starts editing! ★
+      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (e.key.length === 1) {
+          e.preventDefault();
+          startEditing(e.key, true);
+        } else if (e.key === "Process") {
+          startEditing("", true);
+        }
+      }
+    });
+
+    // ★ DYNAMIC CELL CONTENT RENDERER ★
+    function renderCellContent(t, colKey, colLetter, rowNum, rIdx, cIdx) {
+      const cfg = currentColumnConfigs[colKey] || DEFAULT_COLUMN_CONFIGS[colKey] || { type: "text" };
+      const type = cfg.type || "text";
+      const rawVal = t[colKey];
+      const val = rawVal != null ? String(rawVal) : "";
+
+      const cellAttrs = `class="sheet-cell px-2 border-r border-surface-variant h-8 cursor-cell relative select-none font-sans" data-r="${rIdx}" data-c="${cIdx}" data-field="${colKey}" data-col="${colLetter}" data-row="${rowNum}"`;
+
+      switch (type) {
+        // 1. 텍스트 (잠김): 읽기 전용 뷰 + 잠금 아이콘
+        case "locked":
+          return `
+            <td ${cellAttrs} class="sheet-cell px-2 border-r border-surface-variant bg-surface-container-low/60 text-on-surface-variant h-8 select-none cursor-cell relative" title="[잠금] 읽기 전용 셀입니다">
+              <div class="flex items-center justify-between w-full h-full overflow-hidden pointer-events-none">
+                <span class="truncate font-mono text-[11px]">${val || "-"}</span>
+                <span class="material-symbols-outlined text-[13px] text-outline shrink-0 ml-1">lock</span>
+              </div>
+            </td>
+          `;
+
+        // 2. 일반 텍스트: 인라인 편집 가능한 텍스트 셀
+        case "text":
+          return `
+            <td ${cellAttrs} title="클릭하여 선택, 엔터/F2 또는 타이핑하여 편집">
+              <span class="cell-text-view truncate block w-full text-[12px] pointer-events-none">${val}</span>
+            </td>
+          `;
+
+        // 2-1. 구글 아이디: 인라인 편집 가능 + 구글 이메일 아이콘
+        case "googleId":
+          return `
+            <td ${cellAttrs} title="클릭하여 선택, 엔터/타이핑하여 구글 아이디 편집">
+              <div class="flex items-center gap-1.5 w-full overflow-hidden pointer-events-none">
+                <span class="material-symbols-outlined text-[14px] text-[#ea4335] shrink-0">alternate_email</span>
+                <span class="cell-text-view truncate block w-full text-[11px] font-mono ${val ? 'text-on-surface font-semibold' : 'text-outline/70'}">${val || "(구글ID 입력)"}</span>
+              </div>
+            </td>
+          `;
+
+        // 3. 드롭다운: 설정된 옵션 목록 드롭다운 셀렉트
+        case "select":
+          const options = (cfg.options && cfg.options.length) ? cfg.options : ["진행중", "완료", "대기", "보류"];
+          const allOptions = [...options];
+          if (val && !allOptions.includes(val)) {
+            allOptions.unshift(val);
+          }
+
+          const statusColorMap = {
+            "진행중": "bg-primary/10 text-primary border-primary/30",
+            "완료": "bg-secondary-fixed text-on-secondary-fixed border-secondary/40",
+            "대기": "bg-surface-variant text-on-surface border-outline-variant",
+            "보류": "bg-error-container text-error border-error/40"
+          };
+          const badgeClass = statusColorMap[val] || "bg-surface-container-lowest text-on-surface border-surface-variant";
+
+          return `
+            <td ${cellAttrs}>
+              <select class="cell-select-input w-full text-[11px] py-0.5 px-1.5 rounded cursor-pointer outline-none font-semibold border shadow-2xs transition-colors ${badgeClass}" onchange="window.handleFieldUpdate('${t.id}', '${colKey}', this.value)">
+                ${allOptions.map(opt => `<option value="${opt}" ${opt === val ? "selected" : ""}>${opt}</option>`).join("")}
+              </select>
+            </td>
+          `;
+
+        // 4. 날짜 선택: HTML5 DatePicker 인풋
+        case "date":
+          const dateVal = val.match(/\d{4}-\d{2}-\d{2}/) ? val.match(/\d{4}-\d{2}-\d{2}/)[0] : (val || "");
+          return `
+            <td ${cellAttrs}>
+              <div class="flex items-center bg-surface-container hover:bg-surface-variant px-1.5 py-0.5 rounded border border-surface-variant focus-within:border-secondary transition-colors w-full">
+                <input type="date" value="${dateVal}" class="cell-date-input w-full bg-transparent outline-none text-on-surface cursor-pointer font-mono text-[11px]" onchange="window.handleFieldUpdate('${t.id}', '${colKey}', this.value)">
+              </div>
+            </td>
+          `;
+
+        // 5. 선택형 (우선순위 / 칩): 설정된 옵션 목록 선택
+        case "priority":
+          const pOptions = (cfg.options && cfg.options.length) ? cfg.options : ["높음 (P1)", "보통 (P2)", "낮음 (P3)"];
+          const pAllOptions = [...pOptions];
+          if (val && !pAllOptions.includes(val)) {
+            pAllOptions.unshift(val);
+          }
+
+          const priorityBadgeClasses = {
+            "높음 (P1)": "bg-error-container text-error font-bold border-error/40",
+            "보통 (P2)": "bg-secondary-fixed text-on-secondary-fixed font-bold border-secondary/40",
+            "낮음 (P3)": "bg-surface-container text-on-surface-variant border-surface-variant"
+          }[val] || "bg-surface-container-lowest text-on-surface border-surface-variant";
+
+          return `
+            <td ${cellAttrs}>
+              <select class="cell-select-input w-full text-[11px] py-0.5 px-1.5 rounded cursor-pointer outline-none font-medium border shadow-2xs transition-colors ${priorityBadgeClasses}" onchange="window.handleFieldUpdate('${t.id}', '${colKey}', this.value)">
+                ${pAllOptions.map(opt => `<option value="${opt}" ${opt === val ? "selected" : ""}>${opt}</option>`).join("")}
+              </select>
+            </td>
+          `;
+
+        // 6. 체크박스: 직관적인 불리언 토글 체크박스 양식
+        case "checkbox":
+          const isChecked = val === "true" || val === true || val === "1" || val === "승인" || val === "완료";
+          return `
+            <td ${cellAttrs} class="sheet-cell text-center border-r border-surface-variant hover:bg-surface-container transition-colors h-8 cursor-cell relative select-none">
+              <label class="inline-flex items-center justify-center p-1 cursor-pointer">
+                <input type="checkbox" ${isChecked ? "checked" : ""} class="cell-checkbox-input rounded text-primary focus:ring-0 accent-primary cursor-pointer w-4 h-4 shadow-2xs" onchange="window.handleFieldUpdate('${t.id}', '${colKey}', this.checked)">
+              </label>
+            </td>
+          `;
+
+        // 7. 진척도: 게이지 바 + 슬라이더 양식
+        case "progress":
+          const min = cfg.min != null ? cfg.min : 0;
+          const max = cfg.max != null ? cfg.max : 100;
+          const unit = cfg.unit || "%";
+          const numVal = Math.min(max, Math.max(min, parseInt(val, 10) || min));
+          return `
+            <td ${cellAttrs}>
+              <div class="flex items-center gap-1.5 w-full">
+                <input type="range" min="${min}" max="${max}" value="${numVal}" class="cell-range-input w-16 accent-primary cursor-pointer h-1.5" oninput="this.nextElementSibling.textContent = this.value + '${unit}'" onchange="window.handleFieldUpdate('${t.id}', '${colKey}', Number(this.value))">
+                <span class="text-[11px] font-mono font-bold text-on-surface w-9 text-right">${numVal}${unit}</span>
+              </div>
+            </td>
+          `;
+
+        default:
+          return `
+            <td ${cellAttrs}><span class="cell-text-view truncate block w-full text-[12px]">${val}</span></td>
+          `;
+      }
+    }
+
+    // Main Table Render
+    function renderTable() {
+      renderColGroup();
+      const visibleTasks = getVisibleTasks();
+      if (!visibleTasks.length) {
+        if (!currentTasks.length) {
+          gridBody.innerHTML = `<tr><td colspan="12" class="py-8 text-center text-outline">등록된 데이터가 없습니다. '+ 새 행 추가' 버튼을 눌러주세요.</td></tr>`;
+        } else {
+          gridBody.innerHTML = `<tr><td colspan="12" class="py-8 text-center text-outline font-sans">현재 필터 조건과 일치하는 데이터가 없습니다. <button type="button" id="btnFilterResetEmpty" class="text-primary underline ml-1 cursor-pointer font-bold">필터 초기화</button></td></tr>`;
+          const btn = document.getElementById("btnFilterResetEmpty");
+          if (btn) {
+            btn.onclick = () => {
+              filterSortState.filters = {};
+              renderHeaderLabelRow();
+              renderTable();
+            };
+          }
+        }
+        updateRowCountStatus();
+        return;
+      }
+
+      gridBody.innerHTML = visibleTasks.map((t, rIdx) => {
+        const rowNum = rIdx + 1; // 가장 왼쪽 행 번호 1부터 시작!
+
+        // COLUMNS 배열 순서(A~J)대로 정확하게 1:1 매핑하여 렌더링
+        const cellHtmls = COLUMNS.map((col, cIdx) => renderCellContent(t, col.key, col.letter, rowNum, rIdx, cIdx)).join("");
+
+        return `
+          <tr class="h-8 hover:bg-surface-container-low transition-colors group" data-id="${t.id}" data-row="${rowNum}">
+            <td class="text-center bg-surface-container-low text-outline border-r border-surface-variant select-none font-mono text-[11px]">${rowNum}</td>
+            ${cellHtmls}
+            <!-- 작업 (삭제) -->
+            <td class="text-center px-1">
+              <button class="p-1 text-outline-variant hover:text-error hover:bg-error-container/30 rounded transition-colors cursor-pointer" title="행 삭제" onclick="window.handleDeleteTask('${t.id}')">
+                <span class="material-symbols-outlined text-[16px]">delete</span>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+
+      bindCellEvents();
+      updateSelectionUI();
+      updateRowCountStatus();
+    }
+
+    // Mouse Drag Range Selection & Click Binding
+    function bindCellEvents() {
+      const table = document.getElementById("spreadsheetTable");
+
+      table.onmousedown = (e) => {
+        const td = e.target.closest("td.sheet-cell");
+        if (!td) return;
+
+        const r = parseInt(td.dataset.r, 10);
+        const c = parseInt(td.dataset.c, 10);
+        if (isNaN(r) || isNaN(c)) return;
+
+        // If clicked on a form control directly
+        if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT" || e.target.closest("label")) {
+          gridState.anchorR = r;
+          gridState.anchorC = c;
+          gridState.activeR = r;
+          gridState.activeC = c;
+          updateSelectionUI();
+          return;
+        }
+
+        // Commit previous edit if active
+        if (gridState.isEditing) {
+          commitEditing({ dr: 0, dc: 0 });
+        }
+
+        gridState.isDragging = true;
+        if (e.shiftKey) {
+          gridState.activeR = r;
+          gridState.activeC = c;
+        } else {
+          gridState.anchorR = r;
+          gridState.anchorC = c;
+          gridState.activeR = r;
+          gridState.activeC = c;
+        }
+        updateSelectionUI();
+        scrollContainer.focus();
+      };
+
+      table.onmouseover = (e) => {
+        if (!gridState.isDragging) return;
+        const td = e.target.closest("td.sheet-cell");
+        if (!td) return;
+        const r = parseInt(td.dataset.r, 10);
+        const c = parseInt(td.dataset.c, 10);
+        if (!isNaN(r) && !isNaN(c)) {
+          gridState.activeR = r;
+          gridState.activeC = c;
+          updateSelectionUI();
+        }
+      };
+
+      window.onmouseup = () => {
+        gridState.isDragging = false;
+      };
+
+      table.ondblclick = (e) => {
+        const td = e.target.closest("td.sheet-cell");
+        if (!td) return;
+        const r = parseInt(td.dataset.r, 10);
+        const c = parseInt(td.dataset.c, 10);
+        if (!isNaN(r) && !isNaN(c)) {
+          gridState.anchorR = r;
+          gridState.anchorC = c;
+          gridState.activeR = r;
+          gridState.activeC = c;
+          updateSelectionUI();
+          startEditing(null, true);
+        }
+      };
+    }
+
+    // Global Handlers
+    window.handleFieldUpdate = async (id, field, value) => {
+      setSaving(true);
+      try {
+        await updateTask(id, { [field]: value });
+      } catch (err) {
+        alert("업데이트 실패: " + err.message);
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    window.handleDeleteTask = async (id) => {
+      if (confirm("이 행을 삭제하시겠습니까? (Firestore에 즉시 반영)")) {
+        setSaving(true);
+        try {
+          await deleteTask(id);
+        } catch (err) {
+          alert("삭제 실패: " + err.message);
+        } finally {
+          setSaving(false);
+        }
+      }
+    };
+
+    // Add New Row
+    document.getElementById("btnAddRow").addEventListener("click", async () => {
+      const nextRowNum = currentTasks.length ? Math.max(...currentTasks.map(t => t.rowNumber || 0)) + 1 : 1;
+      setSaving(true);
+      try {
+        const newRowData = {
+          rowNumber: nextRowNum
+        };
+        COLUMNS.forEach(col => {
+          const cfg = currentColumnConfigs[col.key] || {};
+          if (cfg.type === "checkbox") {
+            newRowData[col.key] = false;
+          } else if (cfg.type === "progress") {
+            newRowData[col.key] = 0;
+          } else if (cfg.type === "date") {
+            newRowData[col.key] = new Date().toISOString().split("T")[0];
+          } else if (cfg.type === "select" || cfg.type === "priority") {
+            newRowData[col.key] = (cfg.options && cfg.options.length) ? cfg.options[0] : "";
+          } else if (col.key === "empNo") {
+            newRowData[col.key] = "2025" + String(Math.floor(1000 + Math.random() * 9000));
+          } else if (col.key === "name") {
+            newRowData[col.key] = "신규 사원";
+          } else {
+            newRowData[col.key] = "";
+          }
+        });
+        await addTask(newRowData, currentSheetId);
+      } catch (err) {
+        alert("행 추가 실패: " + err.message);
+      } finally {
+        setSaving(false);
+      }
+    });
+
+    // Reset Data
+    document.getElementById("btnResetData").addEventListener("click", async () => {
+      if (confirm("정말 모든 데이터를 초기 샘플 데이터로 리셋하시겠습니까?")) {
+        setSaving(true);
+        try {
+          await resetCollection();
+        } catch (err) {
+          alert("리셋 실패: " + err.message);
+        } finally {
+          setSaving(false);
+        }
+      }
+    });
+
+    // Formula bar live mirror & edit
+    formulaInput.addEventListener("input", () => {
+      const activeCell = getCell(gridState.activeR, gridState.activeC);
+      const textView = activeCell?.querySelector(".cell-text-view");
+      if (textView) {
+        textView.textContent = formulaInput.value;
+      }
+    });
+    formulaInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const task = getTask(gridState.activeR);
+        const col = COLUMNS[gridState.activeC];
+        if (task) {
+          window.handleFieldUpdate(task.id, col.key, formulaInput.value);
+        }
+        moveActiveCell(1, 0, false);
+        scrollContainer.focus();
+      }
+    });
+  </script>
+</body>
+</html>

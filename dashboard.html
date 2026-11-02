@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>데이터 시각화 대시보드 (웹) - form-interactive</title>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#006a39",
+            "primary-container": "#008649",
+            "on-primary": "#ffffff",
+            "on-primary-container": "#f6fff4",
+            "secondary": "#0058bb",
+            "secondary-container": "#1471e6",
+            "surface": "#f7fafd",
+            "surface-container-lowest": "#ffffff",
+            "surface-container-low": "#f1f4f7",
+            "surface-container": "#ebeef2",
+            "surface-container-high": "#e5e8ec",
+            "surface-container-highest": "#e0e3e6",
+            "on-surface": "#181c1f",
+            "on-surface-variant": "#3e4a3f",
+            "outline": "#6d7a6f",
+            "outline-variant": "#bdcabc",
+            "error": "#ba1a1a",
+            "error-container": "#ffdad6"
+          },
+          fontFamily: {
+            "sans": ["Inter", "sans-serif"],
+            "mono": ["JetBrains Mono", "monospace"]
+          }
+        }
+      }
+    };
+  </script>
+</head>
+<body class="bg-surface font-sans text-on-surface antialiased min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="fixed top-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-md shadow-xs border-b border-surface-container">
+    <div class="h-16 w-full px-6 flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <a href="index.html" class="w-9 h-9 rounded bg-primary-container text-on-primary-container flex items-center justify-center hover:opacity-90 transition-opacity">
+          <span class="material-symbols-outlined text-[22px]">table_chart</span>
+        </a>
+        <div class="flex flex-col">
+          <div class="flex items-center gap-2">
+            <span class="text-[16px] font-bold text-on-surface">데이터 시각화 대시보드</span>
+            <span class="text-[11px] font-mono px-2 py-0.5 bg-primary/10 text-primary font-medium rounded">컬렉션: form-interactive</span>
+          </div>
+          <div class="flex items-center gap-1.5 text-[11px] text-on-surface-variant">
+            <span class="material-symbols-outlined text-primary text-[14px]">cloud_done</span>
+            <span>Firestore 실시간 메트릭 자동 연산</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation links -->
+      <nav class="hidden md:flex items-center gap-1 text-[13px]">
+        <a href="home.html" class="px-3 py-1 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded transition-colors">시트 목록</a>
+        <a href="admin.html" class="px-3 py-1 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded transition-colors">시트 관리 (웹)</a>
+        <a href="mobile.html" class="px-3 py-1 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded transition-colors">내 데이터 (모바일)</a>
+        <a href="dashboard.html" class="px-3 py-1 bg-primary text-on-primary font-medium rounded transition-colors">대시보드</a>
+      </nav>
+
+      <!-- Sync & User -->
+      <div class="flex items-center gap-3">
+        <div class="inline-flex items-center gap-1.5 bg-primary/10 text-primary px-3 py-1 rounded-full text-[11px] font-medium">
+          <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+          <span id="syncTimestamp">실시간 동기화 활성</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold text-[12px]">김</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="w-full pt-20 pb-12 flex-1 flex flex-col gap-6 px-6 max-w-7xl mx-auto">
+
+    <!-- KPI Cards Row -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
+      <!-- Total Tasks -->
+      <div class="bg-surface-container-lowest p-5 rounded-xl border border-surface-container shadow-xs flex flex-col justify-between">
+        <div class="flex items-center justify-between text-on-surface-variant text-[12px] font-medium">
+          <span>총 업무 태스크 수</span>
+          <span class="material-symbols-outlined text-primary text-[20px]">assignment</span>
+        </div>
+        <div class="my-3 flex items-baseline gap-1.5">
+          <span class="text-[28px] font-bold text-on-surface font-mono" id="kpiTotalTasks">0</span>
+          <span class="text-[13px] text-on-surface-variant">건 등록됨</span>
+        </div>
+        <div class="flex items-center gap-2 text-[11px] font-medium" id="kpiStatusBreakdown">
+          <span class="text-primary" id="kpiDoneCount">완료 0</span>
+          <span>•</span>
+          <span class="text-secondary" id="kpiInProgressCount">진행 0</span>
+          <span>•</span>
+          <span class="text-outline" id="kpiPendingCount">대기 0</span>
+        </div>
+      </div>
+
+      <!-- Avg Progress -->
+      <div class="bg-surface-container-lowest p-5 rounded-xl border border-surface-container shadow-xs flex flex-col justify-between">
+        <div class="flex items-center justify-between text-on-surface-variant text-[12px] font-medium">
+          <span>전사 평균 진척도</span>
+          <span class="material-symbols-outlined text-primary text-[20px]">trending_up</span>
+        </div>
+        <div class="my-3 flex items-baseline gap-1.5">
+          <span class="text-[28px] font-bold text-on-surface font-mono" id="kpiAvgProgress">0.0</span>
+          <span class="text-[18px] font-bold text-on-surface">%</span>
+        </div>
+        <div class="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
+          <div class="bg-primary h-full rounded-full transition-all duration-500" id="kpiProgressBar" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Urgent / Delay Attention -->
+      <div class="bg-surface-container-lowest p-5 rounded-xl border border-surface-container shadow-xs flex flex-col justify-between">
+        <div class="flex items-center justify-between text-on-surface-variant text-[12px] font-medium">
+          <span>긴급 대응 태스크 (P1)</span>
+          <span class="material-symbols-outlined text-error text-[20px]">notification_important</span>
+        </div>
+        <div class="my-3 flex items-baseline gap-1.5">
+          <span class="text-[28px] font-bold text-error font-mono" id="kpiUrgentTasks">0</span>
+          <span class="text-[13px] text-on-surface-variant">건 모니터링 중</span>
+        </div>
+        <div class="flex items-center gap-1.5 text-[11px] text-error font-medium">
+          <span class="w-2 h-2 rounded-full bg-error"></span>
+          <span>우선순위 P1 긴급 항목</span>
+        </div>
+      </div>
+
+      <!-- Approval Rate -->
+      <div class="bg-surface-container-lowest p-5 rounded-xl border border-surface-container shadow-xs flex flex-col justify-between">
+        <div class="flex items-center justify-between text-on-surface-variant text-[12px] font-medium">
+          <span>승인 완료율</span>
+          <span class="material-symbols-outlined text-primary text-[20px]">verified</span>
+        </div>
+        <div class="my-3 flex items-baseline gap-1.5">
+          <span class="text-[28px] font-bold text-on-surface font-mono" id="kpiApprovalRate">0.0</span>
+          <span class="text-[18px] font-bold text-on-surface">%</span>
+          <span class="text-[11px] text-outline font-mono ml-1" id="kpiApprovalFraction">(0/0)</span>
+        </div>
+        <div class="flex items-center justify-between text-[11px] text-on-surface-variant">
+          <span id="kpiUnapprovedLabel">미승인 검토 0건</span>
+          <a href="admin.html" class="text-secondary hover:underline font-medium">관리자 시트 열기</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <!-- Status Donut Chart -->
+      <div class="lg:col-span-5 bg-surface-container-lowest p-6 rounded-xl border border-surface-container shadow-xs flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary text-[20px]">pie_chart</span>
+            <span class="text-[15px] font-bold text-on-surface">진행 상태별 분포</span>
+          </div>
+          <span class="text-[11px] text-outline font-mono" id="donutTotalLabel">총 0건 집계</span>
+        </div>
+
+        <div class="flex items-center justify-around py-4">
+          <!-- SVG Donut -->
+          <div class="relative w-40 h-40 flex items-center justify-center">
+            <svg class="w-full h-full -rotate-90" viewBox="0 0 100 100" id="donutSvg">
+              <circle cx="50" cy="50" r="38" fill="transparent" stroke="#ebeef2" stroke-width="12"></circle>
+              <!-- Segments injected by JS -->
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span class="text-[20px] font-bold text-on-surface font-mono" id="donutCenterCount">0</span>
+              <span class="text-[10px] text-on-surface-variant font-medium">전체 과제</span>
+            </div>
+          </div>
+
+          <!-- Legend -->
+          <div class="flex flex-col gap-2.5 text-[12px]">
+            <div class="flex items-center justify-between gap-6">
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-primary"></span>
+                <span>완료됨</span>
+              </div>
+              <span class="font-mono font-semibold" id="legendDone">0건 (0%)</span>
+            </div>
+            <div class="flex items-center justify-between gap-6">
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-secondary"></span>
+                <span>진행 중</span>
+              </div>
+              <span class="font-mono font-semibold" id="legendInProgress">0건 (0%)</span>
+            </div>
+            <div class="flex items-center justify-between gap-6">
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-surface-container-highest border border-outline-variant"></span>
+                <span>대기 중</span>
+              </div>
+              <span class="font-mono font-semibold" id="legendPending">0건 (0%)</span>
+            </div>
+            <div class="flex items-center justify-between gap-6">
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-error"></span>
+                <span>보류</span>
+              </div>
+              <span class="font-mono font-semibold" id="legendHold">0건 (0%)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-surface-container-low px-3 py-2 rounded-lg text-[11px] text-outline font-mono flex items-center justify-between mt-2">
+          <span>수식 기준: Firestore query</span>
+          <span class="text-primary font-medium">실시간 집계</span>
+        </div>
+      </div>
+
+      <!-- Department Bar Chart -->
+      <div class="lg:col-span-7 bg-surface-container-lowest p-6 rounded-xl border border-surface-container shadow-xs flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary text-[20px]">bar_chart</span>
+            <span class="text-[15px] font-bold text-on-surface">부서/전공별 프로젝트 진척도 비교</span>
+          </div>
+          <span class="text-[11px] text-outline font-mono">가중 평균 산출</span>
+        </div>
+
+        <div class="flex flex-col gap-4 py-2" id="deptBarsContainer">
+          <div class="text-center py-8 text-outline text-[12px]">부서별 데이터를 연산 중입니다...</div>
+        </div>
+
+        <div class="flex items-center justify-between text-[11px] text-outline pt-2 border-t border-surface-container">
+          <span>기준 목표 진척도: 70.0% 이상</span>
+          <span class="text-primary font-medium" id="deptTargetAchieved">평가 집계 중</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Breakdown Table -->
+    <div class="w-full bg-surface-container-lowest rounded-xl border border-surface-container shadow-xs overflow-hidden flex flex-col">
+      <div class="px-6 py-4 bg-surface-container-low flex flex-wrap items-center justify-between gap-4 border-b border-surface-container">
+        <div class="flex items-center gap-3">
+          <span class="material-symbols-outlined text-primary text-[22px]">table_rows</span>
+          <div>
+            <span class="text-[15px] font-bold text-on-surface">실시간 진척도 랭킹 & 행 데이터 브레이크다운</span>
+            <span class="text-[11px] text-outline font-mono ml-2">form-interactive 컬렉션 LIVE</span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="relative">
+            <input id="searchInput" type="text" placeholder="담당자, 과제, 부서 검색..." class="h-8 w-56 pl-8 pr-3 bg-surface-container-lowest rounded-lg border border-surface-container text-[12px] text-on-surface outline-none focus:border-primary">
+            <span class="material-symbols-outlined text-[16px] text-outline absolute left-2.5 top-1/2 -translate-y-1/2">search</span>
+          </div>
+          <a href="admin.html" class="text-[12px] text-primary hover:underline font-medium flex items-center gap-1">
+            <span>시트 전체 편집</span>
+            <span class="material-symbols-outlined text-[14px]">open_in_new</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="w-full overflow-x-auto">
+        <table class="w-full text-left text-[12px]">
+          <thead>
+            <tr class="bg-surface-container-high text-on-surface font-semibold text-[11px]">
+              <th class="px-4 py-2 text-center w-12">#</th>
+              <th class="px-4 py-2">학번/사번</th>
+              <th class="px-4 py-2">이름</th>
+              <th class="px-4 py-2">부서/전공</th>
+              <th class="px-4 py-2">담당 과제 / 태스크</th>
+              <th class="px-4 py-2 text-center">우선순위</th>
+              <th class="px-4 py-2 text-center">상태</th>
+              <th class="px-4 py-2 min-w-[160px]">진척도</th>
+              <th class="px-4 py-2 text-center">마감일</th>
+              <th class="px-4 py-2 text-center">승인</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-surface-container text-on-surface font-mono" id="breakdownTbody">
+            <tr>
+              <td colspan="10" class="py-12 text-center text-outline font-sans">
+                Firestore 실시간 데이터를 불러오는 중...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { subscribeTasks } from "./firebase-service.js";
+
+    let currentTasks = [];
+    const searchInput = document.getElementById("searchInput");
+
+    subscribeTasks((tasks) => {
+      currentTasks = tasks;
+      document.getElementById("syncTimestamp").textContent = new Date().toLocaleTimeString() + " 실시간 동기화됨";
+      updateMetrics();
+      renderBreakdown();
+    });
+
+    searchInput.addEventListener("input", () => {
+      renderBreakdown();
+    });
+
+    function updateMetrics() {
+      const total = currentTasks.length;
+      document.getElementById("kpiTotalTasks").textContent = total;
+
+      const doneTasks = currentTasks.filter(t => t.status === "완료");
+      const inProgTasks = currentTasks.filter(t => t.status === "진행중");
+      const pendingTasks = currentTasks.filter(t => t.status === "대기");
+      const holdTasks = currentTasks.filter(t => t.status === "보류");
+
+      document.getElementById("kpiDoneCount").textContent = `완료 ${doneTasks.length}`;
+      document.getElementById("kpiInProgressCount").textContent = `진행 ${inProgTasks.length}`;
+      document.getElementById("kpiPendingCount").textContent = `대기 ${pendingTasks.length}`;
+
+      // Avg Progress
+      const sumProg = currentTasks.reduce((acc, t) => acc + (Number(t.progress) || 0), 0);
+      const avgProg = total > 0 ? (sumProg / total).toFixed(1) : "0.0";
+      document.getElementById("kpiAvgProgress").textContent = avgProg;
+      document.getElementById("kpiProgressBar").style.width = `${avgProg}%`;
+
+      // Urgent (P1)
+      const urgentCount = currentTasks.filter(t => (t.priority || "").includes("P1")).length;
+      document.getElementById("kpiUrgentTasks").textContent = urgentCount;
+
+      // Approval Rate
+      const approvedCount = currentTasks.filter(t => t.isApproved).length;
+      const appRate = total > 0 ? ((approvedCount / total) * 100).toFixed(1) : "0.0";
+      document.getElementById("kpiApprovalRate").textContent = appRate;
+      document.getElementById("kpiApprovalFraction").textContent = `(${approvedCount}/${total})`;
+      document.getElementById("kpiUnapprovedLabel").textContent = `미승인 검토 ${total - approvedCount}건`;
+
+      // Donut Chart Render
+      renderDonutChart(doneTasks.length, inProgTasks.length, pendingTasks.length, holdTasks.length, total);
+
+      // Department Bars
+      renderDeptBars();
+    }
+
+    function renderDonutChart(done, inProg, pending, hold, total) {
+      document.getElementById("donutTotalLabel").textContent = `총 ${total}건 집계`;
+      document.getElementById("donutCenterCount").textContent = total;
+
+      const calcPct = (cnt) => total > 0 ? ((cnt / total) * 100).toFixed(1) : "0.0";
+      document.getElementById("legendDone").textContent = `${done}건 (${calcPct(done)}%)`;
+      document.getElementById("legendInProgress").textContent = `${inProg}건 (${calcPct(inProg)}%)`;
+      document.getElementById("legendPending").textContent = `${pending}건 (${calcPct(pending)}%)`;
+      document.getElementById("legendHold").textContent = `${hold}건 (${calcPct(hold)}%)`;
+
+      if (total === 0) return;
+
+      const circumference = 2 * Math.PI * 38; // ~238.76
+      const svg = document.getElementById("donutSvg");
+
+      const doneLen = (done / total) * circumference;
+      const inProgLen = (inProg / total) * circumference;
+      const pendLen = (pending / total) * circumference;
+      const holdLen = (hold / total) * circumference;
+
+      let offset = 0;
+      svg.innerHTML = `
+        <circle cx="50" cy="50" r="38" fill="transparent" stroke="#ebeef2" stroke-width="12"></circle>
+        <!-- 완료 (Green) -->
+        <circle cx="50" cy="50" r="38" fill="transparent" stroke="#006a39" stroke-width="12"
+          stroke-dasharray="${doneLen} ${circumference}" stroke-dashoffset="-${offset}"></circle>
+        <!-- 진행 (Blue) -->
+        <circle cx="50" cy="50" r="38" fill="transparent" stroke="#0058bb" stroke-width="12"
+          stroke-dasharray="${inProgLen} ${circumference}" stroke-dashoffset="-${offset + doneLen}"></circle>
+        <!-- 대기 (Gray) -->
+        <circle cx="50" cy="50" r="38" fill="transparent" stroke="#bdcabc" stroke-width="12"
+          stroke-dasharray="${pendLen} ${circumference}" stroke-dashoffset="-${offset + doneLen + inProgLen}"></circle>
+        <!-- 보류 (Red) -->
+        <circle cx="50" cy="50" r="38" fill="transparent" stroke="#ba1a1a" stroke-width="12"
+          stroke-dasharray="${holdLen} ${circumference}" stroke-dashoffset="-${offset + doneLen + inProgLen + pendLen}"></circle>
+      `;
+    }
+
+    function renderDeptBars() {
+      const container = document.getElementById("deptBarsContainer");
+      if (!currentTasks.length) {
+        container.innerHTML = `<div class="text-center py-4 text-outline">데이터가 없습니다.</div>`;
+        return;
+      }
+
+      // Group by department
+      const depts = {};
+      currentTasks.forEach(t => {
+        const d = t.department || "기타";
+        if (!depts[d]) depts[d] = { total: 0, sum: 0 };
+        depts[d].total += 1;
+        depts[d].sum += (Number(t.progress) || 0);
+      });
+
+      const entries = Object.entries(depts).map(([name, data]) => ({
+        name,
+        avg: (data.sum / data.total).toFixed(1),
+        count: data.total
+      }));
+
+      entries.sort((a, b) => b.avg - a.avg);
+
+      let achievedCount = 0;
+      container.innerHTML = entries.map(item => {
+        const numAvg = Number(item.avg);
+        if (numAvg >= 70) achievedCount++;
+        const barColor = numAvg >= 80 ? "bg-primary" : numAvg >= 60 ? "bg-secondary" : "bg-outline";
+
+        return `
+          <div>
+            <div class="flex justify-between items-center mb-1 text-[12px]">
+              <span class="font-medium text-on-surface">${item.name} (${item.count}개 과제)</span>
+              <span class="font-mono font-semibold text-on-surface">${item.avg}%</span>
+            </div>
+            <div class="w-full bg-surface-container-high h-2.5 rounded-full overflow-hidden">
+              <div class="${barColor} h-full rounded-full transition-all duration-500" style="width: ${item.avg}%"></div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      document.getElementById("deptTargetAchieved").textContent = `${achievedCount}/${entries.length}개 부서 목표(70%) 초과 달성`;
+    }
+
+    function renderBreakdown() {
+      const tbody = document.getElementById("breakdownTbody");
+      const query = (searchInput.value || "").trim().toLowerCase();
+
+      const filtered = currentTasks.filter(t => {
+        if (!query) return true;
+        const text = `${t.name} ${t.empNo} ${t.department} ${t.project} ${t.task} ${t.status} ${t.priority}`.toLowerCase();
+        return text.includes(query);
+      });
+
+      // Sort by progress descending
+      const sorted = [...filtered].sort((a, b) => (Number(b.progress) || 0) - (Number(a.progress) || 0));
+
+      if (!sorted.length) {
+        tbody.innerHTML = `<tr><td colspan="10" class="py-8 text-center text-outline font-sans">검색 결과가 없습니다.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = sorted.map((t, idx) => {
+        return `
+          <tr class="hover:bg-surface-container-low transition-colors">
+            <td class="px-4 py-2 text-center text-outline bg-surface-container-low select-none">${t.rowNumber || idx + 1}</td>
+            <td class="px-4 py-2">${t.empNo || "-"}</td>
+            <td class="px-4 py-2 font-semibold font-sans">${t.name}</td>
+            <td class="px-4 py-2 font-sans text-on-surface-variant">${t.department}</td>
+            <td class="px-4 py-2 font-sans">${t.task || t.project || "-"}</td>
+            <td class="px-4 py-2 text-center font-sans">
+              <span class="px-2 py-0.5 rounded text-[11px] ${
+                (t.priority || "").includes("P1") ? "bg-error-container text-error font-bold" :
+                (t.priority || "").includes("P2") ? "bg-surface-variant text-on-surface" : "bg-surface-container text-on-surface-variant"
+              }">${t.priority || "-"}</span>
+            </td>
+            <td class="px-4 py-2 text-center font-sans">
+              <span class="px-2 py-0.5 rounded text-[11px] font-medium ${
+                t.status === "완료" ? "bg-secondary-fixed text-on-secondary-fixed" :
+                t.status === "진행중" ? "bg-primary/10 text-primary" : "bg-surface-variant text-on-surface"
+              }">${t.status}</span>
+            </td>
+            <td class="px-4 py-2">
+              <div class="flex items-center gap-2">
+                <div class="flex-1 bg-surface-container-high h-2 rounded-full overflow-hidden">
+                  <div class="${t.progress >= 80 ? 'bg-primary' : t.progress >= 50 ? 'bg-secondary' : 'bg-outline'} h-full rounded-full" style="width: ${t.progress || 0}%"></div>
+                </div>
+                <span class="font-mono text-[11px] font-semibold w-10 text-right">${t.progress || 0}%</span>
+              </div>
+            </td>
+            <td class="px-4 py-2 text-center text-[11px]">${t.dueDate || "-"}</td>
+            <td class="px-4 py-2 text-center">
+              ${t.isApproved ? '<span class="material-symbols-outlined text-[18px] text-primary">check_circle</span>' : '<span class="material-symbols-outlined text-[18px] text-outline-variant">radio_button_unchecked</span>'}
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+  </script>
+</body>
+</html>
+
