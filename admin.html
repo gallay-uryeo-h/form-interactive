@@ -9,6 +9,7 @@
   <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
   <script>
     tailwind.config = {
       darkMode: "class",
@@ -270,6 +271,11 @@
         <span class="material-symbols-outlined text-[15px] text-primary">view_column</span>
         <span>+ 열 추가</span>
       </button>
+      <button id="btnUploadExcel" class="flex items-center gap-1 px-2.5 py-1 bg-surface-container hover:bg-[#e6f4ea] text-on-surface hover:text-[#006a39] border border-surface-variant hover:border-[#006a39]/40 rounded transition-colors font-medium text-[11px] cursor-pointer shadow-2xs" title="엑셀 파일(.xlsx, .xls, .csv)을 업로드하여 데이터를 일괄 반영합니다">
+        <span class="material-symbols-outlined text-[15px] text-[#006a39]">upload_file</span>
+        <span class="font-semibold">엑셀 업로드</span>
+      </button>
+      <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="hidden">
       <div class="h-4 w-px bg-surface-variant mx-1"></div>
       <button id="btnUndo" class="p-1 hover:bg-surface-variant rounded transition-opacity cursor-pointer opacity-30 cursor-not-allowed" title="실행취소 (Ctrl+Z)" disabled>
         <span class="material-symbols-outlined text-[16px]">undo</span>
@@ -581,6 +587,122 @@ kim.minsu@school.kr"></textarea>
     </div>
   </div>
 
+  <!-- ══ EXCEL UPLOAD PREVIEW MODAL ════════════════════════════════════════ -->
+  <div id="excelUploadModal" class="hidden fixed inset-0 z-50 bg-black/45 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-surface-container-lowest border border-surface-variant rounded-2xl shadow-2xl w-[720px] max-w-[96vw] max-h-[90vh] flex flex-col text-[12px] font-sans overflow-hidden">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between px-5 py-3.5 border-b border-surface-container bg-surface-container-low/60 shrink-0">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="w-8 h-8 rounded-lg bg-[#e6f4ea] flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[20px] text-[#006a39]">upload_file</span>
+          </div>
+          <div class="flex flex-col min-w-0">
+            <h3 class="font-bold text-[14px] text-on-surface truncate">엑셀 파일 업로드</h3>
+            <p id="excelModalFileName" class="text-[11px] text-outline truncate font-mono">파일명.xlsx</p>
+          </div>
+        </div>
+        <button type="button" id="btnCloseExcelModal" class="p-1 rounded-lg text-outline hover:text-on-surface hover:bg-surface-container transition-colors cursor-pointer">
+          <span class="material-symbols-outlined text-[18px]">close</span>
+        </button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="p-5 overflow-y-auto flex flex-col gap-4 flex-1">
+        <!-- 1. Sheet selection & options -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-surface-container-low/50 p-3.5 rounded-xl border border-surface-container">
+          <!-- Sheet select (if multi-sheet) -->
+          <div class="flex flex-col gap-1">
+            <label class="text-[11px] font-semibold text-on-surface-variant flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px] text-primary">tab</span>
+              <span>가져올 워크시트</span>
+            </label>
+            <select id="excelSheetSelect" class="h-8 px-2.5 rounded-lg border border-surface-variant bg-surface-container-lowest text-on-surface text-[11px] font-medium focus:border-primary outline-none cursor-pointer">
+              <!-- Dynamically populated -->
+            </select>
+          </div>
+
+          <!-- Header row checkbox -->
+          <div class="flex flex-col justify-end">
+            <label class="flex items-center gap-2 h-8 px-2.5 rounded-lg border border-surface-variant bg-surface-container-lowest cursor-pointer hover:bg-surface-container/60 transition-colors">
+              <input type="checkbox" id="chkUseFirstRowHeader" checked class="accent-primary w-4 h-4 cursor-pointer">
+              <span class="text-[11px] font-medium text-on-surface">1행을 열 이름(헤더)으로 사용</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 2. Import mode selection -->
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[11px] font-semibold text-on-surface-variant flex items-center gap-1">
+            <span class="material-symbols-outlined text-[14px] text-secondary">sync_alt</span>
+            <span>데이터 반영 방식</span>
+          </label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <label class="flex items-start gap-2.5 p-3 rounded-xl border border-primary/30 bg-primary/5 hover:border-primary/60 cursor-pointer transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/10">
+              <input type="radio" name="excelImportMode" value="replace" checked class="accent-primary w-4 h-4 mt-0.5 cursor-pointer">
+              <div class="flex flex-col">
+                <span class="text-[12px] font-bold text-on-surface">기존 데이터 지우고 새로 채우기 (추천)</span>
+                <span class="text-[10px] text-outline mt-0.5">현재 시트의 행 데이터를 깨끗이 비우고 엑셀 내용으로 완전히 교체합니다.</span>
+              </div>
+            </label>
+            <label class="flex items-start gap-2.5 p-3 rounded-xl border border-surface-variant hover:border-surface-variant/80 cursor-pointer transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/10">
+              <input type="radio" name="excelImportMode" value="append" class="accent-primary w-4 h-4 mt-0.5 cursor-pointer">
+              <div class="flex flex-col">
+                <span class="text-[12px] font-bold text-on-surface">기존 데이터 유지하고 아래에 추가</span>
+                <span class="text-[10px] text-outline mt-0.5">현재 시트의 기존 행 뒤에 엑셀 데이터를 이어서 등록합니다.</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- 3. Smart detection notice -->
+        <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary/10 border border-secondary/20 text-secondary text-[11px]">
+          <span class="material-symbols-outlined text-[16px] shrink-0">auto_fix_high</span>
+          <span>이메일/계정이 포함된 열은 모바일 사용자 배정용(<strong>구글 아이디</strong>)으로 자동 설정됩니다.</span>
+        </div>
+
+        <!-- 4. Preview table -->
+        <div class="flex flex-col gap-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-semibold text-on-surface-variant flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]">table_view</span>
+              <span>데이터 미리보기 (상위 5행)</span>
+            </span>
+            <span id="excelPreviewStats" class="text-[11px] text-outline font-mono">총 0행 × 0열</span>
+          </div>
+          <div id="excelPreviewTableWrap" class="border border-surface-container rounded-xl overflow-x-auto max-h-52 bg-surface-container-lowest shadow-2xs">
+            <!-- Table injected by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="flex items-center justify-between px-5 py-3 border-t border-surface-container bg-surface-container-low/60 shrink-0">
+        <span class="text-[11px] text-outline font-mono" id="excelModalStatus"></span>
+        <div class="flex items-center gap-2">
+          <button type="button" id="btnCancelExcelUpload" class="px-3.5 py-1.5 rounded-lg border border-surface-variant hover:bg-surface-container text-on-surface font-medium transition-colors cursor-pointer text-[11px]">
+            취소
+          </button>
+          <button type="button" id="btnApplyExcelUpload" class="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-bold shadow-sm transition-all cursor-pointer text-[12px]">
+            <span class="material-symbols-outlined text-[16px]" id="excelApplyIcon">check_circle</span>
+            <span id="excelApplyText">시트에 반영하기</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ DRAG & DROP OVERLAY ══════════════════════════════════════════════ -->
+  <div id="excelDragOverlay" class="hidden fixed inset-0 z-50 bg-[#006a39]/20 backdrop-blur-xs flex flex-col items-center justify-center gap-3 border-4 border-dashed border-[#006a39] pointer-events-none transition-all">
+    <div class="w-16 h-16 rounded-2xl bg-white shadow-2xl flex items-center justify-center text-[#006a39]">
+      <span class="material-symbols-outlined text-[36px]">upload_file</span>
+    </div>
+    <div class="bg-white px-5 py-2.5 rounded-xl shadow-lg text-center">
+      <p class="font-bold text-[15px] text-on-surface">엑셀 파일을 여기에 놓으세요</p>
+      <p class="text-[11px] text-outline mt-0.5">.xlsx, .xls, .csv 파일을 자동으로 분석합니다</p>
+    </div>
+  </div>
+
+
   <script type="module">
     import {
       subscribeTasks,
@@ -596,7 +718,8 @@ kim.minsu@school.kr"></textarea>
       deleteTask,
       AVAILABLE_TYPES,
       DEFAULT_COLUMN_CONFIGS,
-      isAdminEmail
+      isAdminEmail,
+      importExcelData
     } from "./firebase-service.js";
 
     import { onAuthStateChanged, signInWithGoogle, signOut } from "./auth-service.js";
@@ -3607,6 +3730,317 @@ kim.minsu@school.kr"></textarea>
         scrollContainer.focus();
       }
     });
+  
+    // ══ EXCEL FILE UPLOAD & PARSER ══════════════════════════════════════════
+    let currentWorkbook = null;
+    let currentRawData = []; // 2D array [ [val, val, ...], ... ]
+    let parsedHeaders = [];  // [ "열 이름 1", "열 이름 2", ... ]
+    let parsedRows = [];     // 2D array of rows: [ [c0, c1, ...], ... ]
+
+    const btnUploadExcel = document.getElementById("btnUploadExcel");
+    const excelFileInput = document.getElementById("excelFileInput");
+    const excelUploadModal = document.getElementById("excelUploadModal");
+    const btnCloseExcelModal = document.getElementById("btnCloseExcelModal");
+    const btnCancelExcelUpload = document.getElementById("btnCancelExcelUpload");
+    const btnApplyExcelUpload = document.getElementById("btnApplyExcelUpload");
+    const excelModalFileName = document.getElementById("excelModalFileName");
+    const excelSheetSelect = document.getElementById("excelSheetSelect");
+    const chkUseFirstRowHeader = document.getElementById("chkUseFirstRowHeader");
+    const excelPreviewStats = document.getElementById("excelPreviewStats");
+    const excelPreviewTableWrap = document.getElementById("excelPreviewTableWrap");
+    const excelModalStatus = document.getElementById("excelModalStatus");
+    const excelApplyIcon = document.getElementById("excelApplyIcon");
+    const excelApplyText = document.getElementById("excelApplyText");
+    const excelDragOverlay = document.getElementById("excelDragOverlay");
+
+    if (btnUploadExcel && excelFileInput) {
+      btnUploadExcel.addEventListener("click", () => {
+        excelFileInput.value = "";
+        excelFileInput.click();
+      });
+
+      excelFileInput.addEventListener("change", (e) => {
+        const file = e.target.files?.[0];
+        if (file) handleExcelFile(file);
+      });
+    }
+
+    // Drag and Drop
+    let dragCounter = 0;
+    window.addEventListener("dragenter", (e) => {
+      e.preventDefault();
+      dragCounter++;
+      if (excelDragOverlay) excelDragOverlay.classList.remove("hidden");
+    });
+    window.addEventListener("dragleave", (e) => {
+      e.preventDefault();
+      dragCounter--;
+      if (dragCounter <= 0) {
+        dragCounter = 0;
+        if (excelDragOverlay) excelDragOverlay.classList.add("hidden");
+      }
+    });
+    window.addEventListener("dragover", (e) => {
+      e.preventDefault();
+    });
+    window.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dragCounter = 0;
+      if (excelDragOverlay) excelDragOverlay.classList.add("hidden");
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0) {
+        const file = files[0];
+        const ext = file.name.split(".").pop().toLowerCase();
+        if (["xlsx", "xls", "csv"].includes(ext)) {
+          handleExcelFile(file);
+        } else {
+          alert("지원되지 않는 파일 형식입니다. (.xlsx, .xls, .csv 지원)");
+        }
+      }
+    });
+
+    function openExcelModal() {
+      if (excelUploadModal) {
+        excelUploadModal.classList.remove("hidden");
+        excelUploadModal.classList.add("flex");
+      }
+    }
+
+    function closeExcelModal() {
+      if (excelUploadModal) {
+        excelUploadModal.classList.add("hidden");
+        excelUploadModal.classList.remove("flex");
+      }
+      if (excelFileInput) excelFileInput.value = "";
+      currentWorkbook = null;
+      currentRawData = [];
+      parsedHeaders = [];
+      parsedRows = [];
+    }
+
+    if (btnCloseExcelModal) btnCloseExcelModal.addEventListener("click", closeExcelModal);
+    if (btnCancelExcelUpload) btnCancelExcelUpload.addEventListener("click", closeExcelModal);
+
+    function handleExcelFile(file) {
+      if (!window.XLSX) {
+        alert("엑셀 파싱 라이브러리(SheetJS)가 아직 로드되지 않았습니다.");
+        return;
+      }
+      if (excelModalFileName) excelModalFileName.textContent = file.name;
+      if (excelModalStatus) excelModalStatus.textContent = "파일 분석 중...";
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          currentWorkbook = window.XLSX.read(data, { type: "array" });
+          
+          if (!currentWorkbook.SheetNames || currentWorkbook.SheetNames.length === 0) {
+            alert("엑셀 파일에 유효한 시트가 없습니다.");
+            return;
+          }
+
+          if (excelSheetSelect) {
+            excelSheetSelect.innerHTML = "";
+            currentWorkbook.SheetNames.forEach((sheetName) => {
+              const opt = document.createElement("option");
+              opt.value = sheetName;
+              opt.textContent = sheetName;
+              excelSheetSelect.appendChild(opt);
+            });
+            excelSheetSelect.selectedIndex = 0;
+          }
+
+          loadSheetData(currentWorkbook.SheetNames[0]);
+          openExcelModal();
+        } catch (err) {
+          console.error("Excel parse error:", err);
+          alert("엑셀 파일을 읽는 중 오류가 발생했습니다: " + err.message);
+        }
+      };
+      reader.onerror = () => {
+        alert("파일 읽기에 실패했습니다.");
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    if (excelSheetSelect) {
+      excelSheetSelect.addEventListener("change", () => {
+        if (currentWorkbook) {
+          loadSheetData(excelSheetSelect.value);
+        }
+      });
+    }
+
+    if (chkUseFirstRowHeader) {
+      chkUseFirstRowHeader.addEventListener("change", () => {
+        processAndRenderPreview();
+      });
+    }
+
+    function loadSheetData(sheetName) {
+      if (!currentWorkbook || !currentWorkbook.Sheets[sheetName]) return;
+      const ws = currentWorkbook.Sheets[sheetName];
+      // sheet_to_json with header: 1 returns 2D array of rows
+      currentRawData = window.XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+      processAndRenderPreview();
+    }
+
+    function processAndRenderPreview() {
+      if (!currentRawData || currentRawData.length === 0) {
+        if (excelPreviewTableWrap) excelPreviewTableWrap.innerHTML = '<div class="p-4 text-center text-outline text-xs">시트에 데이터가 없습니다.</div>';
+        if (excelPreviewStats) excelPreviewStats.textContent = "총 0행 × 0열";
+        parsedHeaders = [];
+        parsedRows = [];
+        return;
+      }
+
+      // 완전히 비어있는 행 제거
+      const validRows = currentRawData.filter(r => Array.isArray(r) && r.some(c => c !== null && c !== undefined && String(c).trim() !== ""));
+      if (validRows.length === 0) {
+        if (excelPreviewTableWrap) excelPreviewTableWrap.innerHTML = '<div class="p-4 text-center text-outline text-xs">데이터가 비어 있습니다.</div>';
+        if (excelPreviewStats) excelPreviewStats.textContent = "총 0행 × 0열";
+        return;
+      }
+
+      // 최대 열 수 계산
+      let maxCols = 0;
+      validRows.forEach(r => { if (r.length > maxCols) maxCols = r.length; });
+
+      const useHeader = chkUseFirstRowHeader ? chkUseFirstRowHeader.checked : true;
+
+      let rawHeaders = [];
+      let rawDataRows = [];
+
+      if (useHeader) {
+        rawHeaders = validRows[0].map((h, i) => String(h || "").trim() || ("열 " + (i + 1)));
+        while (rawHeaders.length < maxCols) {
+          rawHeaders.push("열 " + (rawHeaders.length + 1));
+        }
+        rawDataRows = validRows.slice(1);
+      } else {
+        for (let i = 0; i < maxCols; i++) {
+          rawHeaders.push("열 " + (i + 1));
+        }
+        rawDataRows = validRows;
+      }
+
+      parsedHeaders = rawHeaders;
+      parsedRows = rawDataRows;
+
+      if (excelPreviewStats) {
+        excelPreviewStats.textContent = "총 " + parsedRows.length + "행 × " + parsedHeaders.length + "열";
+      }
+      if (excelModalStatus) {
+        excelModalStatus.textContent = "업로드 대기 중 (" + parsedRows.length + "개 행 감지됨)";
+      }
+
+      // 미리보기 테이블 렌더링 (최대 5행)
+      const previewRows = parsedRows.slice(0, 5);
+      let tableHtml = '<table class="w-full text-left border-collapse text-[11px] font-mono">';
+      tableHtml += '<thead class="bg-surface-container sticky top-0 border-b border-surface-container-high"><tr>';
+      tableHtml += '<th class="p-2 text-center text-outline w-10 font-sans border-r border-surface-container-high">#</th>';
+      parsedHeaders.forEach(h => {
+        const isEmail = /구글|이메일|email|계정|아이디|담당/i.test(h);
+        tableHtml += '<th class="p-2 font-bold text-on-surface border-r border-surface-container-high whitespace-nowrap">';
+        tableHtml += '<div class="flex items-center gap-1">';
+        tableHtml += '<span>' + escapeHtml(h) + '</span>';
+        if (isEmail) {
+          tableHtml += '<span class="text-[9px] bg-secondary/15 text-secondary px-1 py-0.5 rounded font-sans font-bold">구글ID</span>';
+        }
+        tableHtml += '</div></th>';
+      });
+      tableHtml += '</tr></thead><tbody>';
+
+      previewRows.forEach((rowVals, rIdx) => {
+        tableHtml += '<tr class="border-b border-surface-container/60 hover:bg-surface-container/30">';
+        tableHtml += '<td class="p-2 text-center text-outline bg-surface-container-low/40 border-r border-surface-container-high">' + (rIdx + 1) + '</td>';
+        parsedHeaders.forEach((_, cIdx) => {
+          const val = rowVals[cIdx] != null ? String(rowVals[cIdx]) : "";
+          tableHtml += '<td class="p-2 text-on-surface border-r border-surface-container-high whitespace-nowrap max-w-[200px] truncate" title="' + escapeHtml(val) + '">' + escapeHtml(val) + '</td>';
+        });
+        tableHtml += '</tr>';
+      });
+
+      if (parsedRows.length > 5) {
+        tableHtml += '<tr><td colspan="' + (parsedHeaders.length + 1) + '" class="p-2 text-center text-outline italic bg-surface-container-low/20">... 외 ' + (parsedRows.length - 5) + '개 행 추가 ...</td></tr>';
+      }
+
+      tableHtml += '</tbody></table>';
+      if (excelPreviewTableWrap) {
+        excelPreviewTableWrap.innerHTML = tableHtml;
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    if (btnApplyExcelUpload) {
+      btnApplyExcelUpload.addEventListener("click", async () => {
+        if (!currentSheetId) {
+          alert("현재 선택된 시트가 없습니다.");
+          return;
+        }
+        if (!parsedRows || parsedRows.length === 0) {
+          alert("반영할 데이터가 없습니다.");
+          return;
+        }
+
+        const modeEl = document.querySelector('input[name="excelImportMode"]:checked');
+        const mode = modeEl ? modeEl.value : "replace";
+
+        const confirmMsg = mode === "replace"
+          ? ("현재 시트의 기존 데이터를 모두 삭제하고, 엑셀 데이터(" + parsedRows.length + "행)로 교체하시겠습니까?\n(열 구조와 데이터가 엑셀 내용으로 새로 구성됩니다)")
+          : ("현재 시트의 기존 데이터 아래에 엑셀 데이터(" + parsedRows.length + "행)를 추가하시겠습니까?");
+
+        if (!confirm(confirmMsg)) return;
+
+        btnApplyExcelUpload.disabled = true;
+        btnApplyExcelUpload.classList.add("opacity-60", "cursor-wait");
+        if (excelApplyIcon) {
+          excelApplyIcon.textContent = "sync";
+          excelApplyIcon.classList.add("animate-spin");
+        }
+        if (excelApplyText) excelApplyText.textContent = "반영 중...";
+        if (excelModalStatus) excelModalStatus.textContent = "데이터베이스 일괄 저장 중입니다...";
+
+        setSaving(true);
+        try {
+          const result = await importExcelData(currentSheetId, {
+            headers: parsedHeaders,
+            rows: parsedRows,
+            mode: mode
+          });
+
+          if (excelModalStatus) excelModalStatus.textContent = "완료되었습니다!";
+          setTimeout(() => {
+            closeExcelModal();
+            alert("엑셀 데이터 " + result.rowCount + "건이 성공적으로 시트에 반영되었습니다!");
+          }, 300);
+        } catch (err) {
+          console.error("Excel import error:", err);
+          alert("엑셀 데이터 반영 중 오류가 발생했습니다: " + err.message);
+          if (excelModalStatus) excelModalStatus.textContent = "오류 발생: " + err.message;
+        } finally {
+          setSaving(false);
+          btnApplyExcelUpload.disabled = false;
+          btnApplyExcelUpload.classList.remove("opacity-60", "cursor-wait");
+          if (excelApplyIcon) {
+            excelApplyIcon.textContent = "check_circle";
+            excelApplyIcon.classList.remove("animate-spin");
+          }
+          if (excelApplyText) excelApplyText.textContent = "시트에 반영하기";
+        }
+      });
+    }
+
   </script>
 </body>
 </html>

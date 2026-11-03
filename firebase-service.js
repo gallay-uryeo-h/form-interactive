@@ -12,6 +12,7 @@ import {
   getDocs,
   query,
   where,
+  writeBatch,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -478,4 +479,147 @@ export async function isAdminEmail(email) {
   if (!email) return false;
   const emails = await getAdminEmails();
   return emails.map(e => e.toLowerCase()).includes(email.toLowerCase());
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Excel 일괄 업로드 & 일괄 저장 (Batch Write)
+// ─────────────────────────────────────────────────────────────
+/**
+ * 엑셀 데이터 일괄 임포트
+ * @param {string} sheetId 대상 시트 ID
+ * @param {Object} options
+ * @param {string[]} options.headers 엑셀 열 이름 목록
+ * @param {Array<Array<any>>} options.rows 엑셀 데이터 행 목록 (2차원 배열)
+ * @param {"replace"|"append"} options.mode "replace"(덮어쓰기) 또는 "append"(이어붙이기)
+ * @returns {Promise<{ rowCount: number, colCount: number }>}
+ */
+export async function importExcelData(sheetId, { headers = [], rows = [], mode = "replace" }) {
+  if (!sheetId) throw new Error("sheetId가 필요합니다.");
+  if (!headers.length && !rows.length) throw new Error("가져올 데이터가 없습니다.");
+
+  const colRef = collection(db, COLLECTION_NAME);
+  const metaDocRef = doc(db, COLLECTION_NAME, "metadata");
+  const metaSnap = await getDoc(metaDocRef);
+  const metaData = metaSnap.exists() ? metaSnap.data() : {};
+
+  const orderKey = `columnOrder_${sheetId}`;
+  const configKey = `columnConfigs_${sheetId}`;
+
+  let currentOrder = Array.isArray(metaData[orderKey]) ? [...metaData[orderKey]] : [];
+  let currentConfigs = metaData[configKey] ? { ...metaData[configKey] } : {};
+
+  // 1. 열 매핑 및 자동 확장
+  const colCount = Math.max(headers.length, rows.length ? Math.max(...rows.map(r => r.length)) : 0);
+  const colKeys = [];
+
+  for (let cIdx = 0; cIdx < colCount; cIdx++) {
+    let key;
+    if (cIdx < currentOrder.length) {
+      key = currentOrder[cIdx];
+    } else {
+      key = `col_${Date.now()}_${cIdx}`;
+      currentOrder.push(key);
+    }
+    colKeys.push(key);
+
+    const rawHeader = (headers[cIdx] != null ? String(headers[cIdx]) : "").trim();
+    const fallbackTitle = `열 ${cIdx + 1}`;
+    const headerTitle = rawHeader || currentConfigs[key]?.label || fallbackTitle;
+
+    // 스마트 타입 감지: 헤더나 데이터에 이메일 형태가 있는지 검사
+    let detectedType = currentConfigs[key]?.type || "text";
+    const headerLower = headerTitle.toLowerCase();
+    const isEmailHeader = /구글|이메일|계정|아이디|email|google|gmail|account/.test(headerLower);
+
+    // 상위 10개 행에서 이메일 패턴 검사
+    let hasEmailData = false;
+    for (let rIdx = 0; rIdx < Math.min(10, rows.length); rIdx++) {
+      const cellVal = rows[rIdx] && rows[rIdx][cIdx] != null ? String(rows[rIdx][cIdx]).trim() : "";
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cellVal)) {
+        hasEmailData = true;
+        break;
+      }
+    }
+
+    if (isEmailHeader || hasEmailData) {
+      detectedType = "googleId";
+    }
+
+    currentConfigs[key] = {
+      ...(currentConfigs[key] || {}),
+      label: headerTitle,
+      type: detectedType,
+      width: currentConfigs[key]?.width || 120
+    };
+  }
+
+  // 메타데이터(열 순서 및 설정) 저장
+  await setDoc(metaDocRef, {
+    [orderKey]: currentOrder,
+    [configKey]: currentConfigs,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+
+  // 2. "replace" 모드인 경우 기존 시트 태스크 삭제
+  if (mode === "replace") {
+    const q = query(colRef, where("sheetId", "==", sheetId));
+    const oldSnap = await getDocs(q);
+    const deleteDocs = oldSnap.docs;
+
+    // 400개씩 청크 삭제
+    for (let i = 0; i < deleteDocs.length; i += 400) {
+      const b = writeBatch(db);
+      deleteDocs.slice(i, i + 400).forEach(d => b.delete(d.ref));
+      await b.commit();
+    }
+  }
+
+  // 3. 새 행 일괄 추가 (Batch Write)
+  let baseRowNumber = 1;
+  if (mode === "append") {
+    const q = query(colRef, where("sheetId", "==", sheetId));
+    const existingSnap = await getDocs(q);
+    existingSnap.forEach(d => {
+      const num = d.data().rowNumber || 0;
+      if (num >= baseRowNumber) baseRowNumber = num + 1;
+    });
+  }
+
+  const tasksToInsert = rows.map((rowVals, rIdx) => {
+    const newDoc = doc(colRef);
+    const taskData = {
+      id: newDoc.id,
+      sheetId,
+      type: "task",
+      rowNumber: baseRowNumber + rIdx,
+      createdAt: new Date().toISOString()
+    };
+
+    colKeys.forEach((key, cIdx) => {
+      const rawVal = rowVals[cIdx];
+      let val = rawVal != null ? rawVal : "";
+      const colType = currentConfigs[key]?.type;
+
+      if (colType === "checkbox") {
+        val = (val === true || val === "true" || val === 1 || val === "1" || val === "승인" || val === "완료");
+      } else if (colType === "progress") {
+        val = parseInt(val, 10) || 0;
+      } else {
+        val = String(val).trim();
+      }
+      taskData[key] = val;
+    });
+
+    return { ref: newDoc, data: taskData };
+  });
+
+  // 400개씩 분할 커밋
+  for (let i = 0; i < tasksToInsert.length; i += 400) {
+    const b = writeBatch(db);
+    tasksToInsert.slice(i, i + 400).forEach(t => b.set(t.ref, t.data));
+    await b.commit();
+  }
+
+  console.log(`[Firestore] 엑셀 임포트 완료: ${tasksToInsert.length}행, ${colKeys.length}열 (모드: ${mode})`);
+  return { rowCount: tasksToInsert.length, colCount: colKeys.length };
 }
