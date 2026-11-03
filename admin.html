@@ -2292,40 +2292,63 @@ kim.minsu@school.kr"></textarea>
           return;
         }
 
-        // ── Ctrl+Shift+Arrow: 데이터 끝까지 선택 확장 (구글 시트 동작) ──
+        // ── Ctrl+Arrow / Ctrl+Shift+Arrow: 데이터 끝까지 이동/선택 (구글 시트 동작) ──
         const visibleTasks = getVisibleTasks();
         const lastR = Math.max(0, visibleTasks.length - 1);
         const lastC = Math.max(0, COLUMNS.length - 1);
 
-        if (e.key === "ArrowDown") {
+        const hasData = (r, c) => {
+          const col = COLUMNS[c];
+          if (!col || !visibleTasks[r]) return false;
+          const v = visibleTasks[r][col.key];
+          return v != null && v !== "" && v !== false;
+        };
+
+        const ctrlArrowTarget = (dir) => {
+          const r0 = gridState.activeR, c0 = gridState.activeC;
+          if (dir === "down") {
+            if (!hasData(r0, c0)) {
+              let r = r0 + 1; while (r <= lastR && !hasData(r, c0)) r++; return { r: Math.min(r, lastR), c: c0 };
+            } else if (r0 === lastR || !hasData(r0 + 1, c0)) {
+              let r = r0 + 1; while (r <= lastR && !hasData(r, c0)) r++; return { r: Math.min(r, lastR), c: c0 };
+            } else {
+              let r = r0 + 1; while (r < lastR && hasData(r + 1, c0)) r++; return { r, c: c0 };
+            }
+          } else if (dir === "up") {
+            if (!hasData(r0, c0)) {
+              let r = r0 - 1; while (r >= 0 && !hasData(r, c0)) r--; return { r: Math.max(r, 0), c: c0 };
+            } else if (r0 === 0 || !hasData(r0 - 1, c0)) {
+              let r = r0 - 1; while (r >= 0 && !hasData(r, c0)) r--; return { r: Math.max(r, 0), c: c0 };
+            } else {
+              let r = r0 - 1; while (r > 0 && hasData(r - 1, c0)) r--; return { r, c: c0 };
+            }
+          } else if (dir === "right") {
+            if (!hasData(r0, c0)) {
+              let c = c0 + 1; while (c <= lastC && !hasData(r0, c)) c++; return { r: r0, c: Math.min(c, lastC) };
+            } else if (c0 === lastC || !hasData(r0, c0 + 1)) {
+              let c = c0 + 1; while (c <= lastC && !hasData(r0, c)) c++; return { r: r0, c: Math.min(c, lastC) };
+            } else {
+              let c = c0 + 1; while (c < lastC && hasData(r0, c + 1)) c++; return { r: r0, c };
+            }
+          } else { // left
+            if (!hasData(r0, c0)) {
+              let c = c0 - 1; while (c >= 0 && !hasData(r0, c)) c--; return { r: r0, c: Math.max(c, 0) };
+            } else if (c0 === 0 || !hasData(r0, c0 - 1)) {
+              let c = c0 - 1; while (c >= 0 && !hasData(r0, c)) c--; return { r: r0, c: Math.max(c, 0) };
+            } else {
+              let c = c0 - 1; while (c > 0 && hasData(r0, c - 1)) c--; return { r: r0, c };
+            }
+          }
+        };
+
+        const dirMap = { ArrowDown: "down", ArrowUp: "up", ArrowRight: "right", ArrowLeft: "left" };
+        if (dirMap[e.key]) {
           e.preventDefault();
           gridState.tabActive = false;
-          gridState.activeR = lastR;
-          if (!e.shiftKey) { gridState.anchorR = lastR; gridState.anchorC = gridState.activeC; }
-          updateSelectionUI();
-          return;
-        }
-        if (e.key === "ArrowUp") {
-          e.preventDefault();
-          gridState.tabActive = false;
-          gridState.activeR = 0;
-          if (!e.shiftKey) { gridState.anchorR = 0; gridState.anchorC = gridState.activeC; }
-          updateSelectionUI();
-          return;
-        }
-        if (e.key === "ArrowRight") {
-          e.preventDefault();
-          gridState.tabActive = false;
-          gridState.activeC = lastC;
-          if (!e.shiftKey) { gridState.anchorC = lastC; gridState.anchorR = gridState.activeR; }
-          updateSelectionUI();
-          return;
-        }
-        if (e.key === "ArrowLeft") {
-          e.preventDefault();
-          gridState.tabActive = false;
-          gridState.activeC = 0;
-          if (!e.shiftKey) { gridState.anchorC = 0; gridState.anchorR = gridState.activeR; }
+          const { r, c } = ctrlArrowTarget(dirMap[e.key]);
+          gridState.activeR = r;
+          gridState.activeC = c;
+          if (!e.shiftKey) { gridState.anchorR = r; gridState.anchorC = c; }
           updateSelectionUI();
           return;
         }
