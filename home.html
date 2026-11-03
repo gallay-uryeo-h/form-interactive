@@ -504,7 +504,7 @@
         allTasks = tasks;
         taskCountBySheet = new Map();
         tasks.forEach(t => {
-          const sId = t.sheetId || "sheet_default";
+          const sId = t.sheetId || "unknown";
           taskCountBySheet.set(sId, (taskCountBySheet.get(sId) || 0) + 1);
         });
         renderSheets();
@@ -539,21 +539,19 @@
       sheetsTableBody.innerHTML = filtered.map((s, idx) => {
         const count = taskCountBySheet.get(s.id) || 0;
         const dateStr = s.createdAt ? new Date(s.createdAt).toLocaleDateString("ko-KR") : "-";
-        const isDefault = s.isDefault || s.id === "sheet_default";
 
         return `
-          <tr class="hover:bg-surface-container-low transition-colors ${isDefault ? 'bg-primary/[0.02]' : ''}">
+          <tr class="hover:bg-surface-container-low transition-colors">
             <td class="py-3 pl-4 pr-1 text-center font-mono text-[11px] text-outline">
               ${idx + 1}
             </td>
             <td class="py-3 px-3">
               <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-[20px] ${isDefault ? 'text-primary' : 'text-secondary'} shrink-0">table_chart</span>
+                <span class="material-symbols-outlined text-[20px] text-secondary shrink-0">table_chart</span>
                 <div class="flex flex-col min-w-0">
                   <a href="admin.html?sheetId=${s.id}" class="font-bold text-on-surface hover:text-primary transition-colors truncate text-[13px]">${s.name}</a>
                   <span class="text-[10px] text-outline font-mono">ID: ${s.id}</span>
                 </div>
-                ${isDefault ? '<span class="px-1.5 py-0.5 rounded text-[10px] bg-primary text-on-primary font-bold shrink-0">기본 시트</span>' : ''}
               </div>
             </td>
             <td class="py-3 px-3 text-on-surface-variant hidden sm:table-cell text-[12px]">
@@ -582,11 +580,9 @@
                   <span class="material-symbols-outlined text-[13px]">phone_iphone</span>
                   <span>모바일</span>
                 </a>
-                ${!isDefault ? `
-                  <button type="button" class="btn-delete-sheet p-1 text-outline hover:text-error hover:bg-error/10 rounded-lg transition-colors cursor-pointer" data-id="${s.id}" data-name="${s.name}" title="시트 삭제">
-                    <span class="material-symbols-outlined text-[16px]">delete</span>
-                  </button>
-                ` : ''}
+                <button type="button" class="btn-delete-sheet p-1 text-outline hover:text-error hover:bg-error/10 rounded-lg transition-colors cursor-pointer" data-id="${s.id}" data-name="${s.name}" title="시트 삭제">
+                  <span class="material-symbols-outlined text-[16px]">delete</span>
+                </button>
               </div>
             </td>
           </tr>

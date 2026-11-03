@@ -165,7 +165,7 @@
         </div>
         <div class="flex flex-col">
           <div class="flex items-center gap-2">
-            <span class="font-semibold text-[13px] text-on-surface truncate max-w-xs" id="topSheetTitle">전사 업무 데이터 관리 시트</span>
+            <span class="font-semibold text-[13px] text-on-surface truncate max-w-xs" id="topSheetTitle">시트 로딩 중...</span>
             <span class="text-[10px] bg-primary/10 text-primary font-mono px-1.5 py-0.2 rounded font-semibold">Live Admin</span>
           </div>
         </div>
@@ -202,9 +202,6 @@
         <span class="material-symbols-outlined text-[14px] text-primary" id="syncIcon">cloud_done</span>
         <span id="syncText">Firestore 실시간 연결됨</span>
       </div>
-      <button id="btnResetData" class="px-2.5 py-1 text-outline hover:text-error hover:bg-error-container/30 rounded transition-colors text-[11px] font-medium" title="데이터가 꼬였을 때 초기 샘플로 복원합니다">
-        데이터 초기화
-      </button>
       <a id="btnOpenMobileView" href="mobile.html" target="_blank" class="flex items-center gap-1 px-2.5 py-1 bg-surface-container hover:bg-surface-variant text-on-surface rounded transition-colors font-medium text-[11px]" title="모바일 폼 뷰 새 창 열기">
         <span class="material-symbols-outlined text-[14px]">smartphone</span>
         <span>사용자 모바일 뷰</span>
@@ -344,7 +341,7 @@
     <div class="flex items-center gap-3">
       <a href="home.html" class="flex items-center gap-1 text-primary font-bold hover:underline" title="시트 목록으로 이동">
         <span class="material-symbols-outlined text-[14px]">table_chart</span>
-        <span id="footerSheetName">전사 업무 데이터 관리 시트</span>
+        <span id="footerSheetName">시트 로딩 중...</span>
       </a>
       <span>•</span>
       <span id="rowCountLabel">0개 행 로드됨</span>
@@ -584,7 +581,6 @@ kim.minsu@school.kr"></textarea>
       updateTask,
       addTask,
       deleteTask,
-      resetCollection,
       AVAILABLE_TYPES,
       DEFAULT_COLUMN_CONFIGS,
       isAdminEmail
@@ -711,9 +707,12 @@ kim.minsu@school.kr"></textarea>
     })();
     // ─────────────────────────────────────────────────────────────
 
-    // URL에서 sheetId 파라미터 읽기 (기본값: "sheet_default")
+    // URL에서 sheetId 파라미터 읽기 (없으면 홈으로)
     const urlParams = new URLSearchParams(window.location.search);
-    const currentSheetId = urlParams.get("sheetId") || "sheet_default";
+    const currentSheetId = urlParams.get("sheetId");
+    if (!currentSheetId) {
+      window.location.href = "home.html";
+    }
 
     // 모바일 뷰 바로가기에 현재 sheetId 동기화
     const btnOpenMobileView = document.getElementById("btnOpenMobileView");
@@ -848,7 +847,7 @@ kim.minsu@school.kr"></textarea>
         keys = [...currentColumnOrder];
       } else if (currentColumnConfigs && Object.keys(currentColumnConfigs).length) {
         keys = Object.keys(currentColumnConfigs);
-      } else if (currentSheetId === "sheet_default") {
+          } else if (currentSheetId === "sheet_default") {
         keys = DEFAULT_COLUMNS.map(c => c.key);
       } else {
         keys = ["col_1", "col_2", "col_3"];
@@ -954,7 +953,7 @@ kim.minsu@school.kr"></textarea>
 
     // Subscribe to Sheets (시트 목록 및 스위처 실시간 동기화)
     subscribeSheets((sheets) => {
-      const cur = sheets.find(s => s.id === currentSheetId) || { name: "전사 업무 데이터 관리 시트" };
+      const cur = sheets.find(s => s.id === currentSheetId) || { name: currentSheetId };
       const topTitle = document.getElementById("topSheetTitle");
       const footerTitle = document.getElementById("footerSheetName");
       if (topTitle) topTitle.textContent = cur.name;
@@ -3026,10 +3025,6 @@ kim.minsu@school.kr"></textarea>
             newRowData[col.key] = new Date().toISOString().split("T")[0];
           } else if (cfg.type === "select" || cfg.type === "priority") {
             newRowData[col.key] = (cfg.options && cfg.options.length) ? cfg.options[0] : "";
-          } else if (col.key === "empNo") {
-            newRowData[col.key] = "2025" + String(Math.floor(1000 + Math.random() * 9000));
-          } else if (col.key === "name") {
-            newRowData[col.key] = "신규 사원";
           } else {
             newRowData[col.key] = "";
           }
@@ -3039,20 +3034,6 @@ kim.minsu@school.kr"></textarea>
         alert("행 추가 실패: " + err.message);
       } finally {
         setSaving(false);
-      }
-    });
-
-    // Reset Data
-    document.getElementById("btnResetData").addEventListener("click", async () => {
-      if (confirm("정말 모든 데이터를 초기 샘플 데이터로 리셋하시겠습니까?")) {
-        setSaving(true);
-        try {
-          await resetCollection();
-        } catch (err) {
-          alert("리셋 실패: " + err.message);
-        } finally {
-          setSaving(false);
-        }
       }
     });
 
