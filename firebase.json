@@ -1,17 +1,16 @@
 {
   "hosting": [
     {
-      "target": "admin",
+      "site": "studio-2726051254-c02c9-7d373",
       "public": ".",
       "ignore": [
         "firebase.json",
-        ".github/**",
-        "stitch-raw/**",
-        "node_modules/**",
+        "**/.*",
+        "**/node_modules/**",
         "server.js",
         "package.json",
         "README.md",
-        ".gitignore",
+        "stitch-raw/**",
         "mobile.html"
       ],
       "rewrites": [
@@ -30,17 +29,16 @@
       ]
     },
     {
-      "target": "user",
+      "site": "studio-2726051254-c02c9-f92f8",
       "public": ".",
       "ignore": [
         "firebase.json",
-        ".github/**",
-        "stitch-raw/**",
-        "node_modules/**",
+        "**/.*",
+        "**/node_modules/**",
         "server.js",
         "package.json",
         "README.md",
-        ".gitignore",
+        "stitch-raw/**",
         "home.html",
         "admin.html",
         "dashboard.html",

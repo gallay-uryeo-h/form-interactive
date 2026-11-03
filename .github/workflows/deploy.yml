@@ -7,18 +7,14 @@ on:
 
 jobs:
   deploy:
-    name: Deploy (Admin + User)
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Deploy to Firebase Hosting (both targets)
-        uses: FirebaseExtended/action-hosting-deploy@v0
+      - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          projectId: studio-2726051254-c02c9
-          targets: admin,user
           channelId: live
+          projectId: studio-2726051254-c02c9
+          firebaseToolsVersion: '15.34.0'
