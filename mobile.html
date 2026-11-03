@@ -183,6 +183,9 @@
       subscribeColumnOrder,
       updateTask,
       getTasksForSheet,
+      getMetadata,
+      getColumnConfigsFromMeta,
+      getColumnOrderFromMeta,
       DEFAULT_COLUMN_CONFIGS
     } from "./firebase-service.js";
 
@@ -208,6 +211,20 @@
     let currentColumnOrder = [];
     let currentUser        = null;
     let saveTimeout        = null;
+    let configsReady       = false;
+    let tasksReady         = false;
+
+    // 탭 링크 초기화
+    if (currentSheetId) {
+      document.getElementById("tabMyInput").href = `mobile.html?sheetId=${encodeURIComponent(currentSheetId)}`;
+    } else {
+      document.getElementById("tabMyInput").addEventListener("click", (e) => {
+        if (!currentSheetId) {
+          e.preventDefault();
+          showView("list");
+        }
+      });
+    }
 
     // ─────────────────────────────────────────
     //  DOM refs
@@ -366,11 +383,13 @@
     if (currentSheetId) {
       subscribeTasks((tasks) => {
         allTasks = tasks;
+        tasksReady = true;
         renderCards();
       }, (err) => console.error(err), currentSheetId);
 
       subscribeColumnConfigs((configs) => {
         columnConfigs = configs || {};
+        configsReady = true;
         renderCards();
       }, currentSheetId);
 
@@ -391,76 +410,83 @@
     //  시트 목록 렌더
     //  · googleId 타입 열이 있는 시트만
     //  · 그 열에 내 이메일이 있는 시트만 (대소문자 무시)
-    //  · getTasksForSheet — 전체 컬렉션 대신 sheetId query 사용
+    //  · getMetadata() 단 1회 읽기 + getTasksForSheet() 시트별 쿼리
     // ─────────────────────────────────────────
     async function renderSheetList() {
-      if (!currentUser || !allSheets.length) return;
+      if (!currentUser) return;
 
       sheetListContainer.innerHTML = `<div class="py-12 text-center text-outline"><span class="inline-block animate-spin mr-2">⏳</span> 내 시트를 확인하는 중...</div>`;
 
       const myEmail = normalizeEmail(currentUser.email);
 
-      const checks = await Promise.all(allSheets.map(async (sheet) => {
-        try {
-          const colCfg = await fetchOnce_colConfig(sheet.id);
-          const gColKey = Object.keys(colCfg).find(k => colCfg[k]?.type === "googleId");
-          if (!gColKey) return null; // googleId 열 없음 → 제외
+      try {
+        const meta = await getMetadata();
+        const sheets = (meta && Array.isArray(meta.sheets)) ? meta.sheets : allSheets;
 
-          // getTasksForSheet: sheetId 쿼리 — 전체 컬렉션 읽기 불필요
-          const tasks = await getTasksForSheet(sheet.id);
-          const myRows = tasks.filter(t =>
-            normalizeEmail(t[gColKey]) === myEmail
-          );
-          if (!myRows.length) return null; // 내 이메일 없음 → 제외
-
-          return { sheet, gColKey, colCfg, myCount: myRows.length };
-        } catch (e) {
-          console.warn("시트 확인 오류:", sheet.id, e.message || e);
-          return null;
+        if (!sheets || !sheets.length) {
+          sheetListContainer.innerHTML = `
+            <div class="bg-surface-container-lowest rounded-xl p-8 text-center text-outline border border-surface-container flex flex-col items-center gap-2">
+              <span class="material-symbols-outlined text-[36px]">search_off</span>
+              <span class="text-[13px] font-semibold text-on-surface">배정된 시트가 없습니다</span>
+              <span class="text-[11px]">등록된 시트가 없습니다.</span>
+            </div>`;
+          return;
         }
-      }));
 
-      const mySheets = checks.filter(Boolean);
+        const checks = await Promise.all(sheets.map(async (sheet) => {
+          try {
+            const colCfg = getColumnConfigsFromMeta(meta, sheet.id);
+            const gColKey = Object.keys(colCfg).find(k => colCfg[k]?.type === "googleId");
+            if (!gColKey) return null; // googleId 열 없음 → 제외
 
-      if (!mySheets.length) {
+            const tasks = await getTasksForSheet(sheet.id);
+            const myRows = tasks.filter(t =>
+              normalizeEmail(t[gColKey]) === myEmail
+            );
+            if (!myRows.length) return null; // 내 이메일 없음 → 제외
+
+            return { sheet, gColKey, colCfg, myCount: myRows.length };
+          } catch (e) {
+            console.warn("시트 확인 오류:", sheet.id, e.message || e);
+            return null;
+          }
+        }));
+
+        const mySheets = checks.filter(Boolean);
+
+        if (!mySheets.length) {
+          sheetListContainer.innerHTML = `
+            <div class="bg-surface-container-lowest rounded-xl p-8 text-center text-outline border border-surface-container flex flex-col items-center gap-2">
+              <span class="material-symbols-outlined text-[36px]">search_off</span>
+              <span class="text-[13px] font-semibold text-on-surface">배정된 시트가 없습니다</span>
+              <span class="text-[11px]"><strong>${currentUser.email}</strong> 계정으로<br>배정된 데이터가 없습니다.<br>관리자에게 문의하세요.</span>
+            </div>`;
+          return;
+        }
+
+        sheetListContainer.innerHTML = mySheets.map(({ sheet, myCount }) => `
+          <a href="mobile.html?sheetId=${encodeURIComponent(sheet.id)}"
+            class="flex items-center gap-3 bg-surface-container-lowest rounded-xl border border-surface-container shadow-xs p-4 hover:border-primary/40 hover:shadow-sm transition-all active:scale-[0.98]">
+            <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-[20px] text-primary">table_chart</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-[14px] font-semibold text-on-surface truncate">${sheet.name || sheet.id}</p>
+              <p class="text-[11px] text-outline mt-0.5 flex items-center gap-1">
+                <span class="material-symbols-outlined text-[12px]">edit_note</span>
+                내 항목 ${myCount}건
+              </p>
+            </div>
+            <span class="material-symbols-outlined text-[20px] text-outline">chevron_right</span>
+          </a>
+        `).join("");
+      } catch (err) {
+        console.error("renderSheetList Error:", err);
         sheetListContainer.innerHTML = `
-          <div class="bg-surface-container-lowest rounded-xl p-8 text-center text-outline border border-surface-container flex flex-col items-center gap-2">
-            <span class="material-symbols-outlined text-[36px]">search_off</span>
-            <span class="text-[13px] font-semibold text-on-surface">배정된 시트가 없습니다</span>
-            <span class="text-[11px]"><strong>${currentUser.email}</strong> 계정으로<br>배정된 데이터가 없습니다.<br>관리자에게 문의하세요.</span>
+          <div class="bg-error-container text-on-error-container rounded-xl p-6 text-center text-[12px]">
+            시트 목록 조회 실패: ${err.message}
           </div>`;
-        return;
       }
-
-      sheetListContainer.innerHTML = mySheets.map(({ sheet, myCount }) => `
-        <a href="mobile.html?sheetId=${encodeURIComponent(sheet.id)}"
-          class="flex items-center gap-3 bg-surface-container-lowest rounded-xl border border-surface-container shadow-xs p-4 hover:border-primary/40 hover:shadow-sm transition-all active:scale-[0.98]">
-          <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-            <span class="material-symbols-outlined text-[20px] text-primary">table_chart</span>
-          </div>
-          <div class="flex-1 min-w-0">
-            <p class="text-[14px] font-semibold text-on-surface truncate">${sheet.name || sheet.id}</p>
-            <p class="text-[11px] text-outline mt-0.5 flex items-center gap-1">
-              <span class="material-symbols-outlined text-[12px]">edit_note</span>
-              내 항목 ${myCount}건
-            </p>
-          </div>
-          <span class="material-symbols-outlined text-[20px] text-outline">chevron_right</span>
-        </a>
-      `).join("");
-    }
-
-    // ─────────────────────────────────────────
-    //  1회성 colConfig fetch (subscribeColumnConfigs 래핑)
-    // ─────────────────────────────────────────
-    function fetchOnce_colConfig(sheetId) {
-      return new Promise((resolve) => {
-        let unsub;
-        unsub = subscribeColumnConfigs((cfg) => {
-          if (unsub) { try { unsub(); } catch {} }
-          resolve(cfg || {});
-        }, sheetId);
-      });
     }
 
     // ─────────────────────────────────────────
@@ -650,6 +676,16 @@
     // ─────────────────────────────────────────
     function renderCards() {
       if (!currentUser) return;
+
+      // 설정이나 태스크 로딩 중이면 대기 스피너 표시
+      if (!configsReady || !tasksReady) {
+        cardsContainer.innerHTML = `
+          <div class="py-12 text-center text-outline flex flex-col items-center gap-2">
+            <span class="inline-block animate-spin text-[24px]">⏳</span>
+            <span class="text-[12px]">항목을 불러오는 중...</span>
+          </div>`;
+        return;
+      }
 
       const identityCol = getIdentityColumn();
 

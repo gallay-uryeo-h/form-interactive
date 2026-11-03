@@ -1,4 +1,7 @@
 {
+  "firestore": {
+    "rules": "firestore.rules"
+  },
   "hosting": [
     {
       "site": "studio-2726051254-c02c9-7d373",
@@ -23,7 +26,10 @@
         {
           "source": "**/*.@(js|html|css)",
           "headers": [
-            { "key": "Cache-Control", "value": "no-cache" }
+            {
+              "key": "Cache-Control",
+              "value": "no-cache"
+            }
           ]
         }
       ]
@@ -54,7 +60,10 @@
         {
           "source": "**/*.@(js|html|css)",
           "headers": [
-            { "key": "Cache-Control", "value": "no-cache" }
+            {
+              "key": "Cache-Control",
+              "value": "no-cache"
+            }
           ]
         }
       ]

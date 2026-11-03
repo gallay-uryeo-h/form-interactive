@@ -66,6 +66,32 @@ export function normalizeColumnConfig(key, raw) {
   };
 }
 
+// 메타데이터 전체 1회 조회
+export async function getMetadata() {
+  const metaDocRef = doc(db, COLLECTION_NAME, "metadata");
+  const snap = await getDoc(metaDocRef);
+  return snap.exists() ? snap.data() : {};
+}
+
+// 메타데이터 객체에서 특정 시트의 정규화된 컬럼 설정 추출
+export function getColumnConfigsFromMeta(metaData, targetSheetId) {
+  if (!metaData || !targetSheetId) return {};
+  const configKey = `columnConfigs_${targetSheetId}`;
+  const rawConfigs = metaData[configKey] || {};
+  const result = {};
+  for (const [key, cfg] of Object.entries(rawConfigs)) {
+    result[key] = normalizeColumnConfig(key, cfg);
+  }
+  return result;
+}
+
+// 메타데이터 객체에서 특정 시트의 컬럼 순서 추출
+export function getColumnOrderFromMeta(metaData, targetSheetId) {
+  if (!metaData || !targetSheetId) return [];
+  const orderKey = `columnOrder_${targetSheetId}`;
+  return Array.isArray(metaData[orderKey]) ? metaData[orderKey] : [];
+}
+
 // 시트 목록 실시간 구독 리스너
 export function subscribeSheets(onSuccess, onError) {
   const metaDocRef = doc(db, COLLECTION_NAME, "metadata");

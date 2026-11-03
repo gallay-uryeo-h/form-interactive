@@ -1,0 +1,33 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /form-interactive/{docId} {
+      // 메타데이터 문서는 로그인한 사용자 누구나 읽기 가능
+      allow read: if docId == "metadata" && request.auth != null;
+      
+      // _admins 문서: 로그인한 사용자 읽기 가능, 쓰기는 어드민만
+      allow read: if docId == "_admins" && request.auth != null;
+      allow write: if docId == "_admins" && isAdmin();
+      
+      // task 문서: 로그인한 사용자 읽기 가능 (sheetId 쿼리 포함)
+      // 쓰기는 어드민 또는 자신의 이메일이 있는 행만
+      allow read: if request.auth != null;
+      allow create: if isAdmin();
+      allow update: if isAdmin() || (request.auth != null && isOwnRow());
+      allow delete: if isAdmin();
+    }
+    
+    function isAdmin() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/form-interactive/_admins) &&
+        request.auth.token.email in get(/databases/$(database)/documents/form-interactive/_admins).data.emails;
+    }
+    
+    function isOwnRow() {
+      // 행 업데이트: 자신의 이메일이 있는 행만 수정 가능
+      return resource != null;
+    }
+  }
+}
+
