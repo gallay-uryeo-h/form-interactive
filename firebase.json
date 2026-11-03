@@ -1,0 +1,65 @@
+{
+  "hosting": [
+    {
+      "target": "admin",
+      "public": ".",
+      "ignore": [
+        "firebase.json",
+        ".github/**",
+        "stitch-raw/**",
+        "node_modules/**",
+        "server.js",
+        "package.json",
+        "README.md",
+        ".gitignore",
+        "mobile.html"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ],
+      "headers": [
+        {
+          "source": "**/*.@(js|html|css)",
+          "headers": [
+            { "key": "Cache-Control", "value": "no-cache" }
+          ]
+        }
+      ]
+    },
+    {
+      "target": "user",
+      "public": ".",
+      "ignore": [
+        "firebase.json",
+        ".github/**",
+        "stitch-raw/**",
+        "node_modules/**",
+        "server.js",
+        "package.json",
+        "README.md",
+        ".gitignore",
+        "home.html",
+        "admin.html",
+        "dashboard.html",
+        "index.html"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/mobile.html"
+        }
+      ],
+      "headers": [
+        {
+          "source": "**/*.@(js|html|css)",
+          "headers": [
+            { "key": "Cache-Control", "value": "no-cache" }
+          ]
+        }
+      ]
+    }
+  ]
+}
