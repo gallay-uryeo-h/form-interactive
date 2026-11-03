@@ -57,7 +57,7 @@
       .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
     }
 
-    /* Google Login Mock */
+    /* Google Login Modal */
     #googleLoginModal {
       display: none;
       position: fixed; inset: 0; z-index: 200;
@@ -65,24 +65,6 @@
       align-items: center; justify-content: center;
     }
     #googleLoginModal.open { display: flex; }
-    .google-btn {
-      display: flex; align-items: center; gap: 10px;
-      background: #fff; color: #3c4043;
-      border: 1px solid #dadce0; border-radius: 8px;
-      padding: 10px 20px; font-size: 14px; font-weight: 500;
-      cursor: pointer; transition: background 0.15s, box-shadow 0.15s;
-      font-family: 'Inter', sans-serif;
-    }
-    .google-btn:hover { background: #f8f9fa; box-shadow: 0 1px 4px rgba(0,0,0,0.15); }
-    .google-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
-
-    /* 읽기 전용 카드 */
-    article.readonly-card { opacity: 0.65; pointer-events: none; }
-    article.readonly-card::after {
-      content: "🔒 다른 사용자 데이터";
-      display: block; font-size: 11px; color: #6d7a6f;
-      text-align: center; padding: 6px 0 2px;
-    }
   </style>
 </head>
 <body class="bg-surface text-on-surface flex flex-col min-h-screen font-sans">
@@ -91,7 +73,7 @@
   <header class="fixed top-0 w-full z-50 pt-safe bg-surface/90 backdrop-blur-md shadow-xs border-b border-surface-container">
     <div class="h-14 px-3 flex items-center justify-between gap-2 bg-surface-container-lowest">
       <div class="flex items-center gap-2 min-w-0">
-        <a href="index.html" class="w-8 h-8 flex items-center justify-center rounded-full text-on-surface hover:bg-surface-container transition-colors" title="뒤로가기">
+        <a href="home.html" class="w-8 h-8 flex items-center justify-center rounded-full text-on-surface hover:bg-surface-container transition-colors" title="뒤로가기">
           <span class="material-symbols-outlined text-[20px]">arrow_back</span>
         </a>
         <div class="flex flex-col min-w-0">
@@ -109,26 +91,29 @@
         <button id="btnGoogleLogin" type="button"
           class="flex items-center gap-1.5 h-8 px-2.5 rounded-full border border-[#dadce0] bg-white text-[#3c4043] text-[12px] font-medium hover:bg-[#f8f9fa] shadow-2xs transition-colors"
           title="구글 계정으로 로그인">
-          <!-- Google G Logo (SVG) -->
-          <svg viewBox="0 0 24 24" width="15" height="15"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-          <span id="loginBtnText">로그인</span>
+          <svg viewBox="0 0 24 24" width="15" height="15">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+          </svg>
+          <span>로그인</span>
         </button>
 
-        <!-- 로그인 상태: 아바타 (클릭하면 로그아웃 메뉴) -->
+        <!-- 로그인 상태: 아바타 + 드롭다운 -->
         <div id="userAvatarArea" class="hidden relative">
           <button id="userAvatarBtn" type="button"
             class="w-8 h-8 rounded-full bg-[#ea4335] text-white flex items-center justify-center font-bold text-[12px] shrink-0 shadow-xs hover:ring-2 hover:ring-[#ea4335]/40 transition-all"
             title="구글 계정">
             <span id="userAvatarInitial">G</span>
           </button>
-          <!-- 드롭다운 메뉴 -->
           <div id="userDropdown"
-            class="hidden absolute right-0 top-10 w-52 bg-white border border-surface-container rounded-xl shadow-lg p-1 z-50">
-            <div class="px-3 py-2 border-b border-surface-container mb-1">
+            class="hidden absolute right-0 top-10 w-56 bg-white border border-surface-container rounded-xl shadow-lg p-1 z-50">
+            <div class="px-3 py-2.5 border-b border-surface-container mb-1">
               <p class="text-[12px] font-semibold text-on-surface truncate" id="dropdownName">사용자</p>
               <p class="text-[10px] text-outline font-mono truncate" id="dropdownEmail">user@gmail.com</p>
             </div>
-            <button type="button" onclick="window.mockLogout()"
+            <button type="button" id="btnLogout"
               class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[12px] text-error hover:bg-error-container transition-colors">
               <span class="material-symbols-outlined text-[15px]">logout</span>
               로그아웃
@@ -142,7 +127,6 @@
   <!-- Google 로그인 Mock 모달 -->
   <div id="googleLoginModal" role="dialog" aria-modal="true" aria-label="구글 로그인">
     <div class="bg-white rounded-2xl shadow-2xl p-6 w-[320px] flex flex-col items-center gap-4 mx-4">
-      <!-- Google Logo -->
       <svg viewBox="0 0 24 24" width="40" height="40">
         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
         <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -153,13 +137,12 @@
         <h2 class="text-[16px] font-semibold text-[#202124]">Google 계정으로 로그인</h2>
         <p class="text-[12px] text-[#5f6368] mt-1">내 데이터만 보기 위해 로그인하세요</p>
       </div>
-      <!-- Mock 계정 이메일 입력 -->
       <div class="w-full flex flex-col gap-2">
         <label class="text-[11px] text-[#5f6368] font-medium">이메일 또는 구글 아이디</label>
         <input id="mockEmailInput" type="email" placeholder="example@gmail.com"
           class="w-full h-10 border border-[#dadce0] rounded-lg px-3 text-[13px] text-[#202124] outline-none focus:border-[#1a73e8] font-mono"
           autocomplete="email">
-        <p class="text-[10px] text-[#9aa0a6]">※ 실제 구글 로그인이 아닌 Mock 버전입니다. 향후 Firebase Auth로 교체 예정.</p>
+        <p class="text-[10px] text-[#9aa0a6]">※ Mock 버전 — Firebase Auth 연동 준비 완료. 향후 구글 팝업 로그인으로 교체 예정.</p>
       </div>
       <!-- 등록된 계정 빠른 선택 -->
       <div class="w-full" id="quickAccountsArea" style="display:none">
@@ -167,11 +150,11 @@
         <div class="flex flex-col gap-1 max-h-[140px] overflow-y-auto" id="quickAccountsList"></div>
       </div>
       <div class="flex gap-2 w-full">
-        <button type="button" onclick="window.closeLoginModal()"
+        <button type="button" id="btnCancelLogin"
           class="flex-1 h-10 rounded-lg border border-[#dadce0] text-[13px] text-[#3c4043] hover:bg-[#f8f9fa] transition-colors">
           취소
         </button>
-        <button type="button" onclick="window.mockLogin()"
+        <button type="button" id="btnConfirmLogin"
           class="flex-1 h-10 rounded-lg bg-[#1a73e8] text-white text-[13px] font-semibold hover:bg-[#1557b0] transition-colors">
           로그인
         </button>
@@ -185,11 +168,9 @@
       <span id="filteredCountLabel">로딩 중...</span>
       <span class="text-primary font-mono text-[11px]">Firestore 실시간 동기화</span>
     </div>
-
-    <!-- Cards Container -->
     <div class="flex flex-col gap-3" id="cardsContainer">
       <div class="py-12 text-center text-outline">
-        <span class="inline-block animate-spin mr-2">⏳</span> Firestore에서 내 데이터를 불러오는 중...
+        <span class="inline-block animate-spin mr-2">⏳</span> Firestore에서 데이터를 불러오는 중...
       </div>
     </div>
   </main>
@@ -226,140 +207,147 @@
       DEFAULT_COLUMN_CONFIGS
     } from "./firebase-service.js";
 
-    // URL에서 sheetId 파라미터 읽기 (기본값: "sheet_default")
-    const urlParams = new URLSearchParams(window.location.search);
+    import {
+      onAuthStateChanged,
+      signInWithGoogle,
+      signOut,
+      getCurrentUser
+    } from "./auth-service.js";
+
+    // ─────────────────────────────────────────
+    //  URL 파라미터
+    // ─────────────────────────────────────────
+    const urlParams      = new URLSearchParams(window.location.search);
     const currentSheetId = urlParams.get("sheetId") || "sheet_default";
 
-    let allTasks = [];
-    let columnConfigs = {};
+    // ─────────────────────────────────────────
+    //  상태
+    // ─────────────────────────────────────────
+    let allTasks         = [];
+    let columnConfigs    = {};
     let currentColumnOrder = [];
+    let currentUser      = null;   // AuthUser | null
 
-    const cardsContainer = document.getElementById("cardsContainer");
-    const filteredCountLabel = document.getElementById("filteredCountLabel");
-    const saveIcon = document.getElementById("saveIcon");
-    const saveText = document.getElementById("saveText");
+    // ─────────────────────────────────────────
+    //  DOM refs
+    // ─────────────────────────────────────────
+    const cardsContainer      = document.getElementById("cardsContainer");
+    const filteredCountLabel  = document.getElementById("filteredCountLabel");
+    const saveIcon            = document.getElementById("saveIcon");
+    const saveText            = document.getElementById("saveText");
+    const btnGoogleLogin      = document.getElementById("btnGoogleLogin");
+    const userAvatarArea      = document.getElementById("userAvatarArea");
+    const userAvatarBtn       = document.getElementById("userAvatarBtn");
+    const userAvatarInitial   = document.getElementById("userAvatarInitial");
+    const userDropdown        = document.getElementById("userDropdown");
+    const dropdownName        = document.getElementById("dropdownName");
+    const dropdownEmail       = document.getElementById("dropdownEmail");
+    const btnLogout           = document.getElementById("btnLogout");
+    const googleLoginModal    = document.getElementById("googleLoginModal");
+    const mockEmailInput      = document.getElementById("mockEmailInput");
+    const btnConfirmLogin     = document.getElementById("btnConfirmLogin");
+    const btnCancelLogin      = document.getElementById("btnCancelLogin");
+    const quickAccountsArea   = document.getElementById("quickAccountsArea");
+    const quickAccountsList   = document.getElementById("quickAccountsList");
+
     let saveTimeout = null;
 
     // ─────────────────────────────────────────
-    //  Mock Google Auth
+    //  Auth 상태 구독
+    //  onAuthStateChanged → UI 갱신 + 카드 렌더
     // ─────────────────────────────────────────
-    const MOCK_AUTH_KEY = "mock_google_user";
-
-    let mockUser = null; // { email, name, initial }
-
-    function loadMockUser() {
-      try {
-        const raw = localStorage.getItem(MOCK_AUTH_KEY);
-        if (raw) mockUser = JSON.parse(raw);
-      } catch { mockUser = null; }
-    }
-
-    function saveMockUser(user) {
-      mockUser = user;
-      if (user) localStorage.setItem(MOCK_AUTH_KEY, JSON.stringify(user));
-      else localStorage.removeItem(MOCK_AUTH_KEY);
-    }
-
-    function emailToInitial(email) {
-      return (email || "").replace(/[^a-zA-Z0-9가-힣]/g, "").charAt(0).toUpperCase() || "G";
-    }
+    onAuthStateChanged((user) => {
+      currentUser = user;
+      syncAuthUI();
+    });
 
     function syncAuthUI() {
-      const loginBtn    = document.getElementById("btnGoogleLogin");
-      const avatarArea  = document.getElementById("userAvatarArea");
-      const initial     = document.getElementById("userAvatarInitial");
-      const dropName    = document.getElementById("dropdownName");
-      const dropEmail   = document.getElementById("dropdownEmail");
-
-      if (mockUser) {
-        loginBtn.classList.add("hidden");
-        avatarArea.classList.remove("hidden");
-        initial.textContent = emailToInitial(mockUser.email);
-        dropName.textContent = mockUser.name || mockUser.email;
-        dropEmail.textContent = mockUser.email;
+      if (currentUser) {
+        btnGoogleLogin.classList.add("hidden");
+        userAvatarArea.classList.remove("hidden");
+        userAvatarInitial.textContent = currentUser.initial || "G";
+        dropdownName.textContent  = currentUser.displayName || currentUser.email;
+        dropdownEmail.textContent = currentUser.email;
       } else {
-        loginBtn.classList.remove("hidden");
-        avatarArea.classList.add("hidden");
+        btnGoogleLogin.classList.remove("hidden");
+        userAvatarArea.classList.add("hidden");
       }
-
       renderCards();
     }
 
-    // 로그인 모달 열기
-    window.openLoginModal = function () {
-      const modal = document.getElementById("googleLoginModal");
-      modal.classList.add("open");
-      // 등록된 구글 아이디 빠른 선택 목록 채우기
+    // ─────────────────────────────────────────
+    //  Login Modal
+    // ─────────────────────────────────────────
+    function openLoginModal() {
+      googleLoginModal.classList.add("open");
       populateQuickAccounts();
-      setTimeout(() => document.getElementById("mockEmailInput")?.focus(), 100);
-    };
-
-    window.closeLoginModal = function () {
-      document.getElementById("googleLoginModal").classList.remove("open");
-    };
+      setTimeout(() => mockEmailInput?.focus(), 80);
+    }
+    function closeLoginModal() {
+      googleLoginModal.classList.remove("open");
+    }
 
     function populateQuickAccounts() {
       const identityCol = getIdentityColumn();
-      const area = document.getElementById("quickAccountsArea");
-      const list = document.getElementById("quickAccountsList");
-      if (!identityCol?.isGoogleId) { area.style.display = "none"; return; }
+      if (!identityCol?.isGoogleId) { quickAccountsArea.style.display = "none"; return; }
 
       const idsFromConfig = columnConfigs[identityCol.key]?.options || [];
       const idsFromTasks  = allTasks.map(t => t[identityCol.key]).filter(Boolean);
       const allIds = Array.from(new Set([...idsFromConfig, ...idsFromTasks])).filter(Boolean);
 
-      if (!allIds.length) { area.style.display = "none"; return; }
-      area.style.display = "";
-      list.innerHTML = allIds.map(id => `
-        <button type="button"
-          class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[12px] text-left hover:bg-[#f8f9fa] transition-colors border border-transparent hover:border-[#dadce0]"
-          onclick="document.getElementById('mockEmailInput').value='${id}'; window.mockLogin();">
-          <span style="width:24px;height:24px;border-radius:50%;background:#ea4335;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${emailToInitial(id)}</span>
-          <span class="font-mono truncate text-[#202124]">${id}</span>
-        </button>
-      `).join("");
+      if (!allIds.length) { quickAccountsArea.style.display = "none"; return; }
+      quickAccountsArea.style.display = "";
+      quickAccountsList.innerHTML = allIds.map(id => {
+        const initial = id.replace(/[^a-zA-Z0-9가-힣]/g, "").charAt(0).toUpperCase() || "G";
+        return `
+          <button type="button"
+            class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[12px] text-left hover:bg-[#f8f9fa] transition-colors border border-transparent hover:border-[#dadce0]"
+            data-quick-email="${id}">
+            <span style="width:24px;height:24px;border-radius:50%;background:#ea4335;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${initial}</span>
+            <span class="font-mono truncate text-[#202124]">${id}</span>
+          </button>
+        `;
+      }).join("");
+
+      quickAccountsList.querySelectorAll("[data-quick-email]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          mockEmailInput.value = btn.dataset.quickEmail;
+          doLogin();
+        });
+      });
     }
 
-    window.mockLogin = function () {
-      const email = (document.getElementById("mockEmailInput")?.value || "").trim();
-      if (!email) {
-        document.getElementById("mockEmailInput")?.focus();
-        return;
+    async function doLogin() {
+      const email = (mockEmailInput?.value || "").trim();
+      if (!email) { mockEmailInput?.focus(); return; }
+      try {
+        // auth-service.js의 signInWithGoogle (mock 모드: email 전달)
+        // Firebase Auth 전환 시: signInWithGoogle() 호출만으로 팝업 처리
+        await signInWithGoogle(email);
+        closeLoginModal();
+      } catch (err) {
+        alert(err.message);
       }
-      saveMockUser({ email, name: email.split("@")[0], initial: emailToInitial(email) });
-      window.closeLoginModal();
-      syncAuthUI();
-    };
+    }
 
-    window.mockLogout = function () {
-      saveMockUser(null);
-      document.getElementById("userDropdown")?.classList.add("hidden");
-      syncAuthUI();
-    };
+    btnGoogleLogin.addEventListener("click", openLoginModal);
+    btnConfirmLogin.addEventListener("click", doLogin);
+    btnCancelLogin.addEventListener("click", closeLoginModal);
+    googleLoginModal.addEventListener("click", (e) => {
+      if (e.target === googleLoginModal) closeLoginModal();
+    });
+    mockEmailInput.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
 
-    // 아바타 버튼 → 드롭다운 토글
-    document.getElementById("userAvatarBtn")?.addEventListener("click", (e) => {
+    // 아바타 드롭다운 토글
+    userAvatarBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      document.getElementById("userDropdown")?.classList.toggle("hidden");
+      userDropdown.classList.toggle("hidden");
     });
-
-    // 로그인 버튼
-    document.getElementById("btnGoogleLogin")?.addEventListener("click", () => window.openLoginModal());
-
-    // 모달 배경 클릭 닫기
-    document.getElementById("googleLoginModal")?.addEventListener("click", (e) => {
-      if (e.target === document.getElementById("googleLoginModal")) window.closeLoginModal();
+    btnLogout.addEventListener("click", async () => {
+      userDropdown.classList.add("hidden");
+      await signOut();
     });
-
-    // 모달 엔터키 로그인
-    document.getElementById("mockEmailInput")?.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") window.mockLogin();
-    });
-
-    // 외부 클릭 시 드롭다운 닫기
-    document.addEventListener("click", () => {
-      document.getElementById("userDropdown")?.classList.add("hidden");
-    });
+    document.addEventListener("click", () => userDropdown.classList.add("hidden"));
 
     // ─────────────────────────────────────────
     //  Column helpers
@@ -444,43 +432,36 @@
 
     // ─────────────────────────────────────────
     //  Render field
+    //  · googleId 타입은 이 함수에 도달하지 않음
+    //    (renderCards에서 사전 필터링)
+    //  · checkbox: 체크박스 UI만, 텍스트 레이블 없음
     // ─────────────────────────────────────────
     function renderField(t, col, readonly) {
-      const cfg = columnConfigs[col.key] || DEFAULT_COLUMN_CONFIGS[col.key] || { type: "text" };
-      const type = cfg.type || "text";
-      const label = cfg.label || col.label;
+      const cfg    = columnConfigs[col.key] || DEFAULT_COLUMN_CONFIGS[col.key] || { type: "text" };
+      const type   = cfg.type || "text";
+      const label  = cfg.label || col.label;
       const rawVal = t[col.key];
-      const val = rawVal != null ? String(rawVal) : "";
-      const span = getFieldSpan(col.key, type);
-      const disabledAttr = readonly ? "disabled" : "";
-      const readonlyAttr = readonly ? "readonly" : "";
+      const val    = rawVal != null ? String(rawVal) : "";
+      const span   = getFieldSpan(col.key, type);
+      const disabledAttr  = readonly ? "disabled" : "";
+      const readonlyAttr  = readonly ? "readonly" : "";
+      const dimClass      = readonly ? "opacity-60" : "";
 
       switch (type) {
+
         case "locked":
           return `
             <div class="${span} flex flex-col gap-1">
               <div class="flex flex-col bg-surface-container-low/80 px-2.5 py-1.5 rounded-lg border border-surface-container justify-center h-[58px]">
                 <div class="flex items-center justify-between text-[10px] text-outline">
-                  <span class="flex items-center gap-1 font-medium truncate"><span class="material-symbols-outlined text-[13px]">${col.icon}</span>${label}</span>
+                  <span class="flex items-center gap-1 font-medium truncate">
+                    <span class="material-symbols-outlined text-[13px]">${col.icon}</span>${label}
+                  </span>
                   <span class="material-symbols-outlined text-[12px] text-outline shrink-0">lock</span>
                 </div>
-                <p class="text-[12px] text-on-surface font-semibold leading-tight truncate mt-0.5" title="${val || "-"}">${val || "-"}</p>
+                <p class="text-[12px] text-on-surface font-semibold leading-tight truncate mt-0.5">${val || "-"}</p>
               </div>
-            </div>
-          `;
-
-        case "googleId":
-          return `
-            <div class="${span} flex flex-col gap-1">
-              <label class="text-[11px] text-on-surface-variant font-semibold flex items-center gap-1 truncate">
-                <span class="material-symbols-outlined text-[13px] text-[#ea4335]">alternate_email</span>${label}
-              </label>
-              <div class="flex items-center h-[38px] bg-surface-container-lowest border border-surface-container rounded-lg px-2.5 gap-1.5 shadow-2xs focus-within:border-primary ${readonly ? 'opacity-60' : ''}">
-                <span class="material-symbols-outlined text-[15px] text-[#ea4335] shrink-0">alternate_email</span>
-                <input type="email" value="${val}" ${readonlyAttr} class="w-full bg-transparent font-mono text-[11px] text-on-surface outline-none font-semibold truncate placeholder:text-outline/60" placeholder="user@gmail.com" ${readonly ? '' : `onchange="window.saveField('${t.id}', '${col.key}', this.value)"`}>
-              </div>
-            </div>
-          `;
+            </div>`;
 
         case "text":
           return `
@@ -488,13 +469,14 @@
               <label class="text-[11px] text-on-surface-variant font-semibold flex items-center gap-1 truncate">
                 <span class="material-symbols-outlined text-[13px] text-primary">${col.icon}</span>${label}
               </label>
-              <input type="text" value="${val}" ${readonlyAttr} class="w-full h-[38px] bg-surface-container-lowest text-on-surface text-[12px] px-2.5 rounded-lg border border-surface-container focus:border-secondary outline-none shadow-2xs ${readonly ? 'opacity-60 cursor-default' : ''}" ${readonly ? '' : `onchange="window.saveField('${t.id}', '${col.key}', this.value)"`}>
-            </div>
-          `;
+              <input type="text" value="${val}" ${readonlyAttr}
+                class="w-full h-[38px] bg-surface-container-lowest text-on-surface text-[12px] px-2.5 rounded-lg border border-surface-container focus:border-secondary outline-none shadow-2xs ${dimClass} ${readonly ? 'cursor-default' : ''}"
+                ${readonly ? '' : `onchange="window.saveField('${t.id}','${col.key}',this.value)"`}>
+            </div>`;
 
         case "select": {
-          const options = (cfg.options && cfg.options.length) ? cfg.options : ["진행중", "완료", "대기", "보류"];
-          const allOpts = [...options];
+          const opts = (cfg.options && cfg.options.length) ? cfg.options : ["진행중", "완료", "대기", "보류"];
+          const allOpts = [...opts];
           if (val && !allOpts.includes(val)) allOpts.unshift(val);
           return `
             <div class="${span} flex flex-col gap-1">
@@ -502,13 +484,14 @@
                 <span class="material-symbols-outlined text-[13px] text-secondary">${col.icon}</span>${label}
               </label>
               <div class="relative">
-                <select ${disabledAttr} class="w-full h-[38px] appearance-none bg-surface-container-lowest text-on-surface font-mono text-[11px] font-semibold px-2.5 rounded-lg border border-surface-container focus:border-secondary outline-none cursor-pointer pr-6 shadow-2xs truncate ${readonly ? 'opacity-60 cursor-default' : ''}" ${readonly ? '' : `onchange="window.saveField('${t.id}', '${col.key}', this.value)"`}>
-                  ${allOpts.map(opt => `<option value="${opt}" ${opt === val ? "selected" : ""}>${opt}</option>`).join("")}
+                <select ${disabledAttr}
+                  class="w-full h-[38px] appearance-none bg-surface-container-lowest text-on-surface font-mono text-[11px] font-semibold px-2.5 rounded-lg border border-surface-container focus:border-secondary outline-none pr-6 shadow-2xs truncate ${dimClass} ${readonly ? 'cursor-default' : 'cursor-pointer'}"
+                  ${readonly ? '' : `onchange="window.saveField('${t.id}','${col.key}',this.value)"`}>
+                  ${allOpts.map(o => `<option value="${o}" ${o === val ? "selected" : ""}>${o}</option>`).join("")}
                 </select>
                 <span class="material-symbols-outlined absolute right-1.5 top-1/2 -translate-y-1/2 text-[16px] text-outline pointer-events-none">arrow_drop_down</span>
               </div>
-            </div>
-          `;
+            </div>`;
         }
 
         case "date": {
@@ -518,50 +501,53 @@
               <label class="text-[11px] text-on-surface-variant font-semibold flex items-center gap-1 truncate">
                 <span class="material-symbols-outlined text-[13px] text-outline">${col.icon}</span>${label}
               </label>
-              <div class="flex items-center h-[38px] bg-surface-container-lowest border border-surface-container rounded-lg px-2 shadow-2xs ${readonly ? 'opacity-60' : ''}">
-                <input type="date" value="${dateVal}" ${readonlyAttr} class="w-full bg-transparent font-mono text-[11px] text-on-surface outline-none cursor-pointer font-medium" ${readonly ? '' : `onchange="window.saveField('${t.id}', '${col.key}', this.value)"`}>
+              <div class="flex items-center h-[38px] bg-surface-container-lowest border border-surface-container rounded-lg px-2 shadow-2xs ${dimClass}">
+                <input type="date" value="${dateVal}" ${readonlyAttr}
+                  class="w-full bg-transparent font-mono text-[11px] text-on-surface outline-none font-medium ${readonly ? 'cursor-default' : 'cursor-pointer'}"
+                  ${readonly ? '' : `onchange="window.saveField('${t.id}','${col.key}',this.value)"`}>
               </div>
-            </div>
-          `;
+            </div>`;
         }
 
         case "priority": {
-          const pOptions = (cfg.options && cfg.options.length) ? cfg.options : ["높음 (P1)", "보통 (P2)", "낮음 (P3)"];
+          const pOpts = (cfg.options && cfg.options.length) ? cfg.options : ["높음 (P1)", "보통 (P2)", "낮음 (P3)"];
           return `
             <div class="${span} flex flex-col gap-1">
               <label class="text-[11px] text-on-surface-variant font-semibold flex items-center gap-1 truncate">
                 <span class="material-symbols-outlined text-[13px] text-error">${col.icon}</span>${label}
               </label>
               <div class="grid grid-cols-3 gap-1.5">
-                ${pOptions.map(p => `
-                  <button type="button" ${readonly ? "disabled" : ""} class="h-[36px] px-1 rounded-lg text-[11px] font-medium border transition-colors flex items-center justify-center truncate ${
-                    val === p ? "bg-secondary-fixed text-on-secondary-fixed font-bold border-secondary/40 shadow-2xs" : "bg-surface-container-lowest text-on-surface-variant border-surface-container hover:bg-surface-container-low"
-                  } ${readonly ? 'opacity-60 cursor-default' : ''}" ${readonly ? '' : `onclick="window.saveField('${t.id}', '${col.key}', '${p}')"`}>${p}</button>
+                ${pOpts.map(p => `
+                  <button type="button" ${readonly ? "disabled" : ""}
+                    class="h-[36px] px-1 rounded-lg text-[11px] font-medium border transition-colors flex items-center justify-center truncate
+                      ${val === p ? "bg-secondary-fixed text-on-secondary-fixed font-bold border-secondary/40 shadow-2xs" : "bg-surface-container-lowest text-on-surface-variant border-surface-container hover:bg-surface-container-low"}
+                      ${readonly ? 'opacity-60 cursor-default' : ''}"
+                    ${readonly ? '' : `onclick="window.saveField('${t.id}','${col.key}','${p}')"`}>${p}</button>
                 `).join("")}
               </div>
-            </div>
-          `;
+            </div>`;
         }
 
         case "checkbox": {
+          // 체크박스만 표시 — 텍스트 레이블 없음
           const isChecked = val === "true" || val === true || val === "1" || val === "승인" || val === "완료";
           return `
             <div class="${span} flex flex-col gap-1">
               <label class="text-[11px] text-on-surface-variant font-semibold flex items-center gap-1 truncate">
                 <span class="material-symbols-outlined text-[13px] text-primary">${col.icon}</span>${label}
               </label>
-              <label class="flex items-center gap-2 h-[38px] px-2.5 rounded-lg bg-surface-container-lowest border border-surface-container text-on-surface ${readonly ? 'opacity-60 cursor-default' : 'cursor-pointer'} shadow-2xs hover:bg-surface">
-                <input type="checkbox" ${isChecked ? "checked" : ""} ${readonly ? "disabled" : ""} class="rounded text-primary focus:ring-0 accent-primary cursor-pointer w-4 h-4 shrink-0" ${readonly ? '' : `onchange="window.saveField('${t.id}', '${col.key}', this.checked)"`}>
-                <span class="text-[11px] text-on-surface font-medium truncate">${isChecked ? "완료 / 승인됨" : "미승인"}</span>
+              <label class="flex items-center justify-center h-[38px] px-2.5 rounded-lg bg-surface-container-lowest border border-surface-container shadow-2xs ${readonly ? 'opacity-60 cursor-default' : 'cursor-pointer hover:bg-surface'}">
+                <input type="checkbox" ${isChecked ? "checked" : ""} ${disabledAttr}
+                  class="accent-primary w-5 h-5"
+                  ${readonly ? '' : `onchange="window.saveField('${t.id}','${col.key}',this.checked)"`}>
               </label>
-            </div>
-          `;
+            </div>`;
         }
 
         case "progress": {
-          const min = cfg.min != null ? cfg.min : 0;
-          const max = cfg.max != null ? cfg.max : 100;
-          const unit = cfg.unit || "%";
+          const min    = cfg.min  != null ? cfg.min  : 0;
+          const max    = cfg.max  != null ? cfg.max  : 100;
+          const unit   = cfg.unit || "%";
           const numVal = Math.min(max, Math.max(min, parseInt(val, 10) || min));
           return `
             <div class="${span} flex flex-col gap-1">
@@ -571,71 +557,79 @@
                 </label>
                 <span class="font-mono text-[11px] font-bold text-primary" id="prog-val-${t.id}-${col.key}">${numVal}${unit}</span>
               </div>
-              <div class="flex items-center h-[38px] px-2.5 bg-surface-container-lowest border border-surface-container rounded-lg shadow-2xs ${readonly ? 'opacity-60' : ''}">
-                <input type="range" min="${min}" max="${max}" value="${numVal}" ${readonly ? "disabled" : ""} class="w-full accent-primary ${readonly ? 'cursor-default' : 'cursor-pointer'}" ${readonly ? '' : `oninput="document.getElementById('prog-val-${t.id}-${col.key}').textContent = this.value + '${unit}'" onchange="window.saveField('${t.id}', '${col.key}', Number(this.value))"`}>
+              <div class="flex items-center h-[38px] px-2.5 bg-surface-container-lowest border border-surface-container rounded-lg shadow-2xs ${dimClass}">
+                <input type="range" min="${min}" max="${max}" value="${numVal}" ${disabledAttr}
+                  class="w-full accent-primary ${readonly ? 'cursor-default' : 'cursor-pointer'}"
+                  ${readonly ? '' : `oninput="document.getElementById('prog-val-${t.id}-${col.key}').textContent=this.value+'${unit}'" onchange="window.saveField('${t.id}','${col.key}',Number(this.value))"`}>
               </div>
-            </div>
-          `;
+            </div>`;
         }
 
         default:
           return `
             <div class="${span} flex flex-col gap-1">
               <label class="text-[11px] text-on-surface-variant font-semibold truncate">${label}</label>
-              <input type="text" value="${val}" ${readonlyAttr} class="w-full h-[38px] bg-surface-container-lowest text-on-surface text-[12px] px-2.5 rounded-lg border border-surface-container focus:border-secondary outline-none shadow-2xs ${readonly ? 'opacity-60 cursor-default' : ''}" ${readonly ? '' : `onchange="window.saveField('${t.id}', '${col.key}', this.value)"`}>
-            </div>
-          `;
+              <input type="text" value="${val}" ${readonlyAttr}
+                class="w-full h-[38px] bg-surface-container-lowest text-on-surface text-[12px] px-2.5 rounded-lg border border-surface-container focus:border-secondary outline-none shadow-2xs ${dimClass}"
+                ${readonly ? '' : `onchange="window.saveField('${t.id}','${col.key}',this.value)"`}>
+            </div>`;
       }
     }
 
     // ─────────────────────────────────────────
     //  Render cards
-    //  - 로그인 O: 내 데이터만 표시 (수정 가능)
-    //  - 로그인 X: 전체 표시 (수정 가능, 기존 동작 유지)
+    //  · googleId 열은 카드에서 제외 (셀렉터/필터 전용)
+    //  · 로그인 → 내 이메일 데이터만 + 편집 가능
+    //  · 로그아웃 → 전체 + 편집 가능
     // ─────────────────────────────────────────
     function renderCards() {
       const identityCol = getIdentityColumn();
 
-      let filtered = allTasks;
-      let isPersonal = false;
+      // googleId 타입 열 키 집합 — 카드 필드에서 제외
+      const googleIdKeys = new Set(
+        Object.keys(columnConfigs).filter(k => columnConfigs[k]?.type === "googleId")
+      );
+      const colsToRender = getColumnsToRender().filter(col => !googleIdKeys.has(col.key));
 
-      if (mockUser) {
-        // 로그인된 경우: 내 이메일과 일치하는 데이터만
-        if (identityCol?.isGoogleId) {
-          filtered = allTasks.filter(t => t[identityCol.key] === mockUser.email);
-          isPersonal = true;
-        }
-        // googleId 열이 없으면 전체 표시
+      // 데이터 필터링
+      let filtered = allTasks;
+      if (currentUser && identityCol?.isGoogleId) {
+        filtered = allTasks.filter(t => t[identityCol.key] === currentUser.email);
       }
-      // 로그아웃 상태: 전체 표시
 
       // 카운트 레이블
-      if (mockUser) {
-        filteredCountLabel.innerHTML = `<span class="inline-flex items-center gap-1 font-bold text-[#c5221f] bg-[#fce8e6] px-2 py-0.5 rounded-full text-[11px]"><span class="material-symbols-outlined text-[13px]">alternate_email</span>${mockUser.email}</span> <span class="text-on-surface">내 항목 (${filtered.length}건)</span>`;
+      if (currentUser) {
+        filteredCountLabel.innerHTML =
+          `<span class="inline-flex items-center gap-1 font-bold text-[#c5221f] bg-[#fce8e6] px-2 py-0.5 rounded-full text-[11px]">
+            <span class="material-symbols-outlined text-[13px]">alternate_email</span>${currentUser.email}
+          </span>
+          <span class="text-on-surface"> 내 항목 (${filtered.length}건)</span>`;
       } else {
         filteredCountLabel.textContent = `총 ${filtered.length}건의 항목`;
       }
 
+      // 빈 상태
       if (!filtered.length) {
         cardsContainer.innerHTML = `
           <div class="bg-surface-container-lowest rounded-xl p-8 text-center text-outline border border-surface-container flex flex-col items-center gap-2">
             <span class="material-symbols-outlined text-[36px] text-outline">search_off</span>
-            <span>${mockUser ? `<strong>${mockUser.email}</strong> 계정에 배정된 항목이 없습니다.<br><span class="text-[11px]">관리자에게 데이터 등록을 요청하세요.</span>` : "등록된 데이터가 없습니다."}</span>
-          </div>
-        `;
+            <span>${currentUser
+              ? `<strong>${currentUser.email}</strong> 계정에 배정된 항목이 없습니다.<br><span class="text-[11px]">관리자에게 데이터 등록을 요청하세요.</span>`
+              : "등록된 데이터가 없습니다."}</span>
+          </div>`;
         return;
       }
 
-      const colsToRender = getColumnsToRender();
       cardsContainer.innerHTML = filtered.map((t, idx) => {
-        // 수정 권한: 로그아웃이면 모두 편집 가능 / 로그인이면 내 데이터만 편집 가능
-        const canEdit = !mockUser || (identityCol?.isGoogleId && t[identityCol.key] === mockUser.email);
+        // 편집 권한: 로그아웃 → 모두 편집 / 로그인 → 내 데이터만 편집
+        const canEdit = !currentUser || (identityCol?.isGoogleId && t[identityCol.key] === currentUser.email);
         const readonly = !canEdit;
 
         const fieldsHtml = colsToRender.map(col => renderField(t, col, readonly)).join("");
-        const gidVal = identityCol?.isGoogleId ? t[identityCol.key] : null;
+
+        const gidVal      = identityCol?.isGoogleId ? t[identityCol.key] : null;
         const displayName = gidVal || t.name || (t.col_1 ? String(t.col_1) : `항목 #${t.rowNumber || idx + 1}`);
-        const displaySub  = t.name && gidVal ? t.name : (t.empNo ? `(${t.empNo})` : '');
+        const displaySub  = t.name && gidVal ? t.name : (t.empNo ? `(${t.empNo})` : "");
         const displayStatus = t.status || "";
 
         return `
@@ -649,24 +643,26 @@
                 </span>
                 ${displaySub ? `<span class="text-[11px] text-outline font-mono truncate">${displaySub}</span>` : ""}
               </div>
-              <div class="flex items-center gap-1.5 shrink-0">
-                ${readonly ? `<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-container text-outline flex items-center gap-0.5"><span class="material-symbols-outlined text-[11px]">lock</span>읽기전용</span>` : `<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium flex items-center gap-0.5"><span class="material-symbols-outlined text-[11px]">edit</span>편집가능</span>`}
+              <div class="flex items-center gap-1 shrink-0">
+                ${readonly
+                  ? `<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-container text-outline flex items-center gap-0.5"><span class="material-symbols-outlined text-[11px]">lock</span>읽기전용</span>`
+                  : `<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium flex items-center gap-0.5"><span class="material-symbols-outlined text-[11px]">edit</span>편집가능</span>`}
                 ${displayStatus ? `<span class="text-[11px] px-2 py-0.5 rounded-full font-medium ${
                   displayStatus === "완료" ? "bg-secondary-fixed text-on-secondary-fixed" :
                   displayStatus === "진행중" ? "bg-primary/10 text-primary" : "bg-surface-variant text-on-surface"
                 }">${displayStatus}</span>` : ""}
               </div>
             </div>
-
-            <!-- Dynamic 12-Column Responsive Grid -->
             <div class="grid grid-cols-12 gap-2">
               ${fieldsHtml}
             </div>
-          </article>
-        `;
+          </article>`;
       }).join("");
     }
 
+    // ─────────────────────────────────────────
+    //  Save field
+    // ─────────────────────────────────────────
     window.saveField = async (id, field, value) => {
       indicateSaving();
       try {
@@ -675,10 +671,6 @@
         alert("저장 오류: " + err.message);
       }
     };
-
-    // 초기 인증 상태 로드
-    loadMockUser();
-    syncAuthUI();
   </script>
 </body>
 </html>

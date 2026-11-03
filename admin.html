@@ -1709,7 +1709,8 @@ kim.minsu@school.kr"></textarea>
       activeC: 0,
       isEditing: false,
       isDragging: false,
-      editOriginalVal: ""
+      editOriginalVal: "",
+      editDirectTyping: false   // true = 바로 타이핑 진입, false = Enter/F2 진입
     };
 
     function getCell(r, c) {
@@ -1871,6 +1872,11 @@ kim.minsu@school.kr"></textarea>
       if (gridState.isEditing) return;
       gridState.isEditing = true;
 
+      // ★ 편집 진입 방식 구분 (구글 시트 동작과 동일)
+      //   directTyping = true  → 바로 타이핑 시작 (방향키: 저장 후 셀 이동)
+      //   directTyping = false → Enter / F2 진입   (방향키: 텍스트 커서 이동)
+      gridState.editDirectTyping = (initialChar !== null);
+
       const currentTask = getTask(gridState.activeR);
       gridState.editOriginalVal = currentTask ? (currentTask[col.key] ?? "") : "";
 
@@ -1909,6 +1915,26 @@ kim.minsu@school.kr"></textarea>
       // Mirror to formula bar live
       overlayInput.addEventListener("input", () => {
         formulaInput.value = overlayInput.value;
+        // 첫 글자 입력 후에는 텍스트 커서 모드로 전환 (더 이상 directTyping이 아님)
+        // → 이후 방향키는 텍스트 커서 이동에 사용됨
+        gridState.editDirectTyping = false;
+      });
+
+      // ★ 오버레이 입력 내 방향키 처리
+      overlayInput.addEventListener("keydown", (e) => {
+        if (!gridState.editDirectTyping) return; // Enter/F2 진입: 방향키 자유
+        // directTyping 모드: 방향키 누르면 즉시 커밋 후 셀 이동
+        const dirMap = {
+          "ArrowDown":  { dr: 1,  dc: 0  },
+          "ArrowUp":    { dr: -1, dc: 0  },
+          "ArrowRight": { dr: 0,  dc: 1  },
+          "ArrowLeft":  { dr: 0,  dc: -1 },
+        };
+        if (dirMap[e.key]) {
+          e.preventDefault();
+          e.stopPropagation();
+          commitEditing(dirMap[e.key]);
+        }
       });
 
       overlayInput.addEventListener("blur", () => {
@@ -2201,6 +2227,8 @@ kim.minsu@school.kr"></textarea>
           e.preventDefault();
           cancelEditing();
         }
+        // ★ directTyping 모드의 방향키는 overlayInput의 keydown 리스너가 처리
+        //    Enter/F2 진입(directTyping=false)이면 방향키를 input에 자연스럽게 전달 (텍스트 커서 이동)
         return;
       }
 
