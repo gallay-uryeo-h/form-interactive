@@ -2291,6 +2291,44 @@ kim.minsu@school.kr"></textarea>
           updateSelectionUI();
           return;
         }
+
+        // ── Ctrl+Shift+Arrow: 데이터 끝까지 선택 확장 (구글 시트 동작) ──
+        const visibleTasks = getVisibleTasks();
+        const lastR = Math.max(0, visibleTasks.length - 1);
+        const lastC = Math.max(0, COLUMNS.length - 1);
+
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          gridState.tabActive = false;
+          gridState.activeR = lastR;
+          if (!e.shiftKey) { gridState.anchorR = lastR; gridState.anchorC = gridState.activeC; }
+          updateSelectionUI();
+          return;
+        }
+        if (e.key === "ArrowUp") {
+          e.preventDefault();
+          gridState.tabActive = false;
+          gridState.activeR = 0;
+          if (!e.shiftKey) { gridState.anchorR = 0; gridState.anchorC = gridState.activeC; }
+          updateSelectionUI();
+          return;
+        }
+        if (e.key === "ArrowRight") {
+          e.preventDefault();
+          gridState.tabActive = false;
+          gridState.activeC = lastC;
+          if (!e.shiftKey) { gridState.anchorC = lastC; gridState.anchorR = gridState.activeR; }
+          updateSelectionUI();
+          return;
+        }
+        if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          gridState.tabActive = false;
+          gridState.activeC = 0;
+          if (!e.shiftKey) { gridState.anchorC = 0; gridState.anchorR = gridState.activeR; }
+          updateSelectionUI();
+          return;
+        }
       }
 
       // Arrow navigation
