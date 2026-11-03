@@ -174,7 +174,7 @@
 
   <!-- Main Content -->
   <main class="w-full pt-16 flex-1 flex flex-col">
-    <!-- Template Gallery Section -->
+    <!-- 새 시트 만들기 섹션 -->
     <section class="w-full bg-surface-container-low px-6 py-6 border-b border-surface-container">
       <div class="max-w-6xl mx-auto flex flex-col gap-4">
         <div class="flex items-center justify-between">
@@ -182,12 +182,12 @@
             <span class="material-symbols-outlined text-[18px] text-primary">add_circle</span>
             <span>새 스프레드시트 시작</span>
           </span>
-          <span class="text-[12px] text-on-surface-variant">템플릿을 선택하여 즉시 생성</span>
+          <span class="text-[12px] text-on-surface-variant">빈 시트를 만들고 열·데이터를 직접 구성하세요</span>
         </div>
 
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <!-- Template 1: Blank Sheet -->
-          <div class="template-card group flex flex-col gap-2 cursor-pointer" data-template="empty" data-title="새 빈 시트">
+          <!-- 빈 시트 만들기 -->
+          <div class="template-card group flex flex-col gap-2 cursor-pointer" data-template="empty" data-title="">
             <div class="h-32 w-full rounded-xl bg-surface-container-lowest border-2 border-dashed border-primary/40 hover:border-primary shadow-xs hover:shadow-md transition-all p-3 flex flex-col justify-between items-center group-hover:bg-primary/[0.03]">
               <div class="flex-1 flex items-center justify-center">
                 <div class="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -199,59 +199,7 @@
                 <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
               </div>
             </div>
-            <span class="text-[13px] text-on-surface font-semibold truncate">빈 시트 (새로 작성)</span>
-          </div>
-
-          <!-- Template 2: Work Tracking (Default) -->
-          <div class="template-card group flex flex-col gap-2 cursor-pointer" data-template="work" data-title="2025 전사 업무 데이터 관리 시트">
-            <div class="h-32 w-full rounded-xl bg-surface-container-lowest border border-surface-container hover:border-primary shadow-xs hover:shadow-md transition-all p-3 flex flex-col justify-between">
-              <div class="w-full space-y-1 opacity-90">
-                <div class="h-2 w-3/4 bg-primary/40 rounded"></div>
-                <div class="grid grid-cols-4 gap-1 pt-1">
-                  <div class="h-1.5 bg-surface-container-high rounded"></div>
-                  <div class="h-1.5 bg-surface-container-high rounded"></div>
-                  <div class="h-1.5 bg-surface-container-high rounded"></div>
-                  <div class="h-1.5 bg-surface-container-high rounded"></div>
-                </div>
-                <div class="grid grid-cols-4 gap-1">
-                  <div class="h-1.5 bg-surface-container rounded"></div>
-                  <div class="h-1.5 bg-surface-container rounded"></div>
-                  <div class="h-1.5 bg-surface-container rounded"></div>
-                  <div class="h-1.5 bg-surface-container rounded"></div>
-                </div>
-              </div>
-              <div class="flex items-center justify-between text-on-surface-variant">
-                <span class="text-[10px] text-primary font-bold tracking-wider">업무 관리 템플릿</span>
-                <span class="material-symbols-outlined text-[16px] text-primary">bookmark</span>
-              </div>
-            </div>
-            <span class="text-[13px] text-on-surface font-semibold truncate">전사 업무 데이터 관리</span>
-          </div>
-
-          <!-- Template 3: Student Roster -->
-          <div class="template-card group flex flex-col gap-2 cursor-pointer" data-template="roster" data-title="2025 학생 및 출결 과제 관리 대장">
-            <div class="h-32 w-full rounded-xl bg-surface-container-lowest border border-surface-container hover:border-secondary shadow-xs hover:shadow-md transition-all p-3 flex flex-col justify-between">
-              <div class="w-full space-y-1">
-                <div class="h-2 w-1/2 bg-secondary/40 rounded"></div>
-                <div class="h-1.5 bg-surface-container-high rounded w-full mt-2"></div>
-                <div class="h-1.5 bg-surface-container rounded w-4/5"></div>
-              </div>
-              <span class="text-[10px] text-secondary font-bold uppercase">교육 / 명부 관리</span>
-            </div>
-            <span class="text-[13px] text-on-surface font-semibold truncate">학생 / 출결 과제 관리</span>
-          </div>
-
-          <!-- Template 4: Project Management -->
-          <div class="template-card group flex flex-col gap-2 cursor-pointer" data-template="project" data-title="신규 프로젝트 마일스톤 트래커">
-            <div class="h-32 w-full rounded-xl bg-surface-container-lowest border border-surface-container hover:border-amber-600 shadow-xs hover:shadow-md transition-all p-3 flex flex-col justify-between">
-              <div class="w-full space-y-1">
-                <div class="h-2 w-2/3 bg-amber-500/40 rounded"></div>
-                <div class="h-1.5 bg-surface-container-high rounded w-full mt-2"></div>
-                <div class="h-1.5 bg-surface-container rounded w-3/5"></div>
-              </div>
-              <span class="text-[10px] text-amber-700 font-bold uppercase">프로젝트 트래커</span>
-            </div>
-            <span class="text-[13px] text-on-surface font-semibold truncate">프로젝트 마일스톤 관리</span>
+            <span class="text-[13px] text-on-surface font-semibold truncate">새 빈 시트 만들기</span>
           </div>
         </div>
       </div>
@@ -319,6 +267,7 @@
       <!-- Form Inputs -->
       <div class="flex flex-col gap-3">
         <!-- Sheet Name -->
+        <!-- Sheet Name -->
         <div class="flex flex-col gap-1">
           <label class="font-semibold text-on-surface text-[11px] flex items-center gap-1">
             <span class="material-symbols-outlined text-[13px] text-primary">edit</span>
@@ -327,36 +276,10 @@
           <input type="text" id="newSheetNameInput" placeholder="예: 2025 상반기 신규 과제 관리" class="w-full h-9 px-3 rounded-lg bg-surface-container-lowest border border-surface-container focus:border-primary text-on-surface text-[12px] outline-none shadow-2xs font-medium">
         </div>
 
-        <!-- Template Options -->
-        <div class="flex flex-col gap-1.5">
-          <label class="font-semibold text-on-surface text-[11px] flex items-center gap-1">
-            <span class="material-symbols-outlined text-[13px] text-secondary">grid_view</span>
-            <span>시작 템플릿 선택</span>
-          </label>
-          <div class="grid grid-cols-3 gap-2" id="modalTemplateOptions">
-            <label class="flex flex-col p-2.5 rounded-xl border border-surface-container hover:border-primary cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-primary/5 has-[:checked]:ring-1 has-[:checked]:ring-primary/40">
-              <input type="radio" name="sheetTemplate" value="work" checked class="sr-only">
-              <span class="material-symbols-outlined text-[20px] text-primary mb-1">work</span>
-              <span class="font-bold text-[11px] text-on-surface leading-tight">업무 관리</span>
-              <span class="text-[9px] text-outline mt-0.5 leading-tight">샘플 데이터 3건</span>
-            </label>
-
-            <label class="flex flex-col p-2.5 rounded-xl border border-surface-container hover:border-primary cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-primary/5 has-[:checked]:ring-1 has-[:checked]:ring-primary/40">
-              <input type="radio" name="sheetTemplate" value="empty" class="sr-only">
-              <span class="material-symbols-outlined text-[20px] text-primary mb-1">note_add</span>
-              <span class="font-bold text-[11px] text-on-surface leading-tight">빈 시트</span>
-              <span class="text-[9px] text-outline mt-0.5 leading-tight">빈 행 3개 제공</span>
-            </label>
-
-            <label class="flex flex-col p-2.5 rounded-xl border border-surface-container hover:border-primary cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-primary/5 has-[:checked]:ring-1 has-[:checked]:ring-primary/40">
-              <input type="radio" name="sheetTemplate" value="roster" class="sr-only">
-              <span class="material-symbols-outlined text-[20px] text-secondary mb-1">school</span>
-              <span class="font-bold text-[11px] text-on-surface leading-tight">교육 / 명부</span>
-              <span class="text-[9px] text-outline mt-0.5 leading-tight">학생 명부 3건</span>
-            </label>
-          </div>
-        </div>
-      </div>
+        <p class="text-[11px] text-outline flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-[13px]">info</span>
+          빈 열 3개로 시작합니다. 생성 후 Admin 시트에서 열을 자유롭게 추가·설정하세요.
+        </p>
 
       <!-- Modal Footer -->
       <div class="flex items-center justify-between pt-2 border-t border-surface-container mt-1">
@@ -460,9 +383,10 @@
 
       onAuthStateChanged(syncAuthUI);
 
-      btnLogin.addEventListener("click", () => {
-        const email = prompt("구글 계정 이메일을 입력하세요 (Mock 로그인):", "admin@example.com");
-        if (email) signInWithGoogle(email);
+      btnLogin.addEventListener("click", async () => {
+        try { await signInWithGoogle(); } catch (err) {
+          if (err.code !== "auth/popup-closed-by-user") alert("로그인 실패: " + err.message);
+        }
       });
 
       avatarBtn.addEventListener("click", (e) => {
@@ -609,10 +533,8 @@
     sheetSearchInput.addEventListener("input", renderSheets);
 
     // Modal Control
-    function openModal(defaultTemplate = "work", defaultTitle = "") {
+    function openModal(defaultTitle = "") {
       newSheetNameInput.value = defaultTitle;
-      const radio = document.querySelector(`input[name="sheetTemplate"][value="${defaultTemplate}"]`);
-      if (radio) radio.checked = true;
       createSheetModal.classList.remove("hidden");
       setTimeout(() => newSheetNameInput.focus(), 50);
     }
@@ -621,25 +543,21 @@
       createSheetModal.classList.add("hidden");
     }
 
-    btnOpenCreateModal.addEventListener("click", () => openModal("work", ""));
-    btnTopNewSheet.addEventListener("click", () => openModal("work", ""));
+    btnOpenCreateModal.addEventListener("click", () => openModal(""));
+    btnTopNewSheet.addEventListener("click", () => openModal(""));
     btnCloseCreateModal.addEventListener("click", closeModal);
     btnCancelCreateModal.addEventListener("click", closeModal);
 
-    // Template Cards Click
+    // Template Cards Click — 클릭하면 바로 이름 입력 모달 열기
     document.querySelectorAll(".template-card").forEach(card => {
       card.addEventListener("click", () => {
-        const t = card.dataset.template;
-        const defaultTitle = card.dataset.title;
-        openModal(t, defaultTitle);
+        openModal(card.dataset.title || "");
       });
     });
 
     // Submit Sheet Creation
     btnSubmitCreateSheet.addEventListener("click", async () => {
       const name = newSheetNameInput.value.trim();
-      const selectedRadio = document.querySelector('input[name="sheetTemplate"]:checked');
-      const template = selectedRadio ? selectedRadio.value : "work";
 
       if (!name) {
         alert("시트 이름을 입력해주세요.");
@@ -651,9 +569,9 @@
       btnSubmitCreateSheet.innerHTML = `<span class="material-symbols-outlined text-[16px] animate-spin">sync</span><span>생성 중...</span>`;
 
       try {
-        const created = await createSheet(name, template);
+        // 항상 빈 시트로 생성 (실사용 — mock 데이터 없음)
+        const created = await createSheet(name, "empty");
         closeModal();
-        // Redirect directly to the newly created sheet in Admin view!
         window.location.href = `admin.html?sheetId=${created.id}`;
       } catch (err) {
         alert("시트 생성 실패: " + err.message);
