@@ -2292,23 +2292,53 @@ kim.minsu@school.kr"></textarea>
     window.pasteTextToGrid = pasteTextToGrid;
     window.copySelectionToClipboard = copySelectionToClipboard;
 
-    // Global Keyboard Listener
+    // ══════════════════════════════════════════════════════════════════
+    // KEYBOARD HANDLER — 구글 시트 표준 동작
+    //
+    // [탐색 모드]
+    //   Enter          → 편집 시작 (현재 셀)
+    //   Shift+Enter    → 편집 시작 (현재 셀)
+    //   F2             → 편집 시작 (커서 끝, directTyping=false)
+    //   화살표         → 셀 이동 (Shift: 선택 확장)
+    //   Ctrl+화살표    → 데이터 끝까지 이동 (Shift: 선택 확장)
+    //   Tab            → 오른쪽 이동 (Shift: 왼쪽)
+    //   Delete/Back    → 셀 내용 삭제
+    //   글자 입력      → 즉시 편집 시작 (directTyping=true)
+    //   Space          → 체크박스 토글
+    //
+    // [편집 모드 — 텍스트 오버레이]
+    //   Enter          → 커밋 + 아래 이동
+    //   Shift+Enter    → 커밋 + 위 이동
+    //   Tab            → 커밋 + 오른쪽 (Tab 세션 시작)
+    //   Shift+Tab      → 커밋 + 왼쪽
+    //   Tab 세션 중 Enter → 커밋 + 시작 열 복귀 + 아래
+    //   Escape         → 취소 (원래 값 복원)
+    //   화살표         → directTyping=true: 커밋+이동 / false: 텍스트 커서
+    //
+    // [편집 모드 — select/date/range 폼 컨트롤]
+    //   Enter          → 아래 이동 (포커스 해제)
+    //   Tab            → 오른쪽 이동 (포커스 해제)
+    //   Escape         → 포커스 해제
+    //
+    // [수식 입력줄]
+    //   Enter          → 저장 + 아래 이동
+    //   Escape         → 취소
+    // ══════════════════════════════════════════════════════════════════
     window.addEventListener("keydown", (e) => {
-      // 1. If Type Settings Modal is open, do not handle grid navigation
+      // ── 0. 모달 열려 있으면 무시 ──────────────────────────────────
       if (!typeMenuModal.classList.contains("hidden")) return;
 
-      // 2. If focus is in Formula Input Bar
+      // ── 1. 수식 입력줄 포커스 ─────────────────────────────────────
       if (document.activeElement === formulaInput) {
         if (e.key === "Enter") {
           e.preventDefault();
           const task = getTask(gridState.activeR);
-          const col = COLUMNS[gridState.activeC];
-          if (task) {
-            window.handleFieldUpdate(task.id, col.key, formulaInput.value);
-          }
+          const col  = COLUMNS[gridState.activeC];
+          if (task) window.handleFieldUpdate(task.id, col.key, formulaInput.value);
           moveActiveCell(1, 0, false);
           scrollContainer.focus();
         } else if (e.key === "Escape") {
+          e.preventDefault();
           formulaInput.blur();
           scrollContainer.focus();
           updateSelectionUI();
@@ -2316,173 +2346,177 @@ kim.minsu@school.kr"></textarea>
         return;
       }
 
-      // 3. If currently in cell Overlay Edit Mode
+      // ── 2. 텍스트 오버레이 편집 모드 ─────────────────────────────
       if (gridState.isEditing) {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          if (gridState.tabActive && !e.shiftKey) {
-            // Tab 세션 중 Enter: 시작 열로 복귀 + 아래 이동
+        switch (e.key) {
+          case "Enter":
+            e.preventDefault();
+            if (gridState.tabActive && !e.shiftKey) {
+              // Tab 세션 중 Enter: 시작 열로 복귀 + 아래
+              const targetC = gridState.tabSessionAnchorC ?? gridState.activeC;
+              gridState.tabActive = false;
+              commitEditing({ dr: 0, dc: 0 });
+              gridState.activeC = targetC;
+              gridState.anchorC = targetC;
+              moveActiveCell(1, 0, false);
+            } else {
+              gridState.tabActive = false;
+              commitEditing({ dr: e.shiftKey ? -1 : 1, dc: 0 });
+            }
+            break;
+          case "Tab":
+            e.preventDefault();
+            if (!gridState.tabActive) {
+              gridState.tabSessionAnchorC = gridState.activeC;
+              gridState.tabActive = true;
+            }
+            commitEditing({ dr: 0, dc: e.shiftKey ? -1 : 1 });
+            break;
+          case "Escape":
+            e.preventDefault();
             gridState.tabActive = false;
-            const targetC = gridState.tabSessionAnchorC ?? gridState.activeC;
-            commitEditing({ dr: 0, dc: 0 });
-            gridState.activeC = targetC;
-            gridState.anchorC = targetC;
-            moveActiveCell(1, 0, false);
-          } else {
-            gridState.tabActive = false;
-            commitEditing({ dr: e.shiftKey ? -1 : 1, dc: 0 });
-          }
-        } else if (e.key === "Tab") {
-          e.preventDefault();
-          if (!gridState.tabActive) {
-            gridState.tabSessionAnchorC = gridState.activeC;
-            gridState.tabActive = true;
-          }
-          commitEditing({ dr: 0, dc: e.shiftKey ? -1 : 1 });
-        } else if (e.key === "Escape") {
-          e.preventDefault();
-          gridState.tabActive = false;
-          cancelEditing();
-        }
-        // ★ directTyping 모드의 방향키는 overlayInput의 keydown 리스너가 처리
-        //    Enter/F2 진입(directTyping=false)이면 방향키를 input에 자연스럽게 전달 (텍스트 커서 이동)
-        return;
-      }
-
-      // 4. If focus is inside a cell form control (select dropdown or date input)
-      if (document.activeElement && (document.activeElement.tagName === "SELECT" || document.activeElement.tagName === "INPUT")) {
-        if (e.key === "Tab") {
-          e.preventDefault();
-          moveActiveCell(0, e.shiftKey ? -1 : 1, false);
-          scrollContainer.focus();
-        } else if (e.key === "Enter") {
-          e.preventDefault();
-          moveActiveCell(e.shiftKey ? -1 : 1, 0, false);
-          scrollContainer.focus();
-        } else if (e.key === "Escape") {
-          document.activeElement.blur();
-          scrollContainer.focus();
+            cancelEditing();
+            break;
+          // 방향키는 overlayInput의 keydown이 처리
+          // (directTyping=true면 커밋+이동, false면 텍스트 커서 이동)
         }
         return;
       }
 
-      // 5. Navigation Mode Shortcuts
+      // ── 3. 셀 폼 컨트롤 (select / date / range) 포커스 중 ──────────
+      // cell-overlay-editor INPUT은 section 2(isEditing)에서 처리되므로 제외
+      const ae = document.activeElement;
+      const isFormControl = ae
+        && ae !== formulaInput
+        && !ae.classList.contains("cell-overlay-editor")
+        && (ae.tagName === "SELECT" || ae.tagName === "INPUT" || ae.tagName === "TEXTAREA");
+      if (isFormControl) {
+        switch (e.key) {
+          case "Enter":
+            e.preventDefault();
+            ae.blur();
+            scrollContainer.focus();
+            // Enter: 폼 컨트롤 확인 후 포커스만 복귀 (아래 이동 없음)
+            updateSelectionUI();
+            break;
+          case "Tab":
+            e.preventDefault();
+            ae.blur();
+            moveActiveCell(0, e.shiftKey ? -1 : 1, false);
+            scrollContainer.focus();
+            break;
+          case "Escape":
+            e.preventDefault();
+            ae.blur();
+            scrollContainer.focus();
+            break;
+        }
+        return;
+      }
+
+      // ── 4. 탐색 모드 ─────────────────────────────────────────────
+
+      // Ctrl / Meta 조합키
       if (e.ctrlKey || e.metaKey) {
-        if (e.key === "c" || e.key === "C") {
-          e.preventDefault();
-          copySelectionToClipboard();
-          return;
-        }
-        if (e.key === "v" || e.key === "V") {
-          e.preventDefault();
-          navigator.clipboard.readText().then(text => {
-            if (text) pasteTextToGrid(text);
-          }).catch(err => console.warn("Clipboard read:", err));
-          return;
-        }
-        if (e.key === "a" || e.key === "A") {
-          e.preventDefault();
-          const visibleTasks = getVisibleTasks();
-          gridState.anchorR = 0;
-          gridState.anchorC = 0;
-          gridState.activeR = Math.max(0, visibleTasks.length - 1);
-          gridState.activeC = COLUMNS.length - 1;
-          updateSelectionUI();
-          return;
-        }
-
-        // ── Ctrl+Arrow / Ctrl+Shift+Arrow: 데이터 끝까지 이동/선택 (구글 시트 동작) ──
-        const visibleTasks = getVisibleTasks();
-        const lastR = Math.max(0, visibleTasks.length - 1);
-        const lastC = Math.max(0, COLUMNS.length - 1);
-
-        const hasData = (r, c) => {
-          const col = COLUMNS[c];
-          if (!col || !visibleTasks[r]) return false;
-          const v = visibleTasks[r][col.key];
-          return v != null && v !== "" && v !== false;
-        };
-
-        const ctrlArrowTarget = (dir) => {
-          const r0 = gridState.activeR, c0 = gridState.activeC;
-          if (dir === "down") {
-            if (!hasData(r0, c0)) {
-              let r = r0 + 1; while (r <= lastR && !hasData(r, c0)) r++; return { r: Math.min(r, lastR), c: c0 };
-            } else if (r0 === lastR || !hasData(r0 + 1, c0)) {
-              let r = r0 + 1; while (r <= lastR && !hasData(r, c0)) r++; return { r: Math.min(r, lastR), c: c0 };
-            } else {
-              let r = r0 + 1; while (r < lastR && hasData(r + 1, c0)) r++; return { r, c: c0 };
-            }
-          } else if (dir === "up") {
-            if (!hasData(r0, c0)) {
-              let r = r0 - 1; while (r >= 0 && !hasData(r, c0)) r--; return { r: Math.max(r, 0), c: c0 };
-            } else if (r0 === 0 || !hasData(r0 - 1, c0)) {
-              let r = r0 - 1; while (r >= 0 && !hasData(r, c0)) r--; return { r: Math.max(r, 0), c: c0 };
-            } else {
-              let r = r0 - 1; while (r > 0 && hasData(r - 1, c0)) r--; return { r, c: c0 };
-            }
-          } else if (dir === "right") {
-            if (!hasData(r0, c0)) {
-              let c = c0 + 1; while (c <= lastC && !hasData(r0, c)) c++; return { r: r0, c: Math.min(c, lastC) };
-            } else if (c0 === lastC || !hasData(r0, c0 + 1)) {
-              let c = c0 + 1; while (c <= lastC && !hasData(r0, c)) c++; return { r: r0, c: Math.min(c, lastC) };
-            } else {
-              let c = c0 + 1; while (c < lastC && hasData(r0, c + 1)) c++; return { r: r0, c };
-            }
-          } else { // left
-            if (!hasData(r0, c0)) {
-              let c = c0 - 1; while (c >= 0 && !hasData(r0, c)) c--; return { r: r0, c: Math.max(c, 0) };
-            } else if (c0 === 0 || !hasData(r0, c0 - 1)) {
-              let c = c0 - 1; while (c >= 0 && !hasData(r0, c)) c--; return { r: r0, c: Math.max(c, 0) };
-            } else {
-              let c = c0 - 1; while (c > 0 && hasData(r0, c - 1)) c--; return { r: r0, c };
-            }
+        switch (e.key) {
+          case "c": case "C":
+            e.preventDefault();
+            copySelectionToClipboard();
+            return;
+          case "v": case "V":
+            e.preventDefault();
+            navigator.clipboard.readText()
+              .then(text => { if (text) pasteTextToGrid(text); })
+              .catch(err => console.warn("Clipboard read:", err));
+            return;
+          case "a": case "A": {
+            e.preventDefault();
+            const vt = getVisibleTasks();
+            gridState.anchorR = 0; gridState.anchorC = 0;
+            gridState.activeR = Math.max(0, vt.length - 1);
+            gridState.activeC = COLUMNS.length - 1;
+            updateSelectionUI();
+            return;
           }
-        };
+        }
 
-        const dirMap = { ArrowDown: "down", ArrowUp: "up", ArrowRight: "right", ArrowLeft: "left" };
-        if (dirMap[e.key]) {
+        // Ctrl+Arrow / Ctrl+Shift+Arrow: 데이터 끝까지 이동 / 선택
+        if (["ArrowDown","ArrowUp","ArrowRight","ArrowLeft"].includes(e.key)) {
           e.preventDefault();
           gridState.tabActive = false;
-          const { r, c } = ctrlArrowTarget(dirMap[e.key]);
-          gridState.activeR = r;
-          gridState.activeC = c;
+
+          const vt    = getVisibleTasks();
+          const lastR = Math.max(0, vt.length - 1);
+          const lastC = Math.max(0, COLUMNS.length - 1);
+
+          const hasData = (r, c) => {
+            const col = COLUMNS[c];
+            if (!col || !vt[r]) return false;
+            const v = vt[r][col.key];
+            return v != null && v !== "" && v !== false;
+          };
+
+          // 구글 시트 Ctrl+Arrow 로직:
+          //   현재 셀이 비어 있으면 → 다음 채워진 셀로
+          //   현재 셀이 채워져 있고 다음이 비어 있으면 → 다음 채워진 셀로
+          //   현재 셀이 채워져 있고 다음도 채워져 있으면 → 연속 블록의 끝으로
+          const ctrlMove = (dir) => {
+            const r0 = gridState.activeR, c0 = gridState.activeC;
+            if (dir === "down") {
+              if (!hasData(r0, c0) || r0 === lastR || !hasData(r0 + 1, c0)) {
+                let r = r0 + 1; while (r <= lastR && !hasData(r, c0)) r++;
+                return { r: Math.min(r, lastR), c: c0 };
+              }
+              let r = r0 + 1; while (r < lastR && hasData(r + 1, c0)) r++;
+              return { r, c: c0 };
+            }
+            if (dir === "up") {
+              if (!hasData(r0, c0) || r0 === 0 || !hasData(r0 - 1, c0)) {
+                let r = r0 - 1; while (r >= 0 && !hasData(r, c0)) r--;
+                return { r: Math.max(r, 0), c: c0 };
+              }
+              let r = r0 - 1; while (r > 0 && hasData(r - 1, c0)) r--;
+              return { r, c: c0 };
+            }
+            if (dir === "right") {
+              if (!hasData(r0, c0) || c0 === lastC || !hasData(r0, c0 + 1)) {
+                let c = c0 + 1; while (c <= lastC && !hasData(r0, c)) c++;
+                return { r: r0, c: Math.min(c, lastC) };
+              }
+              let c = c0 + 1; while (c < lastC && hasData(r0, c + 1)) c++;
+              return { r: r0, c };
+            }
+            // left
+            if (!hasData(r0, c0) || c0 === 0 || !hasData(r0, c0 - 1)) {
+              let c = c0 - 1; while (c >= 0 && !hasData(r0, c)) c--;
+              return { r: r0, c: Math.max(c, 0) };
+            }
+            let c = c0 - 1; while (c > 0 && hasData(r0, c - 1)) c--;
+            return { r: r0, c };
+          };
+
+          const dirMap = { ArrowDown: "down", ArrowUp: "up", ArrowRight: "right", ArrowLeft: "left" };
+          const { r, c } = ctrlMove(dirMap[e.key]);
+          gridState.activeR = r; gridState.activeC = c;
           if (!e.shiftKey) { gridState.anchorR = r; gridState.anchorC = c; }
           updateSelectionUI();
           return;
         }
+        return; // 다른 Ctrl 조합은 기본 동작
       }
 
-      // Arrow navigation
-      if (e.key === "ArrowDown") {
+      // 방향키: 셀 이동 (Shift: 선택 확장)
+      if (["ArrowDown","ArrowUp","ArrowRight","ArrowLeft"].includes(e.key)) {
         e.preventDefault();
         gridState.tabActive = false;
-        moveActiveCell(1, 0, e.shiftKey);
-        return;
-      }
-      if (e.key === "ArrowUp") {
-        e.preventDefault();
-        gridState.tabActive = false;
-        moveActiveCell(-1, 0, e.shiftKey);
-        return;
-      }
-      if (e.key === "ArrowRight") {
-        e.preventDefault();
-        gridState.tabActive = false;
-        moveActiveCell(0, 1, e.shiftKey);
-        return;
-      }
-      if (e.key === "ArrowLeft") {
-        e.preventDefault();
-        gridState.tabActive = false;
-        moveActiveCell(0, -1, e.shiftKey);
+        const delta = { ArrowDown:[1,0], ArrowUp:[-1,0], ArrowRight:[0,1], ArrowLeft:[0,-1] }[e.key];
+        moveActiveCell(delta[0], delta[1], e.shiftKey);
         return;
       }
 
-      // Tab navigation
+      // Tab: 오른쪽/왼쪽 이동 (Tab 세션)
       if (e.key === "Tab") {
         e.preventDefault();
-        // Tab 세션 시작: 처음 Tab 누를 때 시작 열 기록
         if (!gridState.tabActive) {
           gridState.tabSessionAnchorC = gridState.activeC;
           gridState.tabActive = true;
@@ -2491,40 +2525,36 @@ kim.minsu@school.kr"></textarea>
         return;
       }
 
-      // ─── Enter: 구글 시트 동작 ───
-      //   탐색 모드: Enter → 아래 이동 / Shift+Enter → 위 이동
-      //   Tab 세션 중 Enter → Tab 시작 열로 복귀 + 한 행 아래
-      //   (편집 시작은 F2 또는 직접 타이핑)
+      // ★ Enter: 편집 시작 (구글 시트 표준)
       if (e.key === "Enter") {
         e.preventDefault();
         if (gridState.tabActive && !e.shiftKey) {
-          // Tab 세션 종료: 시작 열로 복귀 + 아래 이동
-          gridState.tabActive = false;
+          // Tab 세션 후 Enter: 시작 열 복귀 + 아래
           const targetC = gridState.tabSessionAnchorC ?? 0;
+          gridState.tabActive = false;
           gridState.activeC = targetC;
           gridState.anchorC = targetC;
           moveActiveCell(1, 0, false);
         } else {
+          // 편집 시작 (F2 모드: 기존 값 유지, 커서 끝)
           gridState.tabActive = false;
-          moveActiveCell(e.shiftKey ? -1 : 1, 0, false);
+          startEditing(null, true);
         }
         return;
       }
 
-      // F2 key: Enter edit mode (cursor at end, Enter/F2 mode)
+      // F2: 편집 시작 (directTyping=false, 커서 끝)
       if (e.key === "F2") {
         e.preventDefault();
         startEditing(null, true);
         return;
       }
 
-      // Home: 현재 행의 첫 번째 열로 이동
+      // Home / End
       if (e.key === "Home") {
         e.preventDefault();
         if (e.ctrlKey) {
-          // Ctrl+Home: 전체 첫 번째 셀 (A1)
-          gridState.activeR = 0;
-          gridState.activeC = 0;
+          gridState.activeR = 0; gridState.activeC = 0;
           if (!e.shiftKey) { gridState.anchorR = 0; gridState.anchorC = 0; }
         } else {
           gridState.activeC = 0;
@@ -2533,19 +2563,13 @@ kim.minsu@school.kr"></textarea>
         updateSelectionUI();
         return;
       }
-
-      // End: 현재 행의 마지막 열로 이동
       if (e.key === "End") {
         e.preventDefault();
-        const visibleTasks = getVisibleTasks();
+        const vt = getVisibleTasks();
         if (e.ctrlKey) {
-          // Ctrl+End: 전체 마지막 셀
-          gridState.activeR = Math.max(0, visibleTasks.length - 1);
+          gridState.activeR = Math.max(0, vt.length - 1);
           gridState.activeC = COLUMNS.length - 1;
-          if (!e.shiftKey) {
-            gridState.anchorR = gridState.activeR;
-            gridState.anchorC = gridState.activeC;
-          }
+          if (!e.shiftKey) { gridState.anchorR = gridState.activeR; gridState.anchorC = gridState.activeC; }
         } else {
           gridState.activeC = COLUMNS.length - 1;
           if (!e.shiftKey) gridState.anchorC = COLUMNS.length - 1;
@@ -2554,19 +2578,11 @@ kim.minsu@school.kr"></textarea>
         return;
       }
 
-      // Page Down / Page Up: 10행 단위 이동
-      if (e.key === "PageDown") {
-        e.preventDefault();
-        moveActiveCell(10, 0, e.shiftKey);
-        return;
-      }
-      if (e.key === "PageUp") {
-        e.preventDefault();
-        moveActiveCell(-10, 0, e.shiftKey);
-        return;
-      }
+      // Page Down / Page Up: 10행 이동
+      if (e.key === "PageDown") { e.preventDefault(); moveActiveCell(10, 0, e.shiftKey); return; }
+      if (e.key === "PageUp")   { e.preventDefault(); moveActiveCell(-10, 0, e.shiftKey); return; }
 
-      // Space: Toggle checkbox or start editing
+      // Space: 체크박스 토글
       if (e.key === " ") {
         const col = COLUMNS[gridState.activeC];
         const cfg = currentColumnConfigs[col.key] || DEFAULT_COLUMN_CONFIGS[col.key] || {};
@@ -2575,21 +2591,26 @@ kim.minsu@school.kr"></textarea>
           startEditing();
           return;
         }
+        // 일반 셀: Space도 편집 시작
+        e.preventDefault();
+        startEditing(" ", true);
+        return;
       }
 
-      // Delete / Backspace: Clear cell or range
+      // Delete / Backspace: 셀 내용 삭제
       if (e.key === "Delete" || e.key === "Backspace") {
         e.preventDefault();
         deleteSelectedRange();
         return;
       }
 
-      // ★ TYPE-TO-EDIT IMMEDIATELY: Any printable character typed in navigation mode immediately starts editing! ★
+      // ★ 글자 입력: 즉시 편집 시작 (directTyping=true)
       if (!e.ctrlKey && !e.metaKey && !e.altKey) {
         if (e.key.length === 1) {
           e.preventDefault();
           startEditing(e.key, true);
         } else if (e.key === "Process") {
+          // IME 한글 입력 시작
           startEditing("", true);
         }
       }
