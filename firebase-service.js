@@ -702,3 +702,42 @@ export async function resetCollection() {
   }
   await seedInitialTasks();
 }
+
+// ─────────────────────────────────────────────────────────────
+//  Admin 권한 관리
+//  Firestore: form-interactive/_admins 문서
+//  { emails: ["admin@example.com", ...] }
+// ─────────────────────────────────────────────────────────────
+
+const ADMIN_DOC_ID = "_admins";
+
+/**
+ * 어드민 이메일 목록 조회
+ * @returns {Promise<string[]>}
+ */
+export async function getAdminEmails() {
+  try {
+    const snap = await getDoc(doc(db, COLLECTION_NAME, ADMIN_DOC_ID));
+    if (snap.exists()) {
+      return snap.data().emails || [];
+    }
+    // 문서 없으면 기본 어드민 초기화
+    await setDoc(doc(db, COLLECTION_NAME, ADMIN_DOC_ID), {
+      emails: ["gallay@uryeo-h.gne.go.kr"]
+    });
+    return ["gallay@uryeo-h.gne.go.kr"];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 특정 이메일이 어드민인지 확인
+ * @param {string} email
+ * @returns {Promise<boolean>}
+ */
+export async function isAdminEmail(email) {
+  if (!email) return false;
+  const emails = await getAdminEmails();
+  return emails.map(e => e.toLowerCase()).includes(email.toLowerCase());
+}
