@@ -621,12 +621,22 @@ kim.minsu@school.kr"></textarea>
             </select>
           </div>
 
-          <!-- Header row checkbox -->
-          <div class="flex flex-col justify-end">
-            <label class="flex items-center gap-2 h-8 px-2.5 rounded-lg border border-surface-variant bg-surface-container-lowest cursor-pointer hover:bg-surface-container/60 transition-colors">
-              <input type="checkbox" id="chkUseFirstRowHeader" checked class="accent-primary w-4 h-4 cursor-pointer">
-              <span class="text-[11px] font-medium text-on-surface">1행을 열 이름(헤더)으로 사용</span>
+          <!-- Header row mode select -->
+          <div class="flex flex-col gap-1">
+            <label class="text-[11px] font-semibold text-on-surface-variant flex items-center justify-between">
+              <span class="flex items-center gap-1">
+                <span class="material-symbols-outlined text-[14px] text-primary">title</span>
+                <span>헤더(열 이름) 설정</span>
+              </span>
+              <span id="excelHeaderAutoDetectNotice" class="hidden text-[10px] text-[#006a39] font-bold bg-[#e6f4ea] px-1.5 py-0.5 rounded">
+                ⚡ 이중 헤더 감지됨
+              </span>
             </label>
+            <select id="excelHeaderRowMode" class="h-8 px-2.5 rounded-lg border border-surface-variant bg-surface-container-lowest text-on-surface text-[11px] font-medium focus:border-primary outline-none cursor-pointer">
+              <option value="single">1행 헤더 (일반 엑셀 / 2행부터 데이터)</option>
+              <option value="double">2행 이중 헤더 (센진학·나이스 대입엑셀 / 3행부터 데이터)</option>
+              <option value="none">헤더 없음 (1행부터 순수 데이터)</option>
+            </select>
           </div>
         </div>
 
@@ -3745,7 +3755,8 @@ kim.minsu@school.kr"></textarea>
     const btnApplyExcelUpload = document.getElementById("btnApplyExcelUpload");
     const excelModalFileName = document.getElementById("excelModalFileName");
     const excelSheetSelect = document.getElementById("excelSheetSelect");
-    const chkUseFirstRowHeader = document.getElementById("chkUseFirstRowHeader");
+    const excelHeaderRowMode = document.getElementById("excelHeaderRowMode");
+    const excelHeaderAutoDetectNotice = document.getElementById("excelHeaderAutoDetectNotice");
     const excelPreviewStats = document.getElementById("excelPreviewStats");
     const excelPreviewTableWrap = document.getElementById("excelPreviewTableWrap");
     const excelModalStatus = document.getElementById("excelModalStatus");
@@ -3851,7 +3862,7 @@ kim.minsu@school.kr"></textarea>
             excelSheetSelect.selectedIndex = 0;
           }
 
-          loadSheetData(currentWorkbook.SheetNames[0]);
+          loadSheetData(currentWorkbook.SheetNames[0], true);
           openExcelModal();
         } catch (err) {
           console.error("Excel parse error:", err);
@@ -3867,26 +3878,25 @@ kim.minsu@school.kr"></textarea>
     if (excelSheetSelect) {
       excelSheetSelect.addEventListener("change", () => {
         if (currentWorkbook) {
-          loadSheetData(excelSheetSelect.value);
+          loadSheetData(excelSheetSelect.value, true);
         }
       });
     }
 
-    if (chkUseFirstRowHeader) {
-      chkUseFirstRowHeader.addEventListener("change", () => {
-        processAndRenderPreview();
+    if (excelHeaderRowMode) {
+      excelHeaderRowMode.addEventListener("change", () => {
+        processAndRenderPreview(false);
       });
     }
 
-    function loadSheetData(sheetName) {
+    function loadSheetData(sheetName, isNewFile = false) {
       if (!currentWorkbook || !currentWorkbook.Sheets[sheetName]) return;
       const ws = currentWorkbook.Sheets[sheetName];
-      // sheet_to_json with header: 1 returns 2D array of rows
       currentRawData = window.XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
-      processAndRenderPreview();
+      processAndRenderPreview(isNewFile);
     }
 
-    function processAndRenderPreview() {
+    function processAndRenderPreview(isNewFile = false) {
       if (!currentRawData || currentRawData.length === 0) {
         if (excelPreviewTableWrap) excelPreviewTableWrap.innerHTML = '<div class="p-4 text-center text-outline text-xs">시트에 데이터가 없습니다.</div>';
         if (excelPreviewStats) excelPreviewStats.textContent = "총 0행 × 0열";
@@ -3907,18 +3917,58 @@ kim.minsu@school.kr"></textarea>
       let maxCols = 0;
       validRows.forEach(r => { if (r.length > maxCols) maxCols = r.length; });
 
-      const useHeader = chkUseFirstRowHeader ? chkUseFirstRowHeader.checked : true;
+      // 이중 헤더(센진학/나이스 대입 엑셀 등) 스마트 자동 감지
+      if (isNewFile && validRows.length >= 3 && excelHeaderRowMode) {
+        const row0 = validRows[0] || [];
+        const row1 = validRows[1] || [];
+        // 2행의 앞쪽(0, 1, 2, 3열)이 비어있거나 병합되어 있고, 2행 뒤쪽에 텍스트(소분류/표점/등급 등)가 채워진 경우
+        const leadEmptyCount = [0, 1, 2, 3].filter(idx => !row1[idx] || String(row1[idx]).trim() === "").length;
+        const hasTextInRow1 = row1.slice(3).some(c => c != null && String(c).trim() !== "");
+        if (leadEmptyCount >= 2 && hasTextInRow1) {
+          excelHeaderRowMode.value = "double";
+          if (excelHeaderAutoDetectNotice) excelHeaderAutoDetectNotice.classList.remove("hidden");
+        } else {
+          excelHeaderRowMode.value = "single";
+          if (excelHeaderAutoDetectNotice) excelHeaderAutoDetectNotice.classList.add("hidden");
+        }
+      }
+
+      const headerMode = excelHeaderRowMode ? excelHeaderRowMode.value : "single";
 
       let rawHeaders = [];
       let rawDataRows = [];
 
-      if (useHeader) {
+      if (headerMode === "double" && validRows.length >= 3) {
+        // 2행 이중 헤더 병합
+        const row0 = validRows[0] || [];
+        const row1 = validRows[1] || [];
+        for (let c = 0; c < maxCols; c++) {
+          const t0 = (row0[c] != null ? String(row0[c]) : "").trim();
+          const t1 = (row1[c] != null ? String(row1[c]) : "").trim();
+          let headerTitle = "";
+          if (t0 && t1) {
+            headerTitle = (t0 === t1) ? t0 : (t0 + " (" + t1 + ")");
+          } else if (t0) {
+            headerTitle = t0;
+          } else if (t1) {
+            headerTitle = t1;
+          } else {
+            headerTitle = "열 " + (c + 1);
+          }
+          rawHeaders.push(headerTitle);
+        }
+        // 실제 데이터는 3행(index 2)부터 시작!
+        rawDataRows = validRows.slice(2);
+      } else if (headerMode === "single") {
+        // 1행 헤더
         rawHeaders = validRows[0].map((h, i) => String(h || "").trim() || ("열 " + (i + 1)));
         while (rawHeaders.length < maxCols) {
           rawHeaders.push("열 " + (rawHeaders.length + 1));
         }
+        // 데이터는 2행(index 1)부터 시작!
         rawDataRows = validRows.slice(1);
       } else {
+        // 헤더 없음 (모든 행이 순수 데이터)
         for (let i = 0; i < maxCols; i++) {
           rawHeaders.push("열 " + (i + 1));
         }
@@ -4040,7 +4090,6 @@ kim.minsu@school.kr"></textarea>
         }
       });
     }
-
   </script>
 </body>
 </html>
