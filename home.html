@@ -80,6 +80,47 @@
           <span class="material-symbols-outlined text-[16px]">add</span>
           <span>새 시트 만들기</span>
         </button>
+
+        <!-- 구글 로그인 영역 -->
+        <div class="h-4 w-px bg-[#dadce0] mx-0.5"></div>
+        <!-- 로그아웃 상태 -->
+        <button id="btnGoogleLogin" type="button"
+          class="flex items-center gap-1.5 h-7 px-2.5 rounded-full border border-[#dadce0] bg-white text-[#3c4043] text-[11px] font-medium hover:bg-[#f8f9fa] shadow-2xs transition-colors"
+          title="구글 계정으로 로그인">
+          <svg viewBox="0 0 24 24" width="13" height="13">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+          </svg>
+          <span>로그인</span>
+        </button>
+        <!-- 로그인 상태: 아바타 + 드롭다운 -->
+        <div id="userAvatarArea" class="hidden relative">
+          <button id="userAvatarBtn" type="button"
+            class="w-7 h-7 rounded-full bg-[#ea4335] text-white flex items-center justify-center font-bold text-[11px] shrink-0 shadow-xs hover:ring-2 hover:ring-[#ea4335]/40 transition-all"
+            title="구글 계정">
+            <span id="userAvatarInitial">G</span>
+          </button>
+          <div id="userDropdown"
+            class="hidden absolute right-0 top-9 w-52 bg-white border border-surface-container rounded-xl shadow-lg p-1 z-[100]">
+            <div class="px-3 py-2 border-b border-surface-container mb-1">
+              <p class="text-[12px] font-semibold text-on-surface truncate" id="dropdownName">사용자</p>
+              <p class="text-[10px] text-outline font-mono truncate" id="dropdownEmail">user@gmail.com</p>
+            </div>
+            <div class="px-3 py-1.5 text-[10px] text-outline">
+              <span class="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 rounded px-1.5 py-0.5">
+                <span class="material-symbols-outlined text-[11px]">construction</span>
+                Mock 모드 · Firebase Auth 전환 준비 완료
+              </span>
+            </div>
+            <button type="button" id="btnLogout"
+              class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[12px] text-[#ba1a1a] hover:bg-[#ffdad6] transition-colors">
+              <span class="material-symbols-outlined text-[14px]">logout</span>
+              로그아웃
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </header>
@@ -290,6 +331,60 @@
       deleteSheet,
       subscribeTasks
     } from "./firebase-service.js";
+
+    import { onAuthStateChanged, signInWithGoogle, signOut } from "./auth-service.js";
+
+    // ── 구글 로그인 UI 연동 ──────────────────────────────────────
+    (function setupAuth() {
+      const btnLogin   = document.getElementById("btnGoogleLogin");
+      const avatarArea = document.getElementById("userAvatarArea");
+      const avatarBtn  = document.getElementById("userAvatarBtn");
+      const avatarInit = document.getElementById("userAvatarInitial");
+      const dropdown   = document.getElementById("userDropdown");
+      const dropName   = document.getElementById("dropdownName");
+      const dropEmail  = document.getElementById("dropdownEmail");
+      const btnLogout  = document.getElementById("btnLogout");
+
+      function syncAuthUI(user) {
+        if (user) {
+          btnLogin.classList.add("hidden");
+          avatarArea.classList.remove("hidden");
+          const initials = (user.displayName || user.email || "?").charAt(0).toUpperCase();
+          avatarInit.textContent = initials;
+          avatarBtn.style.backgroundColor = "#" + Math.abs(user.email.split("").reduce((a, c) => (a << 5) - a + c.charCodeAt(0), 0) & 0xFFFFFF).toString(16).padStart(6, "0").slice(0, 6);
+          dropName.textContent  = user.displayName || "관리자";
+          dropEmail.textContent = user.email || "";
+        } else {
+          btnLogin.classList.remove("hidden");
+          avatarArea.classList.add("hidden");
+          dropdown.classList.add("hidden");
+        }
+      }
+
+      onAuthStateChanged(syncAuthUI);
+
+      btnLogin.addEventListener("click", () => {
+        const email = prompt("구글 계정 이메일을 입력하세요 (Mock 로그인):", "admin@example.com");
+        if (email) signInWithGoogle(email);
+      });
+
+      avatarBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        dropdown.classList.toggle("hidden");
+      });
+
+      btnLogout.addEventListener("click", () => {
+        dropdown.classList.add("hidden");
+        signOut();
+      });
+
+      document.addEventListener("click", (e) => {
+        if (!avatarArea.contains(e.target)) {
+          dropdown.classList.add("hidden");
+        }
+      });
+    })();
+    // ─────────────────────────────────────────────────────────────
 
     let sheetsList = [];
     let allTasks = [];
