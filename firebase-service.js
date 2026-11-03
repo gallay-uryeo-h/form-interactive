@@ -10,6 +10,8 @@ import {
   onSnapshot,
   getDoc,
   getDocs,
+  query,
+  where,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -170,23 +172,47 @@ export function subscribeColumnOrder(onSuccess, targetSheetId) {
   });
 }
 
-// 실시간 태스크 목록 구독 리스너
+// 실시간 태스크 목록 구독 리스너 — sheetId로 Firestore 쿼리 필터링
 export function subscribeTasks(onSuccess, onError, targetSheetId) {
   if (!targetSheetId) {
     if (onError) onError(new Error("sheetId가 필요합니다."));
     return () => {};
   }
   const colRef = collection(db, COLLECTION_NAME);
+
+  // ALL: 전체 컬렉션 (어드민 대시보드용)
+  if (targetSheetId === "ALL") {
+    return onSnapshot(
+      colRef,
+      (snap) => {
+        const tasks = [];
+        snap.forEach((docSnap) => {
+          const data = docSnap.data();
+          if (data.type === "task" || (!data.type && data.sheetId)) {
+            tasks.push({ id: docSnap.id, ...data });
+          }
+        });
+        tasks.sort((a, b) => (a.rowNumber || 999) - (b.rowNumber || 999));
+        onSuccess(tasks);
+      },
+      (err) => {
+        console.error("[Firestore] subscribeTasks(ALL) Error:", err);
+        if (onError) onError(err);
+      }
+    );
+  }
+
+  // 특정 시트: where 쿼리로 해당 시트만 구독
+  const q = query(colRef, where("sheetId", "==", targetSheetId));
   return onSnapshot(
-    colRef,
+    q,
     (snap) => {
       const tasks = [];
       snap.forEach((docSnap) => {
         const data = docSnap.data();
-        if (data.type === "task") {
-          if (targetSheetId === "ALL" || data.sheetId === targetSheetId) {
-            tasks.push({ id: docSnap.id, ...data });
-          }
+        // type이 없는 경우도 포함 (이전 버전 호환)
+        if (!data.type || data.type === "task") {
+          tasks.push({ id: docSnap.id, ...data });
         }
       });
       tasks.sort((a, b) => (a.rowNumber || 999) - (b.rowNumber || 999));
@@ -197,6 +223,24 @@ export function subscribeTasks(onSuccess, onError, targetSheetId) {
       if (onError) onError(err);
     }
   );
+}
+
+// 1회성 시트 태스크 fetch (모바일 시트 목록 필터용)
+// query 사용으로 전체 컬렉션 읽기 없이 해당 시트만 조회
+export async function getTasksForSheet(sheetId) {
+  if (!sheetId) return [];
+  const colRef = collection(db, COLLECTION_NAME);
+  const q = query(colRef, where("sheetId", "==", sheetId));
+  const snap = await getDocs(q);
+  const tasks = [];
+  snap.forEach((d) => {
+    const data = d.data();
+    if (!data.type || data.type === "task") {
+      tasks.push({ id: d.id, ...data });
+    }
+  });
+  tasks.sort((a, b) => (a.rowNumber || 999) - (b.rowNumber || 999));
+  return tasks;
 }
 
 // 실시간 컬럼 상세 설정 구독 리스너
