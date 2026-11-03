@@ -271,8 +271,12 @@
         <span>+ 열 추가</span>
       </button>
       <div class="h-4 w-px bg-surface-variant mx-1"></div>
-      <button class="p-1 hover:bg-surface-variant rounded" title="실행취소"><span class="material-symbols-outlined text-[16px]">undo</span></button>
-      <button class="p-1 hover:bg-surface-variant rounded" title="다시실행"><span class="material-symbols-outlined text-[16px]">redo</span></button>
+      <button id="btnUndo" class="p-1 hover:bg-surface-variant rounded transition-opacity cursor-pointer opacity-30 cursor-not-allowed" title="실행취소 (Ctrl+Z)" disabled>
+        <span class="material-symbols-outlined text-[16px]">undo</span>
+      </button>
+      <button id="btnRedo" class="p-1 hover:bg-surface-variant rounded transition-opacity cursor-pointer opacity-30 cursor-not-allowed" title="다시실행 (Ctrl+Y, Ctrl+Shift+Z)" disabled>
+        <span class="material-symbols-outlined text-[16px]">redo</span>
+      </button>
       <div class="h-4 w-px bg-surface-variant mx-1"></div>
       <button class="p-1 hover:bg-surface-variant rounded font-bold" title="굵게"><span class="material-symbols-outlined text-[16px]">format_bold</span></button>
       <button class="p-1 hover:bg-surface-variant rounded italic" title="기울임꼴"><span class="material-symbols-outlined text-[16px]">format_italic</span></button>
@@ -794,6 +798,93 @@ kim.minsu@school.kr"></textarea>
     const syncText = document.getElementById("syncText");
     const typeRow = document.getElementById("typeRow");
     const headerLabelRow = document.getElementById("headerLabelRow");
+    const btnUndo = document.getElementById("btnUndo");
+    const btnRedo = document.getElementById("btnRedo");
+
+    // ══════════════════════════════════════════════════════════════════
+    //  UNDO / REDO HISTORY SYSTEM (실행 취소 & 다시 실행)
+    // ══════════════════════════════════════════════════════════════════
+    const undoStack = [];
+    const redoStack = [];
+    const MAX_HISTORY = 50;
+
+    function updateUndoRedoButtons() {
+      if (btnUndo) {
+        if (undoStack.length > 0) {
+          btnUndo.disabled = false;
+          btnUndo.classList.remove("opacity-30", "cursor-not-allowed");
+          btnUndo.classList.add("hover:bg-surface-variant", "cursor-pointer");
+          const top = undoStack[undoStack.length - 1];
+          btnUndo.title = `실행취소: ${top.description || "작업"} (Ctrl+Z)`;
+        } else {
+          btnUndo.disabled = true;
+          btnUndo.classList.add("opacity-30", "cursor-not-allowed");
+          btnUndo.classList.remove("hover:bg-surface-variant", "cursor-pointer");
+          btnUndo.title = "실행취소 (Ctrl+Z)";
+        }
+      }
+
+      if (btnRedo) {
+        if (redoStack.length > 0) {
+          btnRedo.disabled = false;
+          btnRedo.classList.remove("opacity-30", "cursor-not-allowed");
+          btnRedo.classList.add("hover:bg-surface-variant", "cursor-pointer");
+          const top = redoStack[redoStack.length - 1];
+          btnRedo.title = `다시실행: ${top.description || "작업"} (Ctrl+Y, Ctrl+Shift+Z)`;
+        } else {
+          btnRedo.disabled = true;
+          btnRedo.classList.add("opacity-30", "cursor-not-allowed");
+          btnRedo.classList.remove("hover:bg-surface-variant", "cursor-pointer");
+          btnRedo.title = "다시실행 (Ctrl+Y, Ctrl+Shift+Z)";
+        }
+      }
+    }
+
+    function pushAction(action) {
+      undoStack.push(action);
+      if (undoStack.length > MAX_HISTORY) undoStack.shift();
+      redoStack.length = 0; // 새 작업 시 redo 스택 초기화
+      updateUndoRedoButtons();
+    }
+
+    async function executeUndo() {
+      if (!undoStack.length) return;
+      const action = undoStack.pop();
+      setSaving(true);
+      try {
+        await action.undo();
+        redoStack.push(action);
+        selectionBadge.innerHTML = `<span class="text-primary font-bold">↩️ 실행취소: ${action.description || "완료"}</span>`;
+        setTimeout(() => updateSelectionUI(), 1500);
+      } catch (err) {
+        console.error("Undo error:", err);
+        alert("실행취소 실패: " + err.message);
+      } finally {
+        setSaving(false);
+        updateUndoRedoButtons();
+      }
+    }
+
+    async function executeRedo() {
+      if (!redoStack.length) return;
+      const action = redoStack.pop();
+      setSaving(true);
+      try {
+        await action.redo();
+        undoStack.push(action);
+        selectionBadge.innerHTML = `<span class="text-primary font-bold">↪️ 다시실행: ${action.description || "완료"}</span>`;
+        setTimeout(() => updateSelectionUI(), 1500);
+      } catch (err) {
+        console.error("Redo error:", err);
+        alert("다시실행 실패: " + err.message);
+      } finally {
+        setSaving(false);
+        updateUndoRedoButtons();
+      }
+    }
+
+    if (btnUndo) btnUndo.addEventListener("click", () => executeUndo());
+    if (btnRedo) btnRedo.addEventListener("click", () => executeRedo());
 
     // Type Settings Modal DOM Elements
     const typeMenuModal = document.getElementById("typeMenuModal");
@@ -1147,6 +1238,37 @@ kim.minsu@school.kr"></textarea>
           } finally {
             setSaving(false);
           }
+
+          const colKey = col.key;
+          const oldTitle = currentTitle;
+          const savedNewTitle = newTitle;
+          pushAction({
+            description: `열 이름 '${savedNewTitle}' 변경`,
+            undo: async () => {
+              currentColumnConfigs[colKey] = {
+                ...(currentColumnConfigs[colKey] || {}),
+                label: oldTitle
+              };
+              const c = COLUMNS.find(x => x.key === colKey);
+              if (c) c.title = oldTitle;
+              renderHeaderLabelRow();
+              renderTypeRowChips();
+              updateSelectionUI();
+              await updateColumnConfig(colKey, { label: oldTitle }, currentSheetId);
+            },
+            redo: async () => {
+              currentColumnConfigs[colKey] = {
+                ...(currentColumnConfigs[colKey] || {}),
+                label: savedNewTitle
+              };
+              const c = COLUMNS.find(x => x.key === colKey);
+              if (c) c.title = savedNewTitle;
+              renderHeaderLabelRow();
+              renderTypeRowChips();
+              updateSelectionUI();
+              await updateColumnConfig(colKey, { label: savedNewTitle }, currentSheetId);
+            }
+          });
         } else {
           renderHeaderLabelRow();
           updateSelectionUI();
@@ -2257,6 +2379,30 @@ kim.minsu@school.kr"></textarea>
           updateTask(task.id, { [col.key]: newVal })
             .catch(err => alert("저장 실패: " + err.message))
             .finally(() => setSaving(false));
+
+          const prevVal = gridState.editOriginalVal;
+          const savedNewVal = newVal;
+          const taskId = task.id;
+          const field = col.key;
+          const colTitle = col.title;
+
+          pushAction({
+            description: `'${colTitle}' 셀 수정`,
+            undo: async () => {
+              const t = currentTasks.find(x => x.id === taskId);
+              if (t) t[field] = prevVal;
+              renderTable();
+              updateSelectionUI();
+              await updateTask(taskId, { [field]: prevVal });
+            },
+            redo: async () => {
+              const t = currentTasks.find(x => x.id === taskId);
+              if (t) t[field] = savedNewVal;
+              renderTable();
+              updateSelectionUI();
+              await updateTask(taskId, { [field]: savedNewVal });
+            }
+          });
         }
       }
 
@@ -2288,6 +2434,7 @@ kim.minsu@school.kr"></textarea>
       const maxC = Math.min(COLUMNS.length - 1, Math.max(gridState.anchorC, gridState.activeC));
 
       setSaving(true);
+      const backups = [];
       try {
         const promises = [];
         for (let r = minR; r <= maxR; r++) {
@@ -2301,17 +2448,17 @@ kim.minsu@school.kr"></textarea>
             const cfg = currentColumnConfigs[col.key] || DEFAULT_COLUMN_CONFIGS[col.key] || { type: "text" };
             if (cfg.type === "locked") continue;
 
-            if (cfg.type === "checkbox") {
-              updates[col.key] = false;
-              task[col.key] = false;
-            } else if (cfg.type === "progress") {
-              updates[col.key] = 0;
-              task[col.key] = 0;
-            } else {
-              updates[col.key] = "";
-              task[col.key] = "";
+            const prevVal = task[col.key];
+            let emptyVal = "";
+            if (cfg.type === "checkbox") emptyVal = false;
+            else if (cfg.type === "progress") emptyVal = 0;
+
+            if (prevVal !== emptyVal) {
+              backups.push({ taskId: task.id, field: col.key, prevVal, emptyVal });
+              updates[col.key] = emptyVal;
+              task[col.key] = emptyVal;
+              hasUpdate = true;
             }
-            hasUpdate = true;
           }
 
           if (hasUpdate) {
@@ -2320,6 +2467,40 @@ kim.minsu@school.kr"></textarea>
         }
         await Promise.all(promises);
         renderTable();
+
+        if (backups.length > 0) {
+          pushAction({
+            description: `${backups.length}개 셀 삭제`,
+            undo: async () => {
+              const updatesByTask = new Map();
+              for (const b of backups) {
+                const t = currentTasks.find(x => x.id === b.taskId);
+                if (t) t[b.field] = b.prevVal;
+                if (!updatesByTask.has(b.taskId)) updatesByTask.set(b.taskId, {});
+                updatesByTask.get(b.taskId)[b.field] = b.prevVal;
+              }
+              renderTable();
+              updateSelectionUI();
+              const p = [];
+              for (const [id, up] of updatesByTask.entries()) p.push(updateTask(id, up));
+              await Promise.all(p);
+            },
+            redo: async () => {
+              const updatesByTask = new Map();
+              for (const b of backups) {
+                const t = currentTasks.find(x => x.id === b.taskId);
+                if (t) t[b.field] = b.emptyVal;
+                if (!updatesByTask.has(b.taskId)) updatesByTask.set(b.taskId, {});
+                updatesByTask.get(b.taskId)[b.field] = b.emptyVal;
+              }
+              renderTable();
+              updateSelectionUI();
+              const p = [];
+              for (const [id, up] of updatesByTask.entries()) p.push(updateTask(id, up));
+              await Promise.all(p);
+            }
+          });
+        }
       } catch (err) {
         alert("삭제 실패: " + err.message);
       } finally {
@@ -2381,6 +2562,8 @@ kim.minsu@school.kr"></textarea>
       const taskUpdates = new Map();
       const newTasksToAdd = [];
       const headerUpdates = [];
+      const cellBackups = []; // { taskId, field, prevVal, newVal }
+      const headerBackups = []; // { colKey, prevLabel, newLabel }
 
       function pasteValToTask(task, col, rawVal) {
         const cfg = currentColumnConfigs[col.key] || DEFAULT_COLUMN_CONFIGS[col.key] || { type: "text" };
@@ -2398,8 +2581,10 @@ kim.minsu@school.kr"></textarea>
           finalVal = m ? m[0] : rawVal;
         }
 
+        const prevVal = task[col.key];
         task[col.key] = finalVal;
         if (task.id) {
+          cellBackups.push({ taskId: task.id, field: col.key, prevVal, newVal: finalVal });
           if (!taskUpdates.has(task.id)) taskUpdates.set(task.id, {});
           taskUpdates.get(task.id)[col.key] = finalVal;
         }
@@ -2413,7 +2598,9 @@ kim.minsu@school.kr"></textarea>
           if (c >= COLUMNS.length) break;
           const col = COLUMNS[c];
           const newHeader = (matrix[0][cOffset] ?? "").trim();
-          if (newHeader) {
+          const prevHeader = currentColumnConfigs[col.key]?.label || col.title || "";
+          if (newHeader && newHeader !== prevHeader) {
+            headerBackups.push({ colKey: col.key, prevLabel: prevHeader, newLabel: newHeader });
             currentColumnConfigs[col.key] = {
               ...(currentColumnConfigs[col.key] || {}),
               label: newHeader
@@ -2537,11 +2724,75 @@ kim.minsu@school.kr"></textarea>
         }
 
         // 2. 신규 태스크 생성
+        const createdTaskIds = [];
         for (const newTaskData of newTasksToAdd) {
-          promises.push(addTask(newTaskData, currentSheetId));
+          const newId = await addTask(newTaskData, currentSheetId);
+          createdTaskIds.push(newId);
         }
 
         await Promise.all(promises);
+
+        if (cellBackups.length > 0 || headerBackups.length > 0 || createdTaskIds.length > 0) {
+          pushAction({
+            description: `붙여넣기 (${cellBackups.length}개 셀, 헤더 ${headerBackups.length}개)`,
+            undo: async () => {
+              for (const hb of headerBackups) {
+                currentColumnConfigs[hb.colKey] = {
+                  ...(currentColumnConfigs[hb.colKey] || {}),
+                  label: hb.prevLabel
+                };
+                const c = COLUMNS.find(x => x.key === hb.colKey);
+                if (c) c.title = hb.prevLabel;
+                await updateColumnConfig(hb.colKey, { label: hb.prevLabel }, currentSheetId);
+              }
+              const revertUpdates = new Map();
+              for (const cb of cellBackups) {
+                const t = currentTasks.find(x => x.id === cb.taskId);
+                if (t) t[cb.field] = cb.prevVal;
+                if (!revertUpdates.has(cb.taskId)) revertUpdates.set(cb.taskId, {});
+                revertUpdates.get(cb.taskId)[cb.field] = cb.prevVal;
+              }
+              const p = [];
+              for (const [id, up] of revertUpdates.entries()) p.push(updateTask(id, up));
+              for (const cid of createdTaskIds) p.push(deleteTask(cid));
+              await Promise.all(p);
+
+              renderHeaderLabelRow();
+              renderTypeRowChips();
+              renderTable();
+              updateSelectionUI();
+            },
+            redo: async () => {
+              for (const hb of headerBackups) {
+                currentColumnConfigs[hb.colKey] = {
+                  ...(currentColumnConfigs[hb.colKey] || {}),
+                  label: hb.newLabel
+                };
+                const c = COLUMNS.find(x => x.key === hb.colKey);
+                if (c) c.title = hb.newLabel;
+                await updateColumnConfig(hb.colKey, { label: hb.newLabel }, currentSheetId);
+              }
+              const reapplyUpdates = new Map();
+              for (const cb of cellBackups) {
+                const t = currentTasks.find(x => x.id === cb.taskId);
+                if (t) t[cb.field] = cb.newVal;
+                if (!reapplyUpdates.has(cb.taskId)) reapplyUpdates.set(cb.taskId, {});
+                reapplyUpdates.get(cb.taskId)[cb.field] = cb.newVal;
+              }
+              const p = [];
+              for (const [id, up] of reapplyUpdates.entries()) p.push(updateTask(id, up));
+              for (const newTaskData of newTasksToAdd) {
+                p.push(addTask(newTaskData, currentSheetId));
+              }
+              await Promise.all(p);
+
+              renderHeaderLabelRow();
+              renderTypeRowChips();
+              renderTable();
+              updateSelectionUI();
+            }
+          });
+        }
 
         const totalHeader = headerUpdates.length;
         const totalRows = taskUpdates.size + newTasksToAdd.length;
@@ -2712,6 +2963,18 @@ kim.minsu@school.kr"></textarea>
       // Ctrl / Meta 조합키
       if (e.ctrlKey || e.metaKey) {
         switch (e.key) {
+          case "z": case "Z":
+            e.preventDefault();
+            if (e.shiftKey) {
+              executeRedo();
+            } else {
+              executeUndo();
+            }
+            return;
+          case "y": case "Y":
+            e.preventDefault();
+            executeRedo();
+            return;
           case "c": case "C":
             e.preventDefault();
             copySelectionToClipboard();
@@ -3201,6 +3464,17 @@ kim.minsu@school.kr"></textarea>
 
     // Global Handlers
     window.handleFieldUpdate = async (id, field, value) => {
+      const task = currentTasks.find(t => t.id === id);
+      const prevVal = task ? task[field] : undefined;
+      if (prevVal === value) return;
+
+      const col = COLUMNS.find(c => c.key === field);
+      const colTitle = col ? col.title : field;
+
+      if (task) task[field] = value;
+      renderTable();
+      updateSelectionUI();
+
       setSaving(true);
       try {
         await updateTask(id, { [field]: value });
@@ -3209,13 +3483,45 @@ kim.minsu@school.kr"></textarea>
       } finally {
         setSaving(false);
       }
+
+      pushAction({
+        description: `'${colTitle}' 변경`,
+        undo: async () => {
+          const t = currentTasks.find(x => x.id === id);
+          if (t) t[field] = prevVal;
+          renderTable();
+          updateSelectionUI();
+          await updateTask(id, { [field]: prevVal });
+        },
+        redo: async () => {
+          const t = currentTasks.find(x => x.id === id);
+          if (t) t[field] = value;
+          renderTable();
+          updateSelectionUI();
+          await updateTask(id, { [field]: value });
+        }
+      });
     };
 
     window.handleDeleteTask = async (id) => {
+      const taskIndex = currentTasks.findIndex(t => t.id === id);
+      const deletedTaskData = taskIndex !== -1 ? { ...currentTasks[taskIndex] } : null;
+
       if (confirm("이 행을 삭제하시겠습니까? (Firestore에 즉시 반영)")) {
         setSaving(true);
         try {
           await deleteTask(id);
+          if (deletedTaskData) {
+            pushAction({
+              description: `행 삭제`,
+              undo: async () => {
+                await addTask(deletedTaskData, currentSheetId);
+              },
+              redo: async () => {
+                await deleteTask(id);
+              }
+            });
+          }
         } catch (err) {
           alert("삭제 실패: " + err.message);
         } finally {
@@ -3246,7 +3552,16 @@ kim.minsu@school.kr"></textarea>
             newRowData[col.key] = "";
           }
         });
-        await addTask(newRowData, currentSheetId);
+        const newDocId = await addTask(newRowData, currentSheetId);
+        pushAction({
+          description: `새 행 추가`,
+          undo: async () => {
+            await deleteTask(newDocId);
+          },
+          redo: async () => {
+            await addTask(newRowData, currentSheetId);
+          }
+        });
       } catch (err) {
         alert("행 추가 실패: " + err.message);
       } finally {
