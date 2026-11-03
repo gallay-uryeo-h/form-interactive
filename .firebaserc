@@ -6,12 +6,13 @@
     "studio-2726051254-c02c9": {
       "hosting": {
         "admin": [
-          "form-interactive-admin"
+          "studio-2726051254-c02c9-7d373"
         ],
         "user": [
-          "form-interactive-user"
+          "studio-2726051254-c02c9-f92f8"
         ]
       }
     }
   }
 }
+
