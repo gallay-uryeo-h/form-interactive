@@ -347,7 +347,12 @@
       });
       btnSwitch.addEventListener("click", async () => {
         showLoading();
-        try { await signInWithGoogle(); } catch { showLogin(); }
+        try {
+          await signOut();
+          await signInWithGoogle();
+        } catch {
+          showLogin();
+        }
       });
 
       onAuthStateChanged(handleUser);

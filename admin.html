@@ -788,8 +788,12 @@ kim.minsu@school.kr"></textarea>
       // 다른 계정으로 전환
       btnSwitch.addEventListener("click", async () => {
         showLoading();
-        try { await signInWithGoogle(); }
-        catch { showLogin(); }
+        try {
+          await signOut();
+          await signInWithGoogle();
+        } catch {
+          showLogin();
+        }
       });
 
       // Auth 상태 감지 시작

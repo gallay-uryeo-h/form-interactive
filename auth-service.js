@@ -27,6 +27,10 @@ import { firebaseConfig } from "./firebase-service.js";
 const app  = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
+// 구글 로그인 팝업 시 항상 계정 선택 화면(다른 계정 선택 포함)을 표시하도록 강제
+provider.setCustomParameters({
+  prompt: "select_account"
+});
 
 // 로그인 상태 브라우저에 영구 저장 (탭/브라우저 닫아도 유지)
 setPersistence(auth, browserLocalPersistence).catch(() => {});
