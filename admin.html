@@ -973,6 +973,7 @@ kim.minsu@school.kr"></textarea>
     let currentTasks = [];
     let currentColumnConfigs = {};
     let currentColumnOrder = null;
+    let currentUserViewColumns = null;
     let activeCell = null;
 
     function reassignColumnLetters() {
@@ -1383,6 +1384,11 @@ kim.minsu@school.kr"></textarea>
 
         const optBadge = (typeId === "select" || typeId === "priority" || typeId === "googleId") && cfg.options && cfg.options.length
           ? `<span class="text-[9px] px-1 rounded bg-black/5 opacity-80 ml-0.5">${cfg.options.length}${typeId === "googleId" ? "명" : ""}</span>`
+          : "";
+
+        const isHiddenFromUser = Array.isArray(currentUserViewColumns) && !currentUserViewColumns.includes(col.key);
+        const hiddenBadge = isHiddenFromUser
+          ? `<span class="material-symbols-outlined text-[11px] text-outline ml-0.5" title="사용자(모바일) 화면에서 숨김">visibility_off</span>`
           : "";
 
         th.innerHTML = `
@@ -4218,7 +4224,6 @@ kim.minsu@school.kr"></textarea>
     }
   
     // ══ USER VIEW COLUMNS MANAGER ══════════════════════════════════════════
-    let currentUserViewColumns = null; // null: all columns visible by default
 
     const btnOpenUserColumnsModal = document.getElementById("btnOpenUserColumnsModal");
     const userColumnsModal = document.getElementById("userColumnsModal");
