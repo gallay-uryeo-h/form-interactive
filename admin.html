@@ -281,6 +281,11 @@
         <span class="font-semibold">유저 표시 열</span>
         <span id="userColumnBadge" class="hidden text-[10px] bg-[#1a73e8] text-white px-1.5 py-0.2 rounded-full font-bold ml-0.5">0</span>
       </button>
+      <button id="btnOpenDeadlineModal" class="flex items-center gap-1 px-2.5 py-1 bg-surface-container hover:bg-[#fef7e0] text-on-surface hover:text-[#b06000] border border-surface-variant hover:border-[#f9ab00]/50 rounded transition-colors font-medium text-[11px] cursor-pointer shadow-2xs" title="시트 전체 마감 및 마감 시한(일시) 설정">
+        <span id="deadlineStatusIcon" class="material-symbols-outlined text-[15px] text-[#006a39]">lock_open</span>
+        <span class="font-semibold">마감 설정</span>
+        <span id="deadlineStatusBadge" class="text-[10px] bg-[#e6f4ea] text-[#006a39] px-1.5 py-0.2 rounded-full font-bold ml-0.5">진행중</span>
+      </button>
       <div class="h-4 w-px bg-surface-variant mx-1"></div>
       <button id="btnUndo" class="p-1 hover:bg-surface-variant rounded transition-opacity cursor-pointer opacity-30 cursor-not-allowed" title="실행취소 (Ctrl+Z)" disabled>
         <span class="material-symbols-outlined text-[16px]">undo</span>
@@ -302,6 +307,17 @@
         <span class="material-symbols-outlined text-[14px]">sync</span>Firestore 실시간 동기화
       </span>
     </div>
+  </div>
+
+  <!-- 마감 상태 Sticky 안내 배너 (마감 시에만 표시) -->
+  <div id="adminClosedNoticeBanner" class="hidden px-4 py-1.5 bg-[#fce8e6] border-b border-[#ea4335]/30 text-[#c5221f] text-[11px] flex items-center justify-between shrink-0 z-25">
+    <div class="flex items-center gap-2">
+      <span class="material-symbols-outlined text-[16px] text-[#c5221f]">lock</span>
+      <span><strong>현재 시트가 마감된 상태입니다.</strong> (학생 모바일 화면에서 제출 및 수정이 차단되어 읽기 전용으로 표시됩니다)</span>
+    </div>
+    <button type="button" id="btnAdminQuickReopen" class="px-2.5 py-0.5 bg-[#ea4335] text-white rounded text-[10px] font-bold hover:bg-[#c5221f] transition-colors cursor-pointer shadow-2xs">
+      마감 해제하기
+    </button>
   </div>
 
   <!-- 3. Formula Bar (수식입력줄 - 고정 32px) -->
@@ -655,6 +671,107 @@ kim.minsu@school.kr"></textarea>
     </div>
   </div>
 
+  <!-- ════ DEADLINE / CLOSING MODAL ════════════════════════════════════════════ -->
+  <div id="deadlineModal" class="hidden fixed inset-0 z-50 bg-black/45 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-surface-container-lowest border border-surface-variant rounded-2xl shadow-2xl w-[520px] max-w-[96vw] max-h-[90vh] flex flex-col text-[12px] font-sans overflow-hidden">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between px-5 py-3.5 border-b border-surface-container bg-surface-container-low/60 shrink-0">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[18px] text-primary">timer</span>
+          </div>
+          <div class="flex flex-col min-w-0">
+            <h3 class="font-bold text-[14px] text-on-surface truncate">시트 전체 마감 및 시한 설정</h3>
+            <p class="text-[11px] text-outline truncate" id="deadlineModalSheetName">현재 시트</p>
+          </div>
+        </div>
+        <button type="button" id="btnCloseDeadlineModal" class="p-1 rounded-lg text-outline hover:text-on-surface hover:bg-surface-container transition-colors cursor-pointer">
+          <span class="material-symbols-outlined text-[18px]">close</span>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-5 flex flex-col gap-4 overflow-y-auto">
+        <!-- 1. Current Status Summary Card -->
+        <div id="modalDeadlineStatusCard" class="p-3.5 rounded-xl border flex items-center justify-between gap-3 bg-[#e6f4ea] border-[#006a39]/30 text-[#006a39]">
+          <div class="flex items-center gap-2.5">
+            <span id="modalStatusCardIcon" class="material-symbols-outlined text-[22px]">lock_open</span>
+            <div class="flex flex-col">
+              <span class="font-bold text-[13px]" id="modalStatusCardTitle">현재 상태: 정상 진행 중</span>
+              <span class="text-[11px] opacity-90 mt-0.5" id="modalStatusCardDesc">학생들이 자유롭게 입력 및 수정할 수 있습니다.</span>
+            </div>
+          </div>
+          <span id="modalStatusCountdown" class="text-[11px] font-mono font-bold px-2 py-1 rounded-lg bg-black/5 shrink-0">상시</span>
+        </div>
+
+        <!-- 2. Manual Immediate Close Switch -->
+        <div class="p-3.5 rounded-xl border border-surface-container bg-surface-container-low/40 flex items-center justify-between">
+          <div class="flex flex-col pr-3">
+            <span class="font-bold text-on-surface text-[12px] flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[16px] text-error">block</span>
+              <span>즉시 전체 마감 (수동 잠금)</span>
+            </span>
+            <span class="text-[11px] text-outline mt-0.5">마감 시한과 무관하게 지금 즉시 학생 모바일 화면의 모든 입력을 잠급니다.</span>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer shrink-0">
+            <input type="checkbox" id="chkManualClose" class="sr-only peer">
+            <div class="w-11 h-6 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-error"></div>
+          </label>
+        </div>
+
+        <!-- 3. Deadline Date & Time Setting -->
+        <div class="flex flex-col gap-2">
+          <label class="text-[11px] font-bold text-on-surface-variant flex items-center gap-1">
+            <span class="material-symbols-outlined text-[15px] text-primary">schedule</span>
+            <span>마감 시한(일시) 설정</span>
+          </label>
+          <div class="flex items-center gap-2">
+            <input type="datetime-local" id="inputDeadlineDateTime"
+              class="flex-1 h-9 px-3 rounded-lg border border-surface-variant bg-surface-container-lowest text-on-surface font-mono text-[12px] font-medium focus:border-primary outline-none cursor-pointer">
+            <button type="button" id="btnClearDeadline" class="h-9 px-2.5 rounded-lg border border-surface-variant text-outline hover:text-on-surface hover:bg-surface-container text-[11px] font-medium transition-colors cursor-pointer shrink-0">
+              시한 해제
+            </button>
+          </div>
+          <!-- Quick Presets -->
+          <div class="flex items-center gap-1.5 flex-wrap mt-0.5">
+            <span class="text-[10px] text-outline">빠른 설정:</span>
+            <button type="button" class="preset-btn px-2 py-0.5 rounded bg-surface-container hover:bg-surface-variant text-[10px] font-medium text-on-surface transition-colors cursor-pointer" data-preset="today-18">오늘 18:00</button>
+            <button type="button" class="preset-btn px-2 py-0.5 rounded bg-surface-container hover:bg-surface-variant text-[10px] font-medium text-on-surface transition-colors cursor-pointer" data-preset="today-24">오늘 23:59</button>
+            <button type="button" class="preset-btn px-2 py-0.5 rounded bg-surface-container hover:bg-surface-variant text-[10px] font-medium text-on-surface transition-colors cursor-pointer" data-preset="tomorrow-18">내일 18:00</button>
+            <button type="button" class="preset-btn px-2 py-0.5 rounded bg-surface-container hover:bg-surface-variant text-[10px] font-medium text-on-surface transition-colors cursor-pointer" data-preset="days-3">3일 뒤 18:00</button>
+            <button type="button" class="preset-btn px-2 py-0.5 rounded bg-surface-container hover:bg-surface-variant text-[10px] font-medium text-on-surface transition-colors cursor-pointer" data-preset="days-7">7일 뒤 18:00</button>
+          </div>
+        </div>
+
+        <!-- 4. Custom Closed Notice Message -->
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[11px] font-bold text-on-surface-variant flex items-center gap-1">
+            <span class="material-symbols-outlined text-[15px] text-secondary">campaign</span>
+            <span>마감 시 학생 화면 안내 문구</span>
+          </label>
+          <input type="text" id="inputClosedNoticeMessage"
+            placeholder="제출이 마감되었습니다. 현재는 조회만 가능합니다."
+            class="h-9 px-3 rounded-lg border border-surface-variant bg-surface-container-lowest text-on-surface text-[12px] font-sans focus:border-primary outline-none">
+          <span class="text-[10px] text-outline">마감 후 학생 모바일 뷰 상단 배너 및 입력 시도 시 표시되는 안내 메시지입니다.</span>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="flex items-center justify-between px-5 py-3 border-t border-surface-container bg-surface-container-low/60 shrink-0">
+        <span id="deadlineModalStatus" class="text-[11px] text-outline"></span>
+        <div class="flex items-center gap-2">
+          <button type="button" id="btnCancelDeadline" class="px-3.5 py-1.5 rounded-lg border border-surface-variant hover:bg-surface-container text-on-surface text-[12px] font-medium transition-colors cursor-pointer">
+            취소
+          </button>
+          <button type="button" id="btnSaveDeadline" class="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-white text-[12px] font-bold shadow-xs transition-colors cursor-pointer">
+            <span class="material-symbols-outlined text-[16px]" id="deadlineSaveIcon">check</span>
+            <span id="deadlineSaveText">설정 저장 및 적용</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ══ EXCEL UPLOAD PREVIEW MODAL ════════════════════════════════════════ -->
   <div id="excelUploadModal" class="hidden fixed inset-0 z-50 bg-black/45 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-surface-container-lowest border border-surface-variant rounded-2xl shadow-2xl w-[720px] max-w-[96vw] max-h-[90vh] flex flex-col text-[12px] font-sans overflow-hidden">
@@ -814,7 +931,10 @@ kim.minsu@school.kr"></textarea>
       isAdminEmail,
       importExcelData,
       updateUserViewColumns,
-      subscribeUserViewColumns
+      subscribeUserViewColumns,
+      updateSheetDeadline,
+      subscribeSheetDeadline,
+      isSheetClosed
     } from "./firebase-service.js";
 
     import { onAuthStateChanged, signInWithGoogle, signOut } from "./auth-service.js";
@@ -974,6 +1094,7 @@ kim.minsu@school.kr"></textarea>
     let currentColumnConfigs = {};
     let currentColumnOrder = null;
     let currentUserViewColumns = null;
+    let currentSheetDeadline = { isClosed: false, deadline: null, closedMessage: "" };
     let activeCell = null;
 
     function reassignColumnLetters() {
@@ -4426,6 +4547,307 @@ kim.minsu@school.kr"></textarea>
       });
     }
 
+
+    // ══ SHEET DEADLINE MANAGER ════════════════════════════════════════════
+    const btnOpenDeadlineModal    = document.getElementById("btnOpenDeadlineModal");
+    const deadlineModal           = document.getElementById("deadlineModal");
+    const btnCloseDeadlineModal   = document.getElementById("btnCloseDeadlineModal");
+    const btnCancelDeadline       = document.getElementById("btnCancelDeadline");
+    const btnSaveDeadline         = document.getElementById("btnSaveDeadline");
+    const deadlineStatusIcon      = document.getElementById("deadlineStatusIcon");
+    const deadlineStatusBadge     = document.getElementById("deadlineStatusBadge");
+    const adminClosedNoticeBanner = document.getElementById("adminClosedNoticeBanner");
+    const btnAdminQuickReopen     = document.getElementById("btnAdminQuickReopen");
+    const chkManualClose          = document.getElementById("chkManualClose");
+    const inputDeadlineDateTime   = document.getElementById("inputDeadlineDateTime");
+    const btnClearDeadline        = document.getElementById("btnClearDeadline");
+    const inputClosedNoticeMessage= document.getElementById("inputClosedNoticeMessage");
+    const deadlineModalSheetName  = document.getElementById("deadlineModalSheetName");
+    const deadlineModalStatus     = document.getElementById("deadlineModalStatus");
+    const deadlineSaveIcon        = document.getElementById("deadlineSaveIcon");
+    const deadlineSaveText        = document.getElementById("deadlineSaveText");
+
+    const modalDeadlineStatusCard = document.getElementById("modalDeadlineStatusCard");
+    const modalStatusCardIcon     = document.getElementById("modalStatusCardIcon");
+    const modalStatusCardTitle    = document.getElementById("modalStatusCardTitle");
+    const modalStatusCardDesc     = document.getElementById("modalStatusCardDesc");
+    const modalStatusCountdown    = document.getElementById("modalStatusCountdown");
+
+    function formatShortDate(d) {
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      const hours = String(d.getHours()).padStart(2, "0");
+      const mins = String(d.getMinutes()).padStart(2, "0");
+      return `${month}/${day} ${hours}:${mins}`;
+    }
+
+    function formatRemainingTime(ms) {
+      if (ms <= 0) return "마감됨";
+      const totalSec = Math.floor(ms / 1000);
+      const days = Math.floor(totalSec / 86400);
+      const hours = Math.floor((totalSec % 86400) / 3600);
+      const mins = Math.floor((totalSec % 3600) / 60);
+      if (days > 0) return `${days}일 ${hours}시간 남음`;
+      if (hours > 0) return `${hours}시간 ${mins}분 남음`;
+      return `${Math.max(1, mins)}분 남음`;
+    }
+
+    function updateDeadlineUI() {
+      const isClosed = isSheetClosed(currentSheetDeadline);
+      
+      // 1. Toolbar Badge & Icon
+      if (deadlineStatusBadge && deadlineStatusIcon) {
+        if (isClosed) {
+          deadlineStatusIcon.textContent = "lock";
+          deadlineStatusIcon.className = "material-symbols-outlined text-[15px] text-[#c5221f]";
+          deadlineStatusBadge.textContent = "마감됨";
+          deadlineStatusBadge.className = "text-[10px] bg-[#fce8e6] text-[#c5221f] px-1.5 py-0.2 rounded-full font-bold ml-0.5";
+        } else if (currentSheetDeadline && currentSheetDeadline.deadline) {
+          const d = new Date(currentSheetDeadline.deadline);
+          if (!isNaN(d.getTime())) {
+            deadlineStatusIcon.textContent = "timer";
+            deadlineStatusIcon.className = "material-symbols-outlined text-[15px] text-[#1a73e8]";
+            deadlineStatusBadge.textContent = "~" + formatShortDate(d);
+            deadlineStatusBadge.className = "text-[10px] bg-[#e8f0fe] text-[#1a73e8] px-1.5 py-0.2 rounded-full font-bold ml-0.5";
+          }
+        } else {
+          deadlineStatusIcon.textContent = "lock_open";
+          deadlineStatusIcon.className = "material-symbols-outlined text-[15px] text-[#006a39]";
+          deadlineStatusBadge.textContent = "진행중";
+          deadlineStatusBadge.className = "text-[10px] bg-[#e6f4ea] text-[#006a39] px-1.5 py-0.2 rounded-full font-bold ml-0.5";
+        }
+      }
+
+      // 2. Top Sticky Closed Banner
+      if (adminClosedNoticeBanner) {
+        if (isClosed) {
+          adminClosedNoticeBanner.classList.remove("hidden");
+          adminClosedNoticeBanner.classList.add("flex");
+        } else {
+          adminClosedNoticeBanner.classList.add("hidden");
+          adminClosedNoticeBanner.classList.remove("flex");
+        }
+      }
+    }
+
+    // Subscribe to deadline config
+    if (typeof subscribeSheetDeadline === "function" && currentSheetId) {
+      subscribeSheetDeadline((deadlineCfg) => {
+        currentSheetDeadline = deadlineCfg || { isClosed: false, deadline: null, closedMessage: "" };
+        updateDeadlineUI();
+      }, currentSheetId);
+    }
+
+    // Quick Reopen Button in Banner
+    if (btnAdminQuickReopen) {
+      btnAdminQuickReopen.addEventListener("click", async () => {
+        if (!currentSheetId) return;
+        if (!confirm("현재 시트의 마감을 해제하시겠습니까?\n(학생 모바일 화면에서 다시 제출 및 수정이 가능해집니다)")) return;
+        setSaving(true);
+        try {
+          await updateSheetDeadline(currentSheetId, {
+            isClosed: false,
+            deadline: null, // clear past deadline so it stays open
+            closedMessage: currentSheetDeadline.closedMessage || ""
+          });
+          alert("마감이 해제되어 시트가 다시 활성화되었습니다.");
+        } catch (err) {
+          alert("마감 해제 실패: " + err.message);
+        } finally {
+          setSaving(false);
+        }
+      });
+    }
+
+    // Modal open/close
+    if (btnOpenDeadlineModal) {
+      btnOpenDeadlineModal.addEventListener("click", openDeadlineModal);
+    }
+    if (btnCloseDeadlineModal) {
+      btnCloseDeadlineModal.addEventListener("click", closeDeadlineModal);
+    }
+    if (btnCancelDeadline) {
+      btnCancelDeadline.addEventListener("click", closeDeadlineModal);
+    }
+
+    function openDeadlineModal() {
+      if (!deadlineModal) return;
+      if (deadlineModalSheetName) {
+        const titleEl = document.getElementById("sheetTitleDisplay");
+        deadlineModalSheetName.textContent = titleEl ? titleEl.textContent : currentSheetId;
+      }
+
+      // Populate values from state
+      if (chkManualClose) {
+        chkManualClose.checked = !!currentSheetDeadline.isClosed;
+      }
+      if (inputDeadlineDateTime) {
+        if (currentSheetDeadline.deadline) {
+          const d = new Date(currentSheetDeadline.deadline);
+          if (!isNaN(d.getTime())) {
+            const pad = (n) => String(n).padStart(2, "0");
+            inputDeadlineDateTime.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+          } else {
+            inputDeadlineDateTime.value = "";
+          }
+        } else {
+          inputDeadlineDateTime.value = "";
+        }
+      }
+      if (inputClosedNoticeMessage) {
+        inputClosedNoticeMessage.value = currentSheetDeadline.closedMessage || "";
+      }
+
+      updateModalStatusPreview();
+      deadlineModal.classList.remove("hidden");
+      deadlineModal.classList.add("flex");
+    }
+
+    function closeDeadlineModal() {
+      if (!deadlineModal) return;
+      deadlineModal.classList.add("hidden");
+      deadlineModal.classList.remove("flex");
+      if (deadlineModalStatus) deadlineModalStatus.textContent = "";
+    }
+
+    function updateModalStatusPreview() {
+      if (!modalDeadlineStatusCard) return;
+      const manualClosed = chkManualClose ? chkManualClose.checked : false;
+      const dtVal = inputDeadlineDateTime ? inputDeadlineDateTime.value : "";
+      let deadlinePassed = false;
+      let diffMs = 0;
+
+      if (dtVal) {
+        const d = new Date(dtVal);
+        if (!isNaN(d.getTime())) {
+          diffMs = d.getTime() - Date.now();
+          deadlinePassed = diffMs <= 0;
+        }
+      }
+
+      const isEffectivelyClosed = manualClosed || deadlinePassed;
+
+      if (isEffectivelyClosed) {
+        modalDeadlineStatusCard.className = "p-3.5 rounded-xl border flex items-center justify-between gap-3 bg-[#fce8e6] border-[#ea4335]/30 text-[#c5221f]";
+        modalStatusCardIcon.textContent = "lock";
+        modalStatusCardTitle.textContent = manualClosed ? "현재 상태: 즉시 마감 (수동 잠금)" : "현재 상태: 시한 종료로 마감됨";
+        modalStatusCardDesc.textContent = "학생 모바일 화면에서 제출 및 수정이 차단되어 읽기 전용으로 표시됩니다.";
+        modalStatusCountdown.textContent = "마감됨";
+      } else if (dtVal) {
+        modalDeadlineStatusCard.className = "p-3.5 rounded-xl border flex items-center justify-between gap-3 bg-[#e8f0fe] border-[#1a73e8]/30 text-[#1a73e8]";
+        modalStatusCardIcon.textContent = "timer";
+        modalStatusCardTitle.textContent = "현재 상태: 진행 중 (마감 시한 설정됨)";
+        modalStatusCardDesc.textContent = `시한까지 학생의 입력/수정이 가능하며, 마감 시 자동 잠금됩니다.`;
+        modalStatusCountdown.textContent = formatRemainingTime(diffMs);
+      } else {
+        modalDeadlineStatusCard.className = "p-3.5 rounded-xl border flex items-center justify-between gap-3 bg-[#e6f4ea] border-[#006a39]/30 text-[#006a39]";
+        modalStatusCardIcon.textContent = "lock_open";
+        modalStatusCardTitle.textContent = "현재 상태: 정상 진행 중 (상시)";
+        modalStatusCardDesc.textContent = "마감 시한 없이 학생들이 상시 입력 및 수정할 수 있습니다.";
+        modalStatusCountdown.textContent = "상시";
+      }
+    }
+
+    if (chkManualClose) {
+      chkManualClose.addEventListener("change", updateModalStatusPreview);
+    }
+    if (inputDeadlineDateTime) {
+      inputDeadlineDateTime.addEventListener("input", updateModalStatusPreview);
+    }
+    if (btnClearDeadline) {
+      btnClearDeadline.addEventListener("click", () => {
+        if (inputDeadlineDateTime) inputDeadlineDateTime.value = "";
+        updateModalStatusPreview();
+      });
+    }
+
+    // Quick presets
+    document.querySelectorAll(".preset-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const type = btn.dataset.preset;
+        const now = new Date();
+        let target = new Date();
+
+        if (type === "today-18") {
+          target.setHours(18, 0, 0, 0);
+        } else if (type === "today-24") {
+          target.setHours(23, 59, 0, 0);
+        } else if (type === "tomorrow-18") {
+          target.setDate(now.getDate() + 1);
+          target.setHours(18, 0, 0, 0);
+        } else if (type === "days-3") {
+          target.setDate(now.getDate() + 3);
+          target.setHours(18, 0, 0, 0);
+        } else if (type === "days-7") {
+          target.setDate(now.getDate() + 7);
+          target.setHours(18, 0, 0, 0);
+        }
+
+        const pad = (n) => String(n).padStart(2, "0");
+        if (inputDeadlineDateTime) {
+          inputDeadlineDateTime.value = `${target.getFullYear()}-${pad(target.getMonth() + 1)}-${pad(target.getDate())}T${pad(target.getHours())}:${pad(target.getMinutes())}`;
+        }
+        updateModalStatusPreview();
+      });
+    });
+
+    // Save Deadline Config
+    if (btnSaveDeadline) {
+      btnSaveDeadline.addEventListener("click", async () => {
+        if (!currentSheetId) return;
+
+        const manualClose = chkManualClose ? chkManualClose.checked : false;
+        const dtVal = inputDeadlineDateTime ? inputDeadlineDateTime.value : "";
+        let deadlineIso = null;
+        if (dtVal) {
+          const d = new Date(dtVal);
+          if (!isNaN(d.getTime())) {
+            deadlineIso = d.toISOString();
+          }
+        }
+        const closedMessage = inputClosedNoticeMessage ? inputClosedNoticeMessage.value.trim() : "";
+
+        btnSaveDeadline.disabled = true;
+        btnSaveDeadline.classList.add("opacity-60", "cursor-wait");
+        if (deadlineSaveIcon) {
+          deadlineSaveIcon.textContent = "sync";
+          deadlineSaveIcon.classList.add("animate-spin");
+        }
+        if (deadlineSaveText) deadlineSaveText.textContent = "저장 중...";
+        setSaving(true);
+
+        try {
+          await updateSheetDeadline(currentSheetId, {
+            isClosed: manualClose,
+            deadline: deadlineIso,
+            closedMessage: closedMessage || "제출이 마감되었습니다. 현재는 조회만 가능합니다."
+          });
+
+          currentSheetDeadline = {
+            isClosed: manualClose,
+            deadline: deadlineIso,
+            closedMessage: closedMessage
+          };
+          updateDeadlineUI();
+
+          if (deadlineModalStatus) deadlineModalStatus.textContent = "저장되었습니다!";
+          setTimeout(() => {
+            closeDeadlineModal();
+          }, 300);
+        } catch (err) {
+          console.error("Save deadline error:", err);
+          alert("마감 설정 저장 실패: " + err.message);
+          if (deadlineModalStatus) deadlineModalStatus.textContent = "오류: " + err.message;
+        } finally {
+          setSaving(false);
+          btnSaveDeadline.disabled = false;
+          btnSaveDeadline.classList.remove("opacity-60", "cursor-wait");
+          if (deadlineSaveIcon) {
+            deadlineSaveIcon.textContent = "check";
+            deadlineSaveIcon.classList.remove("animate-spin");
+          }
+          if (deadlineSaveText) deadlineSaveText.textContent = "설정 저장 및 적용";
+        }
+      });
+    }
   </script>
-</body>
-</html>

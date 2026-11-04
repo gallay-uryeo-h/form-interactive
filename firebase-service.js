@@ -100,6 +100,13 @@ export function getUserViewColumnsFromMeta(metaData, targetSheetId) {
   return Array.isArray(metaData[userViewKey]) ? metaData[userViewKey] : null;
 }
 
+// 메타데이터에서 특정 시트의 마감 설정 조회
+export function getSheetDeadlineFromMeta(metaData, targetSheetId) {
+  if (!metaData || !targetSheetId) return { isClosed: false, deadline: null, closedMessage: "" };
+  const deadlineKey = `sheetDeadline_${targetSheetId}`;
+  return metaData[deadlineKey] || { isClosed: false, deadline: null, closedMessage: "" };
+}
+
 // 시트 목록 실시간 구독 리스너
 export function subscribeSheets(onSuccess, onError) {
   const metaDocRef = doc(db, COLLECTION_NAME, "metadata");
@@ -232,6 +239,65 @@ export function subscribeUserViewColumns(onSuccess, targetSheetId) {
     }
     onSuccess(null); // null means all columns are visible by default
   });
+}
+
+/**
+ * 특정 시트의 마감 설정 업데이트 (즉시 마감 토글 및 마감 시한 설정)
+ * @param {string} targetSheetId
+ * @param {{ isClosed?: boolean, deadline?: string|null, closedMessage?: string }} deadlineConfig
+ */
+export async function updateSheetDeadline(targetSheetId, deadlineConfig = {}) {
+  if (!targetSheetId) throw new Error("sheetId가 필요합니다.");
+  const metaDocRef = doc(db, COLLECTION_NAME, "metadata");
+  const deadlineKey = `sheetDeadline_${targetSheetId}`;
+  await setDoc(metaDocRef, {
+    [deadlineKey]: {
+      isClosed: !!deadlineConfig.isClosed,
+      deadline: deadlineConfig.deadline || null,
+      closedMessage: deadlineConfig.closedMessage || "제출이 마감되었습니다. 현재는 조회만 가능합니다.",
+      updatedAt: serverTimestamp()
+    }
+  }, { merge: true });
+  console.log(`[Firestore] 시트 '${targetSheetId}' 마감 설정 저장:`, deadlineConfig);
+}
+
+/**
+ * 특정 시트의 마감 설정 실시간 구독 리스너
+ * @param {function} onSuccess
+ * @param {string} targetSheetId
+ */
+export function subscribeSheetDeadline(onSuccess, targetSheetId) {
+  if (!targetSheetId) return () => {};
+  const metaDocRef = doc(db, COLLECTION_NAME, "metadata");
+  const deadlineKey = `sheetDeadline_${targetSheetId}`;
+  return onSnapshot(metaDocRef, (snap) => {
+    if (snap.exists()) {
+      const data = snap.data();
+      const cfg = data[deadlineKey] || { isClosed: false, deadline: null, closedMessage: "" };
+      onSuccess(cfg);
+    } else {
+      onSuccess({ isClosed: false, deadline: null, closedMessage: "" });
+    }
+  }, (err) => {
+    console.error("[Firestore] subscribeSheetDeadline error:", err);
+  });
+}
+
+/**
+ * 마감 여부 판정 유틸 함수
+ * @param {{ isClosed?: boolean, deadline?: string|null }} deadlineConfig
+ * @returns {boolean}
+ */
+export function isSheetClosed(deadlineConfig) {
+  if (!deadlineConfig) return false;
+  if (deadlineConfig.isClosed) return true;
+  if (deadlineConfig.deadline) {
+    const d = new Date(deadlineConfig.deadline);
+    if (!isNaN(d.getTime()) && d.getTime() <= Date.now()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 // 실시간 태스크 목록 구독 리스너 — sheetId로 Firestore 쿼리 필터링

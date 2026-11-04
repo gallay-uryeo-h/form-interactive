@@ -131,6 +131,16 @@
 
   <!-- ────────── 내 입력(카드) 화면 ────────── -->
   <main id="viewCards" class="hidden flex-col w-full pt-16 pb-20 bg-surface flex-1 max-w-md mx-auto px-3">
+    <!-- 마감 안내 배너 (실시간) -->
+    <div id="deadlineNoticeBanner" class="hidden mb-2.5 p-3 rounded-xl border text-[11px] flex items-center gap-2.5 shadow-2xs">
+      <span id="deadlineBannerIcon" class="material-symbols-outlined text-[20px] shrink-0">lock</span>
+      <div class="flex flex-col min-w-0 flex-1 leading-snug">
+        <span id="deadlineBannerTitle" class="font-bold text-[12px]"></span>
+        <span id="deadlineBannerDesc" class="text-[10px] opacity-90 mt-0.5"></span>
+      </div>
+      <span id="deadlineCountdownBadge" class="hidden text-[10px] font-mono font-bold px-2 py-0.5 rounded-full shrink-0"></span>
+    </div>
+
     <div class="flex items-center justify-between py-2 text-[12px] text-outline">
       <span id="filteredCountLabel">로딩 중...</span>
       <span class="text-primary font-mono text-[11px]">실시간 동기화</span>
@@ -182,6 +192,9 @@
       subscribeSheets,
       subscribeColumnOrder,
       subscribeUserViewColumns,
+      subscribeSheetDeadline,
+      isSheetClosed,
+      getSheetDeadlineFromMeta,
       updateTask,
       getTasksForSheet,
       getMetadata,
@@ -404,7 +417,95 @@
         userViewColumns = cols;
         renderCards();
       }, currentSheetId);
+
+      subscribeSheetDeadline((deadlineCfg) => {
+        currentSheetDeadline = deadlineCfg || { isClosed: false, deadline: null, closedMessage: "" };
+        renderDeadlineBanner();
+        renderCards();
+      }, currentSheetId);
     }
+
+    // ─────────────────────────────────────────
+    //  마감 상태 배너 및 시간 헬퍼
+    // ─────────────────────────────────────────
+    function formatDateTime(d) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      const hours = String(d.getHours()).padStart(2, "0");
+      const mins = String(d.getMinutes()).padStart(2, "0");
+      return `${year}.${month}.${day} ${hours}:${mins}`;
+    }
+
+    function formatShortDate(d) {
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      const hours = String(d.getHours()).padStart(2, "0");
+      const mins = String(d.getMinutes()).padStart(2, "0");
+      return `${month}/${day} ${hours}:${mins}`;
+    }
+
+    function formatRemainingTime(ms) {
+      if (ms <= 0) return "마감됨";
+      const totalSec = Math.floor(ms / 1000);
+      const days = Math.floor(totalSec / 86400);
+      const hours = Math.floor((totalSec % 86400) / 3600);
+      const mins = Math.floor((totalSec % 3600) / 60);
+      if (days > 0) return `${days}일 ${hours}시간 남음`;
+      if (hours > 0) return `${hours}시간 ${mins}분 남음`;
+      return `${Math.max(1, mins)}분 남음`;
+    }
+
+    function renderDeadlineBanner() {
+      const banner = document.getElementById("deadlineNoticeBanner");
+      if (!banner) return;
+      const isClosed = isSheetClosed(currentSheetDeadline);
+      const icon = document.getElementById("deadlineBannerIcon");
+      const title = document.getElementById("deadlineBannerTitle");
+      const desc = document.getElementById("deadlineBannerDesc");
+      const cdBadge = document.getElementById("deadlineCountdownBadge");
+
+      if (isClosed) {
+        banner.className = "mb-2.5 p-3 rounded-xl border border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300 text-[11px] flex items-center gap-2.5 shadow-2xs";
+        if (icon) {
+          icon.textContent = "lock";
+          icon.className = "material-symbols-outlined text-[20px] text-red-600 shrink-0";
+        }
+        if (title) title.textContent = "제출이 마감되었습니다 (읽기 전용)";
+        if (desc) desc.textContent = currentSheetDeadline.closedMessage || "마감 시한이 종료되어 새로운 입력이나 수정이 제한됩니다.";
+        if (cdBadge) {
+          cdBadge.className = "text-[10px] font-mono font-bold px-2 py-0.5 rounded-full shrink-0 bg-red-600 text-white";
+          cdBadge.textContent = "마감됨";
+          cdBadge.classList.remove("hidden");
+        }
+        banner.classList.remove("hidden");
+      } else if (currentSheetDeadline && currentSheetDeadline.deadline) {
+        const d = new Date(currentSheetDeadline.deadline);
+        if (!isNaN(d.getTime())) {
+          banner.className = "mb-2.5 p-3 rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-800 dark:text-blue-300 text-[11px] flex items-center gap-2.5 shadow-2xs";
+          if (icon) {
+            icon.textContent = "timer";
+            icon.className = "material-symbols-outlined text-[20px] text-blue-600 shrink-0";
+          }
+          const formatted = formatDateTime(d);
+          if (title) title.textContent = `제출 마감 시한: ${formatted}`;
+          const diffMs = d.getTime() - Date.now();
+          const remText = formatRemainingTime(diffMs);
+          if (desc) desc.textContent = `마감 전까지 수정 및 입력이 가능합니다. (남은 시간: ${remText})`;
+          if (cdBadge) {
+            cdBadge.className = "text-[10px] font-mono font-bold px-2 py-0.5 rounded-full shrink-0 bg-blue-600 text-white";
+            cdBadge.textContent = remText;
+            cdBadge.classList.remove("hidden");
+          }
+          banner.classList.remove("hidden");
+        } else {
+          banner.classList.add("hidden");
+        }
+      } else {
+        banner.classList.add("hidden");
+      }
+    }
+    setInterval(renderDeadlineBanner, 30000);
 
     // ─────────────────────────────────────────
     //  이메일 정규화 — 대소문자·공백 무시 비교용
@@ -478,7 +579,20 @@
               <span class="material-symbols-outlined text-[20px] text-primary">table_chart</span>
             </div>
             <div class="flex-1 min-w-0">
-              <p class="text-[14px] font-semibold text-on-surface truncate">${sheet.name || sheet.id}</p>
+              <div class="flex items-center gap-2">
+                <p class="text-[14px] font-semibold text-on-surface truncate">${sheet.name || sheet.id}</p>
+                ${(() => {
+                  const dCfg = getSheetDeadlineFromMeta(metaData, sheet.id);
+                  if (isSheetClosed(dCfg)) {
+                    return '<span class="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-bold shrink-0">마감됨</span>';
+                  } else if (dCfg && dCfg.deadline) {
+                    const d = new Date(dCfg.deadline);
+                    return '<span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.2 rounded font-bold shrink-0">~' + formatShortDate(d) + '</span>';
+                  } else {
+                    return '<span class="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.2 rounded font-bold shrink-0">진행중</span>';
+                  }
+                })()}
+              </div>
               <p class="text-[11px] text-outline mt-0.5 flex items-center gap-1">
                 <span class="material-symbols-outlined text-[12px]">edit_note</span>
                 내 항목 ${myCount}건
@@ -575,8 +689,8 @@
               <label class="text-[11px] text-on-surface-variant font-semibold flex items-center gap-1 truncate">
                 <span class="material-symbols-outlined text-[13px] text-primary">${col.icon}</span>${label}
               </label>
-              <input type="text" value="${val}"
-                class="w-full h-[38px] bg-surface-container-lowest text-on-surface text-[12px] px-2.5 rounded-lg border border-surface-container focus:border-secondary outline-none shadow-2xs"
+              <input type="text" value="${val}" ${isClosed ? 'disabled readonly' : ''}
+                class="w-full h-[38px] ${isClosed ? 'bg-surface-container/60 text-on-surface opacity-75 cursor-not-allowed shadow-none' : 'bg-surface-container-lowest text-on-surface shadow-2xs focus:border-secondary'} text-[12px] px-2.5 rounded-lg border border-surface-container outline-none"
                 onchange="window.saveField('${t.id}','${col.key}',this.value)">
             </div>`;
 
@@ -591,7 +705,7 @@
               </label>
               <div class="relative">
                 <select
-                  class="w-full h-[38px] appearance-none bg-surface-container-lowest text-on-surface font-mono text-[11px] font-semibold px-2.5 rounded-lg border border-surface-container focus:border-secondary outline-none pr-6 shadow-2xs cursor-pointer"
+                  class="w-full h-[38px] appearance-none ${isClosed ? 'bg-surface-container/60 text-on-surface opacity-75 cursor-not-allowed shadow-none' : 'bg-surface-container-lowest text-on-surface shadow-2xs cursor-pointer focus:border-secondary'} font-mono text-[11px] font-semibold px-2.5 rounded-lg border border-surface-container outline-none pr-6" ${isClosed ? 'disabled' : ''}
                   onchange="window.saveField('${t.id}','${col.key}',this.value)">
                   ${allOpts.map(o => `<option value="${o}" ${o === val ? "selected" : ""}>${o}</option>`).join("")}
                 </select>
@@ -608,8 +722,8 @@
                 <span class="material-symbols-outlined text-[13px] text-outline">${col.icon}</span>${label}
               </label>
               <div class="flex items-center h-[38px] bg-surface-container-lowest border border-surface-container rounded-lg px-2 shadow-2xs">
-                <input type="date" value="${dateVal}"
-                  class="w-full bg-transparent font-mono text-[11px] text-on-surface outline-none font-medium cursor-pointer"
+                <input type="date" value="${dateVal}" ${isClosed ? 'disabled readonly' : ''}
+                  class="w-full bg-transparent font-mono text-[11px] text-on-surface outline-none font-medium ${isClosed ? 'opacity-75 cursor-not-allowed' : 'cursor-pointer'}"
                   onchange="window.saveField('${t.id}','${col.key}',this.value)">
               </div>
             </div>`;
@@ -626,7 +740,7 @@
                 ${pOpts.map(p => `
                   <button type="button"
                     class="h-[36px] px-1 rounded-lg text-[11px] font-medium border transition-colors flex items-center justify-center truncate
-                      ${val === p ? "bg-secondary-fixed text-on-secondary-fixed font-bold border-secondary/40 shadow-2xs" : "bg-surface-container-lowest text-on-surface-variant border-surface-container hover:bg-surface-container-low"}"
+                      ${val === p ? "bg-secondary-fixed text-on-secondary-fixed font-bold border-secondary/40 shadow-2xs" : "bg-surface-container-lowest text-on-surface-variant border-surface-container hover:bg-surface-container-low"} ${isClosed ? 'opacity-60 cursor-not-allowed' : ''}" ${isClosed ? 'disabled' : ''}
                     onclick="window.saveField('${t.id}','${col.key}','${p}')">${p}</button>
                 `).join("")}
               </div>
@@ -641,8 +755,8 @@
                 <span class="material-symbols-outlined text-[13px] text-primary">${col.icon}</span>${label}
               </label>
               <label class="flex items-center justify-center h-[38px] px-2.5 rounded-lg bg-surface-container-lowest border border-surface-container shadow-2xs cursor-pointer hover:bg-surface">
-                <input type="checkbox" ${isChecked ? "checked" : ""}
-                  class="accent-primary w-5 h-5"
+                <input type="checkbox" ${isChecked ? "checked" : ""} ${isClosed ? 'disabled' : ''}
+                  class="accent-primary w-5 h-5 ${isClosed ? 'opacity-60 cursor-not-allowed' : ''}"
                   onchange="window.saveField('${t.id}','${col.key}',this.checked)">
               </label>
             </div>`;
@@ -662,8 +776,8 @@
                 <span class="font-mono text-[11px] font-bold text-primary" id="prog-val-${t.id}-${col.key}">${numVal}${unit}</span>
               </div>
               <div class="flex items-center h-[38px] px-2.5 bg-surface-container-lowest border border-surface-container rounded-lg shadow-2xs">
-                <input type="range" min="${min}" max="${max}" value="${numVal}"
-                  class="w-full accent-primary cursor-pointer"
+                <input type="range" min="${min}" max="${max}" value="${numVal}" ${isClosed ? 'disabled' : ''}
+                  class="w-full accent-primary ${isClosed ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}"
                   oninput="document.getElementById('prog-val-${t.id}-${col.key}').textContent=this.value+'${unit}'"
                   onchange="window.saveField('${t.id}','${col.key}',Number(this.value))">
               </div>
@@ -689,6 +803,7 @@
     // ─────────────────────────────────────────
     function renderCards() {
       if (!currentUser) return;
+      renderDeadlineBanner();
 
       // 설정이나 태스크 로딩 중이면 대기 스피너 표시
       if (!configsReady || !tasksReady) {
@@ -782,6 +897,10 @@
     //  Save field
     // ─────────────────────────────────────────
     window.saveField = async (id, field, value) => {
+      if (isSheetClosed(currentSheetDeadline)) {
+        alert(currentSheetDeadline.closedMessage || "제출이 마감되어 수정할 수 없습니다.");
+        return;
+      }
       indicateSaving();
       try {
         await updateTask(id, { [field]: value });
