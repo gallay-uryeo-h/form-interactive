@@ -13,8 +13,7 @@
         "server.js",
         "package.json",
         "README.md",
-        "stitch-raw/**",
-        "mobile.html"
+        "stitch-raw/**"
       ],
       "rewrites": [
         {
