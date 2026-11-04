@@ -234,7 +234,7 @@
       <!-- 로그인 상태: 아바타 + 드롭다운 -->
       <div id="userAvatarArea" class="hidden relative">
         <button id="userAvatarBtn" type="button"
-          class="w-7 h-7 rounded-full bg-[#ea4335] text-white flex items-center justify-center font-bold text-[11px] shrink-0 shadow-xs hover:ring-2 hover:ring-[#ea4335]/40 transition-all"
+          class="w-7 h-7 rounded-full bg-[#1a73e8] text-white flex items-center justify-center font-bold text-[11px] shrink-0 shadow-xs hover:ring-2 hover:ring-[#1a73e8]/30 transition-all"
           title="구글 계정">
           <span id="userAvatarInitial">G</span>
         </button>
@@ -480,7 +480,7 @@
       <div id="googleIdConfigSection" class="hidden p-2.5 bg-surface-container-low rounded-xl border border-surface-container flex flex-col gap-2">
         <div class="flex items-center justify-between">
           <label class="text-[11px] font-bold text-on-surface flex items-center gap-1">
-            <span class="material-symbols-outlined text-[15px] text-[#ea4335]">alternate_email</span>
+            <svg viewBox="0 0 24 24" width="14" height="14" class="shrink-0"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
             <span>구글 아이디 / 학생 명렬 목록 불러오기</span>
           </label>
           <span class="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded font-mono font-semibold" id="rosterCountBadge">0명 감지</span>
@@ -1494,7 +1494,7 @@ kim.minsu@school.kr"></textarea>
         const styleMap = {
           "locked": "text-outline bg-surface-variant/70 hover:bg-surface-variant border border-outline/30 font-medium",
           "text": "text-on-surface bg-surface-container hover:bg-surface-variant border border-surface-variant font-medium",
-          "googleId": "text-[#c5221f] bg-[#fce8e6] hover:bg-[#fad2cf] border border-[#ea4335]/40 font-bold",
+          "googleId": "text-[#1a73e8] bg-[#f8fafd] hover:bg-[#e8f0fe] border border-[#dadce0] hover:border-[#1a73e8]/40 font-bold shadow-2xs",
           "select": "text-primary bg-primary/10 hover:bg-primary/20 border border-primary/30 font-bold",
           "date": "text-secondary bg-secondary-fixed/60 hover:bg-secondary-fixed border border-secondary/30 font-bold",
           "priority": "text-tertiary bg-tertiary-fixed/60 hover:bg-tertiary-fixed border border-tertiary/30 font-bold",
@@ -1504,7 +1504,7 @@ kim.minsu@school.kr"></textarea>
         const chipClass = styleMap[typeId] || "text-on-surface bg-surface-container";
 
         const optBadge = (typeId === "select" || typeId === "priority" || typeId === "googleId") && cfg.options && cfg.options.length
-          ? `<span class="text-[9px] px-1 rounded bg-black/5 opacity-80 ml-0.5">${cfg.options.length}${typeId === "googleId" ? "명" : ""}</span>`
+          ? `<span class="text-[9px] px-1 rounded ${typeId === "googleId" ? "bg-[#1a73e8]/10 text-[#1a73e8] font-bold" : "bg-black/5 opacity-80"} ml-0.5">${cfg.options.length}${typeId === "googleId" ? "명" : ""}</span>`
           : "";
 
         const isHiddenFromUser = Array.isArray(currentUserViewColumns) && !currentUserViewColumns.includes(col.key);
@@ -1515,7 +1515,7 @@ kim.minsu@school.kr"></textarea>
         th.innerHTML = `
           <button type="button" class="col-type-btn w-full flex items-center justify-between px-1.5 py-0.5 rounded transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-[0.98] ${chipClass}" data-colkey="${col.key}" data-title="${col.title}" title="클릭하여 [${col.letter}열: ${col.title}] 타입 및 드롭다운 옵션 설정">
             <span class="inline-flex items-center gap-1 truncate text-[10px]">
-              <span class="material-symbols-outlined text-[12px]">${typeInfo.icon}</span>
+              ${typeId === "googleId" ? `<svg viewBox="0 0 24 24" width="12" height="12" class="shrink-0"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>` : `<span class="material-symbols-outlined text-[12px]">${typeInfo.icon}</span>`}
               <span class="truncate">${typeInfo.label}</span>
               ${optBadge}
               ${hiddenBadge}
@@ -2101,7 +2101,7 @@ kim.minsu@school.kr"></textarea>
               : "bg-surface-container-lowest border-surface-container text-on-surface hover:bg-surface-container"
           }" onclick="window.selectModalType('${opt.id}')">
             <div class="flex items-center justify-between w-full">
-              <span class="material-symbols-outlined text-[16px] ${isSelected ? "text-primary" : "text-outline"}">${opt.icon}</span>
+              ${opt.id === "googleId" ? `<svg viewBox="0 0 24 24" width="16" height="16" class="shrink-0"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>` : `<span class="material-symbols-outlined text-[16px] ${isSelected ? "text-primary" : "text-outline"}">${opt.icon}</span>`}
               ${isSelected ? '<span class="material-symbols-outlined text-[14px] text-primary">check_circle</span>' : ''}
             </div>
             <span class="text-[11px] leading-tight font-semibold mt-0.5">${opt.label}</span>
@@ -3594,8 +3594,8 @@ kim.minsu@school.kr"></textarea>
           return `
             <td ${cellAttrs} title="클릭하여 선택, 엔터/타이핑하여 구글 아이디 편집">
               <div class="flex items-center gap-1.5 w-full overflow-hidden pointer-events-none">
-                <span class="material-symbols-outlined text-[14px] text-[#ea4335] shrink-0">alternate_email</span>
-                <span class="cell-text-view truncate block w-full text-[11px] font-mono ${val ? 'text-on-surface font-semibold' : 'text-outline/70'}">${val || "(구글ID 입력)"}</span>
+                <svg viewBox="0 0 24 24" width="13" height="13" class="shrink-0"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                <span class="cell-text-view truncate block w-full text-[11px] font-mono ${val ? 'text-[#1a73e8] font-medium' : 'text-outline/60 italic'}">${val || "(구글ID 입력)"}</span>
               </div>
             </td>
           `;
