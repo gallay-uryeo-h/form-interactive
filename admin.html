@@ -705,7 +705,22 @@ kim.minsu@school.kr"></textarea>
               <option value="double">2행 이중 헤더 (센진학·나이스 대입엑셀 / 3행부터 데이터)</option>
               <option value="none">헤더 없음 (1행부터 순수 데이터)</option>
             </select>
+            <label class="flex items-center gap-1.5 text-[11px] text-on-surface-variant cursor-pointer mt-1.5">
+              <input type="checkbox" id="excelSkipBlankFirstRow" checked class="accent-primary w-3.5 h-3.5 cursor-pointer">
+              <span>빈 행 / 세부헤더 잔여 행 자동 건너뛰기 (1행 빈 칸 방지)</span>
+            </label>
           </div>
+        </div>
+
+        <!-- Header Warning Banner (Dynamic) -->
+        <div id="excelHeaderWarningNotice" class="hidden flex items-center justify-between gap-3 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-[11px]">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="material-symbols-outlined text-[18px] text-amber-600 shrink-0">warning</span>
+            <span class="leading-relaxed"><strong>1행이 비어있는 원인 감지:</strong> 엑셀의 2행이 세부 헤더(셀 병합) 구조입니다. <strong>[2행 이중 헤더]</strong>를 선택하시면 1행부터 학생 데이터가 정상 반영됩니다.</span>
+          </div>
+          <button type="button" id="btnSwitchToDoubleHeader" class="px-2.5 py-1 bg-primary text-white rounded-lg text-[10px] font-bold hover:bg-primary/90 shrink-0 shadow-xs cursor-pointer whitespace-nowrap">
+            2행 이중 헤더로 변경
+          </button>
         </div>
 
         <!-- 2. Import mode selection -->
@@ -3832,6 +3847,9 @@ kim.minsu@school.kr"></textarea>
     const excelSheetSelect = document.getElementById("excelSheetSelect");
     const excelHeaderRowMode = document.getElementById("excelHeaderRowMode");
     const excelHeaderAutoDetectNotice = document.getElementById("excelHeaderAutoDetectNotice");
+    const excelSkipBlankFirstRow = document.getElementById("excelSkipBlankFirstRow");
+    const excelHeaderWarningNotice = document.getElementById("excelHeaderWarningNotice");
+    const btnSwitchToDoubleHeader = document.getElementById("btnSwitchToDoubleHeader");
     const excelPreviewStats = document.getElementById("excelPreviewStats");
     const excelPreviewTableWrap = document.getElementById("excelPreviewTableWrap");
     const excelModalStatus = document.getElementById("excelModalStatus");
@@ -3964,6 +3982,21 @@ kim.minsu@school.kr"></textarea>
       });
     }
 
+    if (btnSwitchToDoubleHeader) {
+      btnSwitchToDoubleHeader.addEventListener("click", () => {
+        if (excelHeaderRowMode) {
+          excelHeaderRowMode.value = "double";
+          processAndRenderPreview(false);
+        }
+      });
+    }
+
+    if (excelSkipBlankFirstRow) {
+      excelSkipBlankFirstRow.addEventListener("change", () => {
+        processAndRenderPreview(false);
+      });
+    }
+
     function loadSheetData(sheetName, isNewFile = false) {
       if (!currentWorkbook || !currentWorkbook.Sheets[sheetName]) return;
       const ws = currentWorkbook.Sheets[sheetName];
@@ -4034,6 +4067,7 @@ kim.minsu@school.kr"></textarea>
         }
         // 실제 데이터는 3행(index 2)부터 시작!
         rawDataRows = validRows.slice(2);
+        if (excelHeaderWarningNotice) excelHeaderWarningNotice.classList.add("hidden");
       } else if (headerMode === "single") {
         // 1행 헤더
         rawHeaders = validRows[0].map((h, i) => String(h || "").trim() || ("열 " + (i + 1)));
@@ -4042,6 +4076,23 @@ kim.minsu@school.kr"></textarea>
         }
         // 데이터는 2행(index 1)부터 시작!
         rawDataRows = validRows.slice(1);
+
+        // 2행 세부헤더 잔여 행(앞쪽 학년·반·번호·이름이 비어있는 행) 검사 및 자동 건너뛰기
+        const row1 = validRows[1] || [];
+        const row2 = validRows[2] || [];
+        const row1LeadEmpty = [0, 1, 2, 3].every(idx => !row1[idx] || String(row1[idx]).trim() === "");
+        const row2LeadHasVal = [0, 1, 2, 3].some(idx => row2[idx] != null && String(row2[idx]).trim() !== "");
+
+        if (row1LeadEmpty && row2LeadHasVal) {
+          if (excelHeaderWarningNotice) excelHeaderWarningNotice.classList.remove("hidden");
+          const skipBlank = excelSkipBlankFirstRow ? excelSkipBlankFirstRow.checked : true;
+          if (skipBlank) {
+            // 빈 행 / 세부헤더 잔여 행 자동 제외 -> 1행부터 학생 데이터가 들어가도록 보정
+            rawDataRows = validRows.slice(2);
+          }
+        } else {
+          if (excelHeaderWarningNotice) excelHeaderWarningNotice.classList.add("hidden");
+        }
       } else {
         // 헤더 없음 (모든 행이 순수 데이터)
         for (let i = 0; i < maxCols; i++) {
