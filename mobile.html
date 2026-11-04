@@ -667,6 +667,7 @@
       const rawVal = t[col.key];
       const val    = rawVal != null ? String(rawVal) : "";
       const span   = getFieldSpan(col.key, type);
+      const isClosed = isSheetClosed(currentSheetDeadline);
 
       switch (type) {
 
