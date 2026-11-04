@@ -582,7 +582,7 @@
               <div class="flex items-center gap-2">
                 <p class="text-[14px] font-semibold text-on-surface truncate">${sheet.name || sheet.id}</p>
                 ${(() => {
-                  const dCfg = getSheetDeadlineFromMeta(metaData, sheet.id);
+                  const dCfg = getSheetDeadlineFromMeta(meta, sheet.id);
                   if (isSheetClosed(dCfg)) {
                     return '<span class="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-bold shrink-0">마감됨</span>';
                   } else if (dCfg && dCfg.deadline) {
