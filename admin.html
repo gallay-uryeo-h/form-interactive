@@ -276,6 +276,11 @@
         <span class="font-semibold">엑셀 업로드</span>
       </button>
       <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="hidden">
+      <button id="btnOpenUserColumnsModal" class="flex items-center gap-1 px-2.5 py-1 bg-surface-container hover:bg-[#e8f0fe] text-on-surface hover:text-[#1a73e8] border border-surface-variant hover:border-[#1a73e8]/40 rounded transition-colors font-medium text-[11px] cursor-pointer shadow-2xs" title="사용자(모바일) 화면에 노출할 열을 선택합니다">
+        <span class="material-symbols-outlined text-[15px] text-[#1a73e8]">visibility</span>
+        <span class="font-semibold">유저 표시 열</span>
+        <span id="userColumnBadge" class="hidden text-[10px] bg-[#1a73e8] text-white px-1.5 py-0.2 rounded-full font-bold ml-0.5">0</span>
+      </button>
       <div class="h-4 w-px bg-surface-variant mx-1"></div>
       <button id="btnUndo" class="p-1 hover:bg-surface-variant rounded transition-opacity cursor-pointer opacity-30 cursor-not-allowed" title="실행취소 (Ctrl+Z)" disabled>
         <span class="material-symbols-outlined text-[16px]">undo</span>
@@ -587,6 +592,69 @@ kim.minsu@school.kr"></textarea>
     </div>
   </div>
 
+  <!-- ══ USER VIEW COLUMNS MODAL ════════════════════════════════════════════ -->
+  <div id="userColumnsModal" class="hidden fixed inset-0 z-50 bg-black/45 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-surface-container-lowest border border-surface-variant rounded-2xl shadow-2xl w-[640px] max-w-[96vw] max-h-[88vh] flex flex-col text-[12px] font-sans overflow-hidden">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between px-5 py-3.5 border-b border-surface-container bg-surface-container-low/60 shrink-0">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="w-8 h-8 rounded-lg bg-[#e8f0fe] flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[20px] text-[#1a73e8]">visibility</span>
+          </div>
+          <div class="flex flex-col min-w-0">
+            <h3 class="font-bold text-[14px] text-on-surface truncate">유저(모바일) 페이지 표시 열 설정</h3>
+            <p class="text-[11px] text-outline truncate">선택한 열만 학생/사용자 화면에 표시되며, 해제된 열은 숨겨집니다.</p>
+          </div>
+        </div>
+        <button type="button" id="btnCloseUserColumnsModal" class="p-1 rounded-lg text-outline hover:text-on-surface hover:bg-surface-container transition-colors cursor-pointer">
+          <span class="material-symbols-outlined text-[18px]">close</span>
+        </button>
+      </div>
+
+      <!-- Controls & Search Toolbar -->
+      <div class="px-5 py-2.5 border-b border-surface-container bg-surface-container-lowest flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <div class="relative flex-1 min-w-[180px] max-w-xs">
+          <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-[15px] text-outline">search</span>
+          <input type="text" id="userColSearchInput" placeholder="열 이름 또는 번호(A, B..) 검색..."
+            class="w-full pl-8 pr-2.5 py-1 text-[11px] bg-surface-container-low border border-surface-variant rounded-lg outline-none focus:border-secondary transition-colors">
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button type="button" id="btnSelectAllUserCols" class="px-2 py-1 text-[11px] font-medium bg-surface-container hover:bg-surface-variant text-on-surface rounded-md border border-surface-variant transition-colors cursor-pointer">
+            전체 선택
+          </button>
+          <button type="button" id="btnDeselectAllUserCols" class="px-2 py-1 text-[11px] font-medium bg-surface-container hover:bg-surface-variant text-on-surface rounded-md border border-surface-variant transition-colors cursor-pointer">
+            전체 해제
+          </button>
+          <div class="h-3.5 w-px bg-surface-variant mx-0.5"></div>
+          <span class="text-[11px] text-outline font-mono">
+            표시: <strong id="userColSelectedCount" class="text-secondary font-bold">0</strong> / <span id="userColTotalCount">0</span>개
+          </span>
+        </div>
+      </div>
+
+      <!-- Column List (Scrollable) -->
+      <div class="p-5 overflow-y-auto flex-1 bg-surface-container-low/20">
+        <div id="userColumnsGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <!-- Dynamically populated by JS -->
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="flex items-center justify-between px-5 py-3 border-t border-surface-container bg-surface-container-low/60 shrink-0">
+        <span class="text-[11px] text-outline" id="userColumnsModalStatus"></span>
+        <div class="flex items-center gap-2">
+          <button type="button" id="btnCancelUserColumns" class="px-3.5 py-1.5 rounded-lg border border-surface-variant hover:bg-surface-container text-on-surface font-medium transition-colors cursor-pointer text-[11px]">
+            취소
+          </button>
+          <button type="button" id="btnSaveUserColumns" class="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-bold shadow-sm transition-all cursor-pointer text-[12px]">
+            <span class="material-symbols-outlined text-[16px]" id="userColSaveIcon">check_circle</span>
+            <span id="userColSaveText">설정 저장 및 적용</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ══ EXCEL UPLOAD PREVIEW MODAL ════════════════════════════════════════ -->
   <div id="excelUploadModal" class="hidden fixed inset-0 z-50 bg-black/45 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-surface-container-lowest border border-surface-variant rounded-2xl shadow-2xl w-[720px] max-w-[96vw] max-h-[90vh] flex flex-col text-[12px] font-sans overflow-hidden">
@@ -729,7 +797,9 @@ kim.minsu@school.kr"></textarea>
       AVAILABLE_TYPES,
       DEFAULT_COLUMN_CONFIGS,
       isAdminEmail,
-      importExcelData
+      importExcelData,
+      updateUserViewColumns,
+      subscribeUserViewColumns
     } from "./firebase-service.js";
 
     import { onAuthStateChanged, signInWithGoogle, signOut } from "./auth-service.js";
@@ -1306,6 +1376,7 @@ kim.minsu@school.kr"></textarea>
               <span class="material-symbols-outlined text-[12px]">${typeInfo.icon}</span>
               <span class="truncate">${typeInfo.label}</span>
               ${optBadge}
+              ${hiddenBadge}
             </span>
             <span class="material-symbols-outlined text-[13px] opacity-70">arrow_drop_down</span>
           </button>
@@ -4094,6 +4165,211 @@ kim.minsu@school.kr"></textarea>
         }
       });
     }
+  
+    // ══ USER VIEW COLUMNS MANAGER ══════════════════════════════════════════
+    let currentUserViewColumns = null; // null: all columns visible by default
+
+    const btnOpenUserColumnsModal = document.getElementById("btnOpenUserColumnsModal");
+    const userColumnsModal = document.getElementById("userColumnsModal");
+    const btnCloseUserColumnsModal = document.getElementById("btnCloseUserColumnsModal");
+    const btnCancelUserColumns = document.getElementById("btnCancelUserColumns");
+    const btnSaveUserColumns = document.getElementById("btnSaveUserColumns");
+    const userColumnsGrid = document.getElementById("userColumnsGrid");
+    const userColSearchInput = document.getElementById("userColSearchInput");
+    const btnSelectAllUserCols = document.getElementById("btnSelectAllUserCols");
+    const btnDeselectAllUserCols = document.getElementById("btnDeselectAllUserCols");
+    const userColSelectedCount = document.getElementById("userColSelectedCount");
+    const userColTotalCount = document.getElementById("userColTotalCount");
+    const userColumnBadge = document.getElementById("userColumnBadge");
+    const userColSaveIcon = document.getElementById("userColSaveIcon");
+    const userColSaveText = document.getElementById("userColSaveText");
+    const userColumnsModalStatus = document.getElementById("userColumnsModalStatus");
+
+    function updateUserColumnBadge() {
+      if (!userColumnBadge) return;
+      if (Array.isArray(currentUserViewColumns) && currentUserViewColumns.length > 0 && currentUserViewColumns.length < COLUMNS.length) {
+        userColumnBadge.textContent = `${currentUserViewColumns.length}/${COLUMNS.length}`;
+        userColumnBadge.classList.remove("hidden");
+      } else {
+        userColumnBadge.classList.add("hidden");
+      }
+    }
+
+    // Subscribe to user view columns
+    if (typeof subscribeUserViewColumns === "function" && currentSheetId) {
+      subscribeUserViewColumns((cols) => {
+        currentUserViewColumns = cols;
+        updateUserColumnBadge();
+        renderTypeRowChips();
+      }, currentSheetId);
+    }
+
+    if (btnOpenUserColumnsModal) {
+      btnOpenUserColumnsModal.addEventListener("click", openUserColumnsModal);
+    }
+    if (btnCloseUserColumnsModal) {
+      btnCloseUserColumnsModal.addEventListener("click", closeUserColumnsModal);
+    }
+    if (btnCancelUserColumns) {
+      btnCancelUserColumns.addEventListener("click", closeUserColumnsModal);
+    }
+
+    function openUserColumnsModal() {
+      if (!userColumnsModal) return;
+      if (userColSearchInput) userColSearchInput.value = "";
+      renderUserColumnsList();
+      userColumnsModal.classList.remove("hidden");
+      userColumnsModal.classList.add("flex");
+    }
+
+    function closeUserColumnsModal() {
+      if (!userColumnsModal) return;
+      userColumnsModal.classList.add("hidden");
+      userColumnsModal.classList.remove("flex");
+    }
+
+    function renderUserColumnsList() {
+      if (!userColumnsGrid) return;
+      const searchVal = (userColSearchInput ? userColSearchInput.value : "").trim().toLowerCase();
+
+      // Determined checked state: if currentUserViewColumns is null, all are checked by default
+      const isVisible = (colKey) => {
+        if (!currentUserViewColumns) return true;
+        return currentUserViewColumns.includes(colKey);
+      };
+
+      let visibleCount = 0;
+      let totalCount = COLUMNS.length;
+
+      const filteredCols = COLUMNS.filter(col => {
+        if (!searchVal) return true;
+        const letter = (col.letter || "").toLowerCase();
+        const title = (col.title || "").toLowerCase();
+        return letter.includes(searchVal) || title.includes(searchVal);
+      });
+
+      userColumnsGrid.innerHTML = filteredCols.map(col => {
+        const checked = isVisible(col.key);
+        if (checked) visibleCount++;
+
+        const cfg = currentColumnConfigs[col.key] || DEFAULT_COLUMN_CONFIGS[col.key] || {};
+        const typeInfo = AVAILABLE_TYPES.find(t => t.id === (cfg.type || "text")) || AVAILABLE_TYPES[0];
+
+        return `
+          <label class="user-col-item flex items-center justify-between p-2.5 rounded-xl border border-surface-container bg-surface-container-lowest hover:border-secondary/50 hover:bg-surface-container/50 cursor-pointer transition-all select-none has-[:checked]:border-secondary/40 has-[:checked]:bg-[#f0f4fd]">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <input type="checkbox" class="user-col-checkbox accent-secondary w-4 h-4 cursor-pointer" data-colkey="${col.key}" ${checked ? "checked" : ""}>
+              <div class="flex items-center gap-1.5 min-w-0">
+                <span class="w-5 h-5 rounded bg-surface-container text-on-surface text-[10px] font-mono font-bold flex items-center justify-center shrink-0 border border-surface-variant/60">${col.letter}</span>
+                <span class="font-bold text-[12px] text-on-surface truncate">${escapeHtml(col.title)}</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-1 text-[10px] text-outline px-1.5 py-0.5 rounded bg-surface-container-low shrink-0 ml-1">
+              <span class="material-symbols-outlined text-[12px]">${typeInfo.icon}</span>
+              <span>${typeInfo.label}</span>
+            </div>
+          </label>
+        `;
+      }).join("");
+
+      updateUserColCounts();
+
+      // Bind checkbox change
+      userColumnsGrid.querySelectorAll(".user-col-checkbox").forEach(chk => {
+        chk.addEventListener("change", () => {
+          updateUserColCounts();
+        });
+      });
+    }
+
+    function updateUserColCounts() {
+      if (!userColumnsGrid) return;
+      const allCheckboxes = userColumnsGrid.querySelectorAll(".user-col-checkbox");
+      const checkedBoxes = userColumnsGrid.querySelectorAll(".user-col-checkbox:checked");
+      if (userColSelectedCount) userColSelectedCount.textContent = checkedBoxes.length;
+      if (userColTotalCount) userColTotalCount.textContent = allCheckboxes.length;
+    }
+
+    if (userColSearchInput) {
+      userColSearchInput.addEventListener("input", () => {
+        renderUserColumnsList();
+      });
+    }
+
+    if (btnSelectAllUserCols) {
+      btnSelectAllUserCols.addEventListener("click", () => {
+        if (!userColumnsGrid) return;
+        userColumnsGrid.querySelectorAll(".user-col-checkbox").forEach(chk => {
+          chk.checked = true;
+        });
+        updateUserColCounts();
+      });
+    }
+
+    if (btnDeselectAllUserCols) {
+      btnDeselectAllUserCols.addEventListener("click", () => {
+        if (!userColumnsGrid) return;
+        userColumnsGrid.querySelectorAll(".user-col-checkbox").forEach(chk => {
+          chk.checked = false;
+        });
+        updateUserColCounts();
+      });
+    }
+
+    if (btnSaveUserColumns) {
+      btnSaveUserColumns.addEventListener("click", async () => {
+        if (!currentSheetId) return;
+
+        const allCheckboxes = userColumnsGrid.querySelectorAll(".user-col-checkbox");
+        const checkedKeys = [];
+        allCheckboxes.forEach(chk => {
+          if (chk.checked) checkedKeys.push(chk.dataset.colkey);
+        });
+
+        if (checkedKeys.length === 0) {
+          if (!confirm("모든 열의 표시가 해제되었습니다. 사용자(모바일) 화면에 아무 열도 표시되지 않습니다. 계속하시겠습니까?")) {
+            return;
+          }
+        }
+
+        btnSaveUserColumns.disabled = true;
+        btnSaveUserColumns.classList.add("opacity-60", "cursor-wait");
+        if (userColSaveIcon) {
+          userColSaveIcon.textContent = "sync";
+          userColSaveIcon.classList.add("animate-spin");
+        }
+        if (userColSaveText) userColSaveText.textContent = "저장 중...";
+        setSaving(true);
+
+        try {
+          // If all columns checked, we can store null (meaning all visible) or the list of keys
+          const valueToSave = (checkedKeys.length === COLUMNS.length) ? null : checkedKeys;
+          await updateUserViewColumns(valueToSave, currentSheetId);
+          currentUserViewColumns = valueToSave;
+          updateUserColumnBadge();
+          renderTypeRowChips();
+
+          if (userColumnsModalStatus) userColumnsModalStatus.textContent = "저장되었습니다!";
+          setTimeout(() => {
+            closeUserColumnsModal();
+          }, 200);
+        } catch (err) {
+          console.error("Save user columns error:", err);
+          alert("유저 열 설정 저장 실패: " + err.message);
+          if (userColumnsModalStatus) userColumnsModalStatus.textContent = "오류: " + err.message;
+        } finally {
+          setSaving(false);
+          btnSaveUserColumns.disabled = false;
+          btnSaveUserColumns.classList.remove("opacity-60", "cursor-wait");
+          if (userColSaveIcon) {
+            userColSaveIcon.textContent = "check_circle";
+            userColSaveIcon.classList.remove("animate-spin");
+          }
+          if (userColSaveText) userColSaveText.textContent = "설정 저장 및 적용";
+        }
+      });
+    }
+
   </script>
 </body>
 </html>

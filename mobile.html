@@ -181,6 +181,7 @@
       subscribeColumnConfigs,
       subscribeSheets,
       subscribeColumnOrder,
+      subscribeUserViewColumns,
       updateTask,
       getTasksForSheet,
       getMetadata,
@@ -209,6 +210,7 @@
     let allSheets          = [];
     let columnConfigs      = {};
     let currentColumnOrder = [];
+    let userViewColumns    = null;
     let currentUser        = null;
     let saveTimeout        = null;
     let configsReady       = false;
@@ -397,6 +399,11 @@
         currentColumnOrder = order || [];
         renderCards();
       }, currentSheetId);
+
+      subscribeUserViewColumns((cols) => {
+        userViewColumns = cols;
+        renderCards();
+      }, currentSheetId);
     }
 
     // ─────────────────────────────────────────
@@ -493,10 +500,16 @@
     //  Column helpers (내 입력 화면용)
     // ─────────────────────────────────────────
     function getColumnsToRender() {
-      const keys = (currentColumnOrder && currentColumnOrder.length)
+      const allKeys = (currentColumnOrder && currentColumnOrder.length)
         ? currentColumnOrder
         : Object.keys(columnConfigs);
-      return keys.map(k => {
+
+      // 유저 화면 표시 열이 설정되어 있으면 해당 열만 필터링 (미설정이면 전체 표시)
+      const filteredKeys = (Array.isArray(userViewColumns) && userViewColumns.length > 0)
+        ? allKeys.filter(k => userViewColumns.includes(k))
+        : allKeys;
+
+      return filteredKeys.map(k => {
         const cfg = columnConfigs[k] || {};
         return { key: k, label: cfg.label || k, icon: "edit_note" };
       });

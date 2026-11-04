@@ -93,6 +93,13 @@ export function getColumnOrderFromMeta(metaData, targetSheetId) {
   return Array.isArray(metaData[orderKey]) ? metaData[orderKey] : [];
 }
 
+// 메타데이터에서 특정 시트의 유저 화면 표시 열 목록 조회
+export function getUserViewColumnsFromMeta(metaData, targetSheetId) {
+  if (!metaData || !targetSheetId) return null;
+  const userViewKey = `userViewColumns_${targetSheetId}`;
+  return Array.isArray(metaData[userViewKey]) ? metaData[userViewKey] : null;
+}
+
 // 시트 목록 실시간 구독 리스너
 export function subscribeSheets(onSuccess, onError) {
   const metaDocRef = doc(db, COLLECTION_NAME, "metadata");
@@ -196,6 +203,34 @@ export function subscribeColumnOrder(onSuccess, targetSheetId) {
       }
     }
     onSuccess([]);
+  });
+}
+
+// 유저 화면(모바일 뷰) 표시 열 목록 저장
+export async function updateUserViewColumns(columnKeys, targetSheetId) {
+  if (!targetSheetId) throw new Error("sheetId가 필요합니다.");
+  const metaDocRef = doc(db, COLLECTION_NAME, "metadata");
+  const userViewKey = `userViewColumns_${targetSheetId}`;
+  await setDoc(metaDocRef, {
+    [userViewKey]: columnKeys, // array of keys or null (to reset)
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+  console.log(`[Firestore] 시트 '${targetSheetId}' 유저 화면 열 설정 저장:`, columnKeys);
+}
+
+// 유저 화면(모바일 뷰) 표시 열 목록 실시간 구독 리스너
+export function subscribeUserViewColumns(onSuccess, targetSheetId) {
+  const metaDocRef = doc(db, COLLECTION_NAME, "metadata");
+  const userViewKey = `userViewColumns_${targetSheetId}`;
+  return onSnapshot(metaDocRef, (snap) => {
+    if (snap.exists()) {
+      const data = snap.data();
+      if (Array.isArray(data[userViewKey])) {
+        onSuccess(data[userViewKey]);
+        return;
+      }
+    }
+    onSuccess(null); // null means all columns are visible by default
   });
 }
 
