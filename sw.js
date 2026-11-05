@@ -1,5 +1,5 @@
-// Service Worker for Mobile Sheet PWA (v4 - Always Fresh, No Stale Code)
-const CACHE_NAME = 'mobile-sheet-v4';
+// Service Worker for Mobile Sheet PWA (v5 - Always Fresh, No Stale Code)
+const CACHE_NAME = 'mobile-sheet-v5';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/icons/icon-192.png',

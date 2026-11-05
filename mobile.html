@@ -2,7 +2,20 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-    <!-- PWA & Mobile Meta Tags -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <script>
+    // 강제 구버전 Service Worker 해제 및 최신화
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const reg of registrations) {
+          reg.update();
+        }
+      });
+    }
+  </script>
+  <!-- PWA & Mobile Meta Tags -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1a73e8">
   <meta name="mobile-web-app-capable" content="yes">
@@ -316,12 +329,12 @@
     // 구버전 Service Worker 캐시 무효화 및 강제 갱신
     (async function purgeOldCachesOnce() {
       try {
-        const CURRENT_VERSION = "v4";
+        const CURRENT_VERSION = "v5";
         if (localStorage.getItem("app_sw_ver") !== CURRENT_VERSION) {
           if ("caches" in window) {
             const keys = await caches.keys();
             for (const k of keys) {
-              if (k !== "mobile-sheet-v4") await caches.delete(k);
+              if (k !== "mobile-sheet-v5") await caches.delete(k);
             }
           }
           localStorage.setItem("app_sw_ver", CURRENT_VERSION);
@@ -371,9 +384,6 @@
     const btnLoginRedirect = document.getElementById("btnLoginRedirect");
     const btnLoginPwaInstall = document.getElementById("btnLoginPwaInstall");
     const btnHeaderPwaInstall = document.getElementById("btnHeaderPwaInstall");
-
-    // 리디렉션 로그인 결과 자동 감지
-    checkRedirectResult().catch(err => console.warn("Redirect auth check:", err));
     const userAvatarArea   = document.getElementById("userAvatarArea");
     const userAvatarBtn    = document.getElementById("userAvatarBtn");
     const userAvatarInitial = document.getElementById("userAvatarInitial");
@@ -477,23 +487,13 @@
     // ─────────────────────────────────────────
     let authSettled = false;
 
-    // 800ms 폴백 타이머: 모바일 브라우저에서 인증 초기화가 지연되더라도 무한 스피너에 갇히지 않고 로그인 화면 표시
-    setTimeout(() => {
-      if (!authSettled && !currentUser) {
-        console.log("[Auth] Fallback timeout: showing login view");
-        showView("login");
-      }
-    }, 800);
-
-    onAuthStateChanged((user) => {
+    function handleAuthUser(user) {
       authSettled = true;
       currentUser = user;
       if (!user) {
-        // 미로그인
         showView("login");
         return;
       }
-      // 로그인됨
       btnGoogleLogin.classList.add("hidden");
       btnGoogleLogin.classList.remove("flex");
       userAvatarArea.classList.remove("hidden");
@@ -502,15 +502,34 @@
       dropdownEmail.textContent = user.email;
 
       if (currentSheetId) {
-        // sheetId 있음 → 내 입력 화면
         showView("cards");
         renderCards();
       } else {
-        // sheetId 없음 → 시트 목록
         showView("list");
         renderSheetList();
       }
+    }
+
+    // 1. 리디렉션 로그인 복귀 즉시 감지 및 적용
+    checkRedirectResult().then((user) => {
+      if (user) {
+        console.log("[Auth] Redirect login result caught:", user.email);
+        handleAuthUser(user);
+      }
+    }).catch(err => console.warn("Redirect auth check:", err));
+
+    // 2. 인증 상태 리스너 등록
+    onAuthStateChanged((user) => {
+      handleAuthUser(user);
     });
+
+    // 3. 1200ms 폴백: 모바일에서 인증 초기화가 지연되더라도 무한 로딩에 갇히지 않고 로그인 뷰 제공
+    setTimeout(() => {
+      if (!authSettled && !currentUser) {
+        console.log("[Auth] Fallback timeout: showing login view");
+        showView("login");
+      }
+    }, 1200);
 
     // ─────────────────────────────────────────
     //  Firestore 구독 (시트 목록용)
