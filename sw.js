@@ -1,5 +1,5 @@
-// Service Worker for Mobile Sheet PWA (v6 - Mobile Redirect Auth Fix)
-const CACHE_NAME = 'mobile-sheet-v6';
+// Service Worker for Mobile Sheet PWA (v7 - Same-Origin AuthDomain Fix)
+const CACHE_NAME = 'mobile-sheet-v7';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/icons/icon-192.png',
