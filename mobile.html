@@ -130,7 +130,7 @@
   </main>
 
   <!-- ────────── 내 입력(카드) 화면 ────────── -->
-  <main id="viewCards" class="hidden flex-col w-full pt-16 pb-20 bg-surface flex-1 max-w-md mx-auto px-3">
+  <main id="viewCards" class="hidden flex-col w-full pt-16 pb-10 pb-safe bg-surface flex-1 max-w-md mx-auto px-3">
     <!-- 마감 안내 배너 (실시간) -->
     <div id="deadlineNoticeBanner" class="hidden mb-2.5 p-3 rounded-xl border text-[11px] flex items-center gap-2.5 shadow-2xs">
       <span id="deadlineBannerIcon" class="material-symbols-outlined text-[20px] shrink-0">lock</span>
@@ -172,15 +172,11 @@
   </main>
 
   <!-- Mobile Bottom Tab Bar — 내 입력 + 홈/목록 2개만 -->
-  <nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/90 backdrop-blur-md border-t border-surface-container">
-    <div class="max-w-md mx-auto flex justify-around items-center h-14 px-3 bg-surface-container-lowest">
-      <a id="tabMyInput" href="mobile.html" class="flex flex-col items-center justify-center min-w-[72px] text-on-surface-variant hover:text-on-surface">
-        <span class="material-symbols-outlined text-[20px]">edit_note</span>
-        <span class="text-[10px] mt-0.5">내 입력</span>
-      </a>
+  <nav id="bottomNav" class="fixed bottom-0 w-full z-50 pb-safe bg-surface/90 backdrop-blur-md border-t border-surface-container">
+    <div class="max-w-md mx-auto flex justify-center items-center h-14 px-3 bg-surface-container-lowest">
       <a id="tabHome" href="mobile.html" class="flex flex-col items-center justify-center min-w-[72px] text-primary font-semibold">
         <span class="material-symbols-outlined text-[20px]">folder_shared</span>
-        <span class="text-[10px] mt-0.5">홈/목록</span>
+        <span class="text-[10px] mt-0.5">목록</span>
       </a>
     </div>
   </nav>
@@ -230,18 +226,6 @@
     let configsReady       = false;
     let tasksReady         = false;
 
-    // 탭 링크 초기화
-    if (currentSheetId) {
-      document.getElementById("tabMyInput").href = `mobile.html?sheetId=${encodeURIComponent(currentSheetId)}`;
-    } else {
-      document.getElementById("tabMyInput").addEventListener("click", (e) => {
-        if (!currentSheetId) {
-          e.preventDefault();
-          showView("list");
-        }
-      });
-    }
-
     // ─────────────────────────────────────────
     //  DOM refs
     // ─────────────────────────────────────────
@@ -264,7 +248,7 @@
     const dropdownName     = document.getElementById("dropdownName");
     const dropdownEmail    = document.getElementById("dropdownEmail");
     const btnLogout        = document.getElementById("btnLogout");
-    const tabMyInput       = document.getElementById("tabMyInput");
+    const bottomNav        = document.getElementById("bottomNav");
     const tabHome          = document.getElementById("tabHome");
 
     // ─────────────────────────────────────────
@@ -281,36 +265,21 @@
         backBtn.classList.add("hidden"); backBtn.classList.remove("flex");
         saveIcon.style.display = "none";
         saveText.textContent = "";
-        // 탭: 홈 강조
-        setTabActive("home");
+        if (bottomNav) bottomNav.classList.add("hidden");
       } else if (name === "list") {
         viewSheetList.classList.remove("hidden"); viewSheetList.classList.add("flex");
         pageTitle.textContent = "내 데이터";
         backBtn.classList.add("hidden"); backBtn.classList.remove("flex");
         saveIcon.style.display = "none";
         saveText.textContent = "";
-        setTabActive("home");
+        // 시트 목록 화면: 하단 메뉴(목록) 표시
+        if (bottomNav) bottomNav.classList.remove("hidden");
       } else if (name === "cards") {
         viewCards.classList.remove("hidden"); viewCards.classList.add("flex");
         backBtn.classList.remove("hidden"); backBtn.classList.add("flex");
         saveIcon.style.display = "";
-        setTabActive("input");
-      }
-    }
-
-    function setTabActive(tab) {
-      const activeClass = ["text-primary", "font-semibold"];
-      const inactiveClass = ["text-on-surface-variant"];
-      if (tab === "input") {
-        tabMyInput.classList.add(...activeClass);
-        tabMyInput.classList.remove(...inactiveClass);
-        tabHome.classList.remove(...activeClass);
-        tabHome.classList.add(...inactiveClass);
-      } else {
-        tabHome.classList.add(...activeClass);
-        tabHome.classList.remove(...inactiveClass);
-        tabMyInput.classList.remove(...activeClass);
-        tabMyInput.classList.add(...inactiveClass);
+        // 시트를 선택해서 들어간 경우: 하단 메뉴 숨김
+        if (bottomNav) bottomNav.classList.add("hidden");
       }
     }
 
