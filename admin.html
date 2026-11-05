@@ -1549,6 +1549,7 @@ kim.minsu@school.kr"></textarea>
         const styleMap = {
           "locked": "text-outline bg-surface-variant/70 hover:bg-surface-variant border border-outline/30 font-medium",
           "text": "text-on-surface bg-surface-container hover:bg-surface-variant border border-surface-variant font-medium",
+          "cardHeader": "text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 font-bold shadow-2xs",
           "googleId": "text-[#1a73e8] bg-[#f8fafd] hover:bg-[#e8f0fe] border border-[#dadce0] hover:border-[#1a73e8]/40 font-bold shadow-2xs",
           "select": "text-primary bg-primary/10 hover:bg-primary/20 border border-primary/30 font-bold",
           "date": "text-secondary bg-secondary-fixed/60 hover:bg-secondary-fixed border border-secondary/30 font-bold",
@@ -3638,6 +3639,7 @@ kim.minsu@school.kr"></textarea>
 
         // 2. 일반 텍스트: 인라인 편집 가능한 텍스트 셀
         case "text":
+        case "cardHeader":
           return `
             <td ${cellAttrs} title="클릭하여 선택, 엔터/F2 또는 타이핑하여 편집">
               <span class="cell-text-view truncate block w-full text-[12px] pointer-events-none">${val}</span>

@@ -36,6 +36,7 @@ export const COLLECTION_NAME = "form-interactive";
 // 지원하는 열 데이터타입 / 폼타입 정의
 export const AVAILABLE_TYPES = [
   { id: "text", label: "일반 텍스트", icon: "edit_note", desc: "자유 텍스트 인라인 편집" },
+  { id: "cardHeader", label: "카드헤더", icon: "badge", desc: "모바일 카드 상단 대표 제목 (#1 옆에 표시)" },
   { id: "googleId", label: "구글 아이디", icon: "alternate_email", desc: "구글 계정/이메일 (모바일 개인별 보기 연동)" },
   { id: "locked", label: "텍스트 (잠김)", icon: "lock", desc: "관리자 전용 잠금/읽기 전용" },
   { id: "select", label: "드롭다운 (목록)", icon: "arrow_drop_down_circle", desc: "사용자 정의 옵션 목록 드롭다운" },

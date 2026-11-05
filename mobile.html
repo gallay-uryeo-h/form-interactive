@@ -610,6 +610,16 @@
       return (email || "").trim().toLowerCase();
     }
 
+    function escapeHtml(str) {
+      if (!str) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
     // ─────────────────────────────────────────
     //  시트 목록 렌더
     //  · googleId 타입 열이 있는 시트만
@@ -780,6 +790,7 @@
               </div>
             </div>`;
 
+        case "cardHeader":
         case "text":
           return `
             <div class="${span} flex flex-col gap-1">
@@ -927,11 +938,18 @@
         return;
       }
 
-      // googleId 열 키 집합 — 카드 필드에서 제외
-      const googleIdKeys = new Set(
-        Object.keys(columnConfigs).filter(k => columnConfigs[k]?.type === "googleId")
+      // 카드헤더 열 키 찾기 (설정된 cardHeader 타입 열)
+      const cardHeaderColKey = Object.keys(columnConfigs).find(k => columnConfigs[k]?.type === "cardHeader");
+
+      // googleId 및 cardHeader 열 키 집합 — 카드 본문 필드에서 제외
+      // (googleId는 사용자 식별용, cardHeader는 상단 #1 옆 대표 제목으로 표시)
+      const specialKeys = new Set(
+        Object.keys(columnConfigs).filter(k => {
+          const type = columnConfigs[k]?.type;
+          return type === "googleId" || type === "cardHeader";
+        })
       );
-      const colsToRender = getColumnsToRender().filter(col => !googleIdKeys.has(col.key));
+      const colsToRender = getColumnsToRender().filter(col => !specialKeys.has(col.key));
 
       // 내 이메일 행만 필터링 (대소문자·공백 무시, 완전 차단)
       const myEmail = normalizeEmail(currentUser.email);
@@ -961,16 +979,14 @@
       cardsContainer.innerHTML = filtered.map((t, idx) => {
         const fieldsHtml = colsToRender.map(col => renderField(t, col)).join("");
         const displayStatus = t.status || "";
+        const headerTitle = cardHeaderColKey ? String(t[cardHeaderColKey] ?? "").trim() : "";
 
         return `
           <article class="flex flex-col bg-surface-container-lowest rounded-xl border border-surface-container shadow-xs p-3.5 gap-2.5 transition-all" data-id="${t.id}">
-            <div class="flex items-center justify-between pb-1.5 border-b border-surface-container">
-              <div class="flex items-center gap-1.5 truncate">
+            <div class="flex items-center justify-between pb-1.5 border-b border-surface-container gap-2">
+              <div class="flex items-center gap-2 truncate min-w-0">
                 <span class="font-mono font-bold text-primary px-2 py-0.5 bg-primary-fixed/40 rounded text-[11px] shrink-0">#${idx + 1}</span>
-                <span class="font-semibold text-[13px] text-on-surface truncate flex items-center gap-1">
-                  <span class="material-symbols-outlined text-[14px] text-primary">edit_note</span>
-                  내 항목 ${idx + 1}
-                </span>
+                ${headerTitle ? `<span class="font-bold text-[13px] text-on-surface truncate">${escapeHtml(headerTitle)}</span>` : ""}
               </div>
               <div class="flex items-center gap-1 shrink-0">
                 <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium flex items-center gap-0.5">
