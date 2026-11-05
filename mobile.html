@@ -141,6 +141,12 @@
     </div>
   </header>
 
+    <!-- 초기 로딩 스피너 (인증 상태 확인 전 빈 화면 방지) -->
+  <div id="initialLoadingSpinner" class="flex flex-col items-center justify-center flex-1 py-32 text-outline gap-3">
+    <span class="inline-block animate-spin text-[32px] text-[#1a73e8]">⏳</span>
+    <p class="text-[12px] font-medium text-on-surface">데이터를 불러오는 중입니다...</p>
+  </div>
+
   <!-- ────────── 시트 목록 화면 ────────── -->
   <main id="viewSheetList" class="hidden flex-col w-full pt-16 pb-20 bg-surface flex-1 max-w-md mx-auto px-3">
     <div class="py-3 text-[12px] text-outline flex items-center gap-1">
@@ -281,6 +287,25 @@
   </nav>
 
   <script type="module">
+    // 구버전 Service Worker 캐시 무효화 및 강제 갱신
+    (async function purgeOldCachesOnce() {
+      try {
+        const CURRENT_VERSION = "v3";
+        if (localStorage.getItem("app_sw_ver") !== CURRENT_VERSION) {
+          if ("caches" in window) {
+            const keys = await caches.keys();
+            for (const k of keys) {
+              if (k !== "mobile-sheet-v3") await caches.delete(k);
+            }
+          }
+          localStorage.setItem("app_sw_ver", CURRENT_VERSION);
+          console.log("[PWA] Old caches purged, updated to", CURRENT_VERSION);
+        }
+      } catch (e) {
+        console.warn("Cache purge error:", e);
+      }
+    })();
+
     import {
       subscribeTasks,
       subscribeColumnConfigs,
@@ -363,6 +388,9 @@
     //  화면 전환
     // ─────────────────────────────────────────
     function showView(name) {
+      const initSpinner = document.getElementById("initialLoadingSpinner");
+      if (initSpinner) initSpinner.style.display = "none";
+
       viewLogin.classList.add("hidden");     viewLogin.classList.remove("flex");
       viewSheetList.classList.add("hidden"); viewSheetList.classList.remove("flex");
       viewCards.classList.add("hidden");     viewCards.classList.remove("flex");
