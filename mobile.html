@@ -96,7 +96,7 @@
           <span class="material-symbols-outlined text-[17px]">install_mobile</span>
         </button>
         <button id="btnGoogleLogin" type="button"
-          class="flex items-center gap-1.5 h-8 px-2.5 rounded-full border border-[#dadce0] bg-white text-[#3c4043] text-[12px] font-medium hover:bg-[#f8f9fa] shadow-2xs transition-colors"
+          class="hidden items-center gap-1.5 h-8 px-2.5 rounded-full border border-[#dadce0] bg-white text-[#3c4043] text-[12px] font-medium hover:bg-[#f8f9fa] shadow-2xs transition-colors cursor-pointer"
           title="구글 계정으로 로그인">
           <svg viewBox="0 0 24 24" width="15" height="15">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -287,25 +287,6 @@
   </nav>
 
   <script type="module">
-    // 구버전 Service Worker 캐시 무효화 및 강제 갱신
-    (async function purgeOldCachesOnce() {
-      try {
-        const CURRENT_VERSION = "v3";
-        if (localStorage.getItem("app_sw_ver") !== CURRENT_VERSION) {
-          if ("caches" in window) {
-            const keys = await caches.keys();
-            for (const k of keys) {
-              if (k !== "mobile-sheet-v3") await caches.delete(k);
-            }
-          }
-          localStorage.setItem("app_sw_ver", CURRENT_VERSION);
-          console.log("[PWA] Old caches purged, updated to", CURRENT_VERSION);
-        }
-      } catch (e) {
-        console.warn("Cache purge error:", e);
-      }
-    })();
-
     import {
       subscribeTasks,
       subscribeColumnConfigs,
@@ -331,6 +312,25 @@
       signOut,
       getCurrentUser
     } from "./auth-service.js";
+
+    // 구버전 Service Worker 캐시 무효화 및 강제 갱신
+    (async function purgeOldCachesOnce() {
+      try {
+        const CURRENT_VERSION = "v4";
+        if (localStorage.getItem("app_sw_ver") !== CURRENT_VERSION) {
+          if ("caches" in window) {
+            const keys = await caches.keys();
+            for (const k of keys) {
+              if (k !== "mobile-sheet-v4") await caches.delete(k);
+            }
+          }
+          localStorage.setItem("app_sw_ver", CURRENT_VERSION);
+          console.log("[PWA] Old caches purged, updated to", CURRENT_VERSION);
+        }
+      } catch (e) {
+        console.warn("Cache purge error:", e);
+      }
+    })();
 
     // ─────────────────────────────────────────
     //  URL 파라미터 — sheetId 있으면 내 입력 화면, 없으면 목록 화면
@@ -389,7 +389,10 @@
     // ─────────────────────────────────────────
     function showView(name) {
       const initSpinner = document.getElementById("initialLoadingSpinner");
-      if (initSpinner) initSpinner.style.display = "none";
+      if (initSpinner) {
+        initSpinner.style.display = "none";
+        initSpinner.classList.add("hidden");
+      }
 
       viewLogin.classList.add("hidden");     viewLogin.classList.remove("flex");
       viewSheetList.classList.add("hidden"); viewSheetList.classList.remove("flex");
@@ -402,18 +405,25 @@
         saveIcon.style.display = "none";
         saveText.textContent = "";
         if (bottomNav) bottomNav.classList.add("hidden");
+        btnGoogleLogin.classList.remove("hidden");
+        btnGoogleLogin.classList.add("flex");
+        userAvatarArea.classList.add("hidden");
       } else if (name === "list") {
         viewSheetList.classList.remove("hidden"); viewSheetList.classList.add("flex");
         pageTitle.textContent = "내 데이터";
         backBtn.classList.add("hidden"); backBtn.classList.remove("flex");
         saveIcon.style.display = "none";
         saveText.textContent = "";
+        btnGoogleLogin.classList.add("hidden");
+        btnGoogleLogin.classList.remove("flex");
         // 시트 목록 화면: 하단 메뉴(목록) 표시
         if (bottomNav) bottomNav.classList.remove("hidden");
       } else if (name === "cards") {
         viewCards.classList.remove("hidden"); viewCards.classList.add("flex");
         backBtn.classList.remove("hidden"); backBtn.classList.add("flex");
         saveIcon.style.display = "";
+        btnGoogleLogin.classList.add("hidden");
+        btnGoogleLogin.classList.remove("flex");
         // 시트를 선택해서 들어간 경우: 하단 메뉴 숨김
         if (bottomNav) bottomNav.classList.add("hidden");
       }
@@ -423,7 +433,11 @@
     //  Auth
     // ─────────────────────────────────────────
     async function doLogin(isRedirect = false) {
-      if (btnLoginBigText) btnLoginBigText.textContent = "로그인 연결 중...";
+      const origText = btnLoginBigText ? btnLoginBigText.textContent : "구글 계정으로 로그인";
+      if (btnLoginBigText) btnLoginBigText.textContent = "구글 로그인 여는 중...";
+      if (btnGoogleLogin) btnGoogleLogin.disabled = true;
+      if (btnLoginBig) btnLoginBig.disabled = true;
+
       try {
         if (isRedirect) {
           await signInWithGoogleRedirect();
@@ -432,15 +446,13 @@
         }
       } catch (err) {
         console.error("로그인 시도 오류:", err);
-        if (err.code === "auth/popup-blocked" || err.code === "auth/popup-closed-by-user") {
-          // 팝업 문제 발생 시 자동으로 리디렉션 로그인 시도
-          console.warn("팝업 이슈 감지, 리디렉션 로그인으로 전환");
-          await signInWithGoogleRedirect();
-        } else {
+        if (err.code !== "auth/popup-closed-by-user") {
           alert("로그인 안내: " + (err.message || err.code));
         }
       } finally {
-        if (btnLoginBigText) btnLoginBigText.textContent = "구글 계정으로 로그인";
+        if (btnLoginBigText) btnLoginBigText.textContent = origText;
+        if (btnGoogleLogin) btnGoogleLogin.disabled = false;
+        if (btnLoginBig) btnLoginBig.disabled = false;
       }
     }
 
@@ -463,17 +475,27 @@
     // ─────────────────────────────────────────
     //  Auth 상태 변경 → 화면 결정
     // ─────────────────────────────────────────
+    let authSettled = false;
+
+    // 800ms 폴백 타이머: 모바일 브라우저에서 인증 초기화가 지연되더라도 무한 스피너에 갇히지 않고 로그인 화면 표시
+    setTimeout(() => {
+      if (!authSettled && !currentUser) {
+        console.log("[Auth] Fallback timeout: showing login view");
+        showView("login");
+      }
+    }, 800);
+
     onAuthStateChanged((user) => {
+      authSettled = true;
       currentUser = user;
       if (!user) {
         // 미로그인
-        btnGoogleLogin.classList.remove("hidden");
-        userAvatarArea.classList.add("hidden");
         showView("login");
         return;
       }
       // 로그인됨
       btnGoogleLogin.classList.add("hidden");
+      btnGoogleLogin.classList.remove("flex");
       userAvatarArea.classList.remove("hidden");
       userAvatarInitial.textContent = user.initial || user.email?.charAt(0).toUpperCase() || "G";
       dropdownName.textContent  = user.displayName || user.email;

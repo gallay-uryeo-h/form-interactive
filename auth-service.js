@@ -94,27 +94,29 @@ export function onAuthStateChanged(callback) {
  * - 모바일/PWA: 팝업 시도 후 차단/오류 발생 시 자동으로 리디렉션 전환
  */
 /**
- * 구글 로그인 (모바일: 리디렉션 표준 / 데스크톱: 팝업 + 리디렉션 폴백)
+ * 구글 로그인 (팝업 기본, 차단/미지원 시 리디렉션 자동 전환)
  */
 export async function signInWithGoogle() {
-  const isMobile =
-    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
-    window.matchMedia("(display-mode: standalone)").matches ||
-    window.navigator.standalone === true;
-
-  if (isMobile) {
-    console.log("[Auth] 모바일 기기 감지: 안정적인 signInWithRedirect로 로그인 실행");
-    return await signInWithRedirect(auth, provider);
-  }
-
-  // 데스크톱
   try {
+    console.log("[Auth] 구글 팝업 로그인 시작");
     const result = await signInWithPopup(auth, provider);
     return _toAuthUser(result.user);
   } catch (err) {
-    if (err.code === "auth/popup-blocked" || err.code === "auth/popup-closed-by-user") {
-      console.warn("[Auth] 팝업 이슈 감지: signInWithRedirect로 전환");
-      return await signInWithRedirect(auth, provider);
+    console.warn("[Auth] 팝업 로그인 오류/차단 감지:", err.code, err.message);
+    // 사용자가 직접 팝업 창을 닫은 경우: 리디렉션하지 않고 취소로 처리
+    if (err.code === "auth/popup-closed-by-user") {
+      return null;
+    }
+    // 팝업이 브라우저 설정에 의해 차단되었거나 지원되지 않는 환경인 경우에만 리디렉션으로 전환
+    if (
+      err.code === "auth/popup-blocked" ||
+      err.code === "auth/cancelled-popup-request" ||
+      err.code === "auth/operation-not-supported-in-this-environment" ||
+      err.code === "auth/internal-error"
+    ) {
+      console.log("[Auth] 팝업 차단 감지: 리디렉션 로그인으로 전환 시도...");
+      await signInWithRedirect(auth, provider);
+      return null;
     }
     throw err;
   }

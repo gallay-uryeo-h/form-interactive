@@ -1,5 +1,5 @@
-// Service Worker for Mobile Sheet PWA (v3 - Fresh Network First)
-const CACHE_NAME = 'mobile-sheet-v3';
+// Service Worker for Mobile Sheet PWA (v4 - Always Fresh, No Stale Code)
+const CACHE_NAME = 'mobile-sheet-v4';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/icons/icon-192.png',
@@ -9,7 +9,7 @@ const STATIC_ASSETS = [
   '/icons/favicon.png'
 ];
 
-// Install: pre-cache static assets ONLY (never cache HTML to prevent stale code)
+// Install: pre-cache icon assets only
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
@@ -17,13 +17,13 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate: purge all old caches immediately
+// Activate: purge ALL old caches immediately
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
         keys.filter((key) => key !== CACHE_NAME).map((key) => {
-          console.log('[SW] Deleting old cache:', key);
+          console.log('[SW] Purging old cache:', key);
           return caches.delete(key);
         })
       );
@@ -35,7 +35,7 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   const url = new URL(req.url);
 
-  // Bypass Google Auth, Firestore APIs, and non-GET requests
+  // Bypass Google Auth, Firestore APIs, scripts, and non-GET requests
   if (
     url.hostname.includes('firestore.googleapis.com') ||
     url.hostname.includes('identitytoolkit.googleapis.com') ||
@@ -48,34 +48,21 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // HTML / Navigation requests: ALWAYS Network First, never serve stale cache
-  if (req.mode === 'navigate' || req.headers.get('accept')?.includes('text/html')) {
+  // HTML & JS: ALWAYS pass directly through to network with no-store to guarantee freshness
+  if (
+    req.mode === 'navigate' ||
+    req.headers.get('accept')?.includes('text/html') ||
+    url.pathname.endsWith('.html') ||
+    url.pathname.endsWith('.js')
+  ) {
     event.respondWith(
-      fetch(req)
-        .then((response) => {
-          if (response && response.status === 200) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
-          }
-          return response;
-        })
-        .catch(() => {
-          return caches.match(req).then((cached) => cached || caches.match('/mobile.html'));
-        })
+      fetch(req, { cache: 'no-store' }).catch(() => caches.match(req))
     );
     return;
   }
 
-  // Static Assets: Network-first with cache fallback
+  // Icons and static assets: Cache first with network fallback
   event.respondWith(
-    fetch(req)
-      .then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-          const clone = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
-        }
-        return networkResponse;
-      })
-      .catch(() => caches.match(req))
+    caches.match(req).then((cached) => cached || fetch(req))
   );
 });
