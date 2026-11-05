@@ -169,17 +169,19 @@
   <!-- 1. Top Ribbon: App Bar & Main Menus (고정 44px) -->
   <header class="h-11 w-full flex items-center justify-between px-3 bg-surface-container-lowest border-b border-surface-variant shrink-0 z-30">
     <div class="flex items-center gap-3">
-      <a href="home.html" class="flex items-center gap-2 hover:opacity-85 transition-opacity" title="시트 목록 홈으로 이동">
+      <a href="home.html" class="flex items-center gap-2 hover:opacity-85 transition-opacity shrink-0" title="시트 목록 홈으로 이동">
         <div class="w-7 h-7 bg-primary text-on-primary rounded flex items-center justify-center font-bold text-sm shadow-xs">
           <span class="material-symbols-outlined text-[18px]">table_view</span>
         </div>
-        <div class="flex flex-col">
-          <div class="flex items-center gap-2">
-            <span class="font-semibold text-[13px] text-on-surface truncate max-w-xs" id="topSheetTitle">시트 로딩 중...</span>
-            <span class="text-[10px] bg-primary/10 text-primary font-mono px-1.5 py-0.2 rounded font-semibold">Live Admin</span>
-          </div>
-        </div>
       </a>
+      <div class="flex items-center gap-1.5 group">
+        <span class="font-semibold text-[13px] text-on-surface truncate max-w-xs hover:bg-surface-container px-1.5 py-0.5 rounded cursor-pointer transition-colors border border-transparent hover:border-surface-variant" id="topSheetTitle" title="클릭하여 시트 이름 변경">시트 로딩 중...</span>
+        <input id="topSheetTitleInput" class="hidden text-[13px] font-semibold text-on-surface bg-white border border-primary px-1.5 py-0.5 rounded outline-none shadow-xs max-w-xs" type="text" />
+        <button type="button" id="btnRenameSheet" class="opacity-40 group-hover:opacity-100 hover:opacity-100 p-0.5 rounded hover:bg-surface-container text-outline hover:text-on-surface transition-all cursor-pointer" title="시트 이름 바꾸기">
+          <span class="material-symbols-outlined text-[14px]">edit</span>
+        </button>
+        <span class="text-[10px] bg-primary/10 text-primary font-mono px-1.5 py-0.2 rounded font-semibold shrink-0">Live Admin</span>
+      </div>
 
       <!-- Sheet Switcher Dropdown -->
       <div class="relative flex items-center">
@@ -933,6 +935,7 @@ kim.minsu@school.kr"></textarea>
       updateUserViewColumns,
       subscribeUserViewColumns,
       updateSheetDeadline,
+      renameSheet,
       subscribeSheetDeadline,
       isSheetClosed
     } from "./firebase-service.js";
@@ -1396,6 +1399,58 @@ kim.minsu@school.kr"></textarea>
     );
 
     // Subscribe to Sheets (시트 목록 및 스위처 실시간 동기화)
+    
+    // ── 시트 이름 변경 기능 (인라인 편집) ─────────────────────────────────
+    (function setupSheetRename() {
+      const titleSpan = document.getElementById("topSheetTitle");
+      const titleInput = document.getElementById("topSheetTitleInput");
+      const btnRename = document.getElementById("btnRenameSheet");
+
+      if (!titleSpan || !titleInput) return;
+
+      function startEditing() {
+        if (!currentSheetId) return;
+        titleInput.value = titleSpan.textContent.trim();
+        titleSpan.classList.add("hidden");
+        titleInput.classList.remove("hidden");
+        titleInput.focus();
+        titleInput.select();
+      }
+
+      async function finishEditing(save = true) {
+        if (titleInput.classList.contains("hidden")) return;
+        const newName = titleInput.value.trim();
+        titleInput.classList.add("hidden");
+        titleSpan.classList.remove("hidden");
+
+        if (save && newName && newName !== titleSpan.textContent.trim()) {
+          titleSpan.textContent = newName;
+          try {
+            await renameSheet(currentSheetId, newName);
+          } catch (err) {
+            alert("시트 이름 변경 오류: " + err.message);
+          }
+        }
+      }
+
+      titleSpan.addEventListener("click", startEditing);
+      if (btnRename) btnRename.addEventListener("click", startEditing);
+
+      titleInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          finishEditing(true);
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          finishEditing(false);
+        }
+      });
+
+      titleInput.addEventListener("blur", () => {
+        finishEditing(true);
+      });
+    })();
+
     subscribeSheets((sheets) => {
       const cur = sheets.find(s => s.id === currentSheetId) || { name: currentSheetId };
       const topTitle = document.getElementById("topSheetTitle");

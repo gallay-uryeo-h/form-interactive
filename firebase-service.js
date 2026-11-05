@@ -160,6 +160,23 @@ export async function createSheet(name, templateType = "empty") {
   return newSheet;
 }
 
+// 시트 이름 변경
+export async function renameSheet(sheetId, newName) {
+  if (!sheetId || !newName || !newName.trim()) return;
+  const metaDocRef = doc(db, COLLECTION_NAME, "metadata");
+  const snap = await getDoc(metaDocRef);
+  if (!snap.exists()) return;
+  const currentSheets = snap.data().sheets || [];
+  const updatedSheets = currentSheets.map(s => {
+    if (s.id === sheetId) {
+      return { ...s, name: newName.trim(), updatedAt: new Date().toISOString() };
+    }
+    return s;
+  });
+
+  await setDoc(metaDocRef, { sheets: updatedSheets }, { merge: true });
+}
+
 // 시트 삭제
 export async function deleteSheet(sheetId) {
   const metaDocRef = doc(db, COLLECTION_NAME, "metadata");

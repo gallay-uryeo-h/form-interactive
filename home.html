@@ -299,6 +299,7 @@
       subscribeSheets,
       createSheet,
       deleteSheet,
+      renameSheet,
       subscribeTasks,
       isAdminEmail
     } from "./firebase-service.js";
@@ -509,6 +510,9 @@
                   <span class="material-symbols-outlined text-[13px]">phone_iphone</span>
                   <span>모바일</span>
                 </a>
+                <button type="button" class="btn-rename-sheet p-1 text-outline hover:text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer" data-id="${s.id}" data-name="${s.name}" title="시트 이름 변경">
+                  <span class="material-symbols-outlined text-[16px]">edit</span>
+                </button>
                 <button type="button" class="btn-delete-sheet p-1 text-outline hover:text-error hover:bg-error/10 rounded-lg transition-colors cursor-pointer" data-id="${s.id}" data-name="${s.name}" title="시트 삭제">
                   <span class="material-symbols-outlined text-[16px]">delete</span>
                 </button>
@@ -517,6 +521,23 @@
           </tr>
         `;
       }).join("");
+
+      // Bind rename buttons
+      sheetsTableBody.querySelectorAll(".btn-rename-sheet").forEach(btn => {
+        btn.onclick = async (e) => {
+          e.stopPropagation();
+          const sId = btn.dataset.id;
+          const sName = btn.dataset.name;
+          const newName = prompt(`'${sName}' 시트의 새 이름을 입력하세요:`, sName);
+          if (newName && newName.trim() && newName.trim() !== sName) {
+            try {
+              await renameSheet(sId, newName.trim());
+            } catch (err) {
+              alert("시트 이름 변경 실패: " + err.message);
+            }
+          }
+        };
+      });
 
       // Bind delete buttons
       sheetsTableBody.querySelectorAll(".btn-delete-sheet").forEach(btn => {
