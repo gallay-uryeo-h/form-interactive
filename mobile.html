@@ -329,12 +329,12 @@
     // 구버전 Service Worker 캐시 무효화 및 강제 갱신
     (async function purgeOldCachesOnce() {
       try {
-        const CURRENT_VERSION = "v5";
+        const CURRENT_VERSION = "v6";
         if (localStorage.getItem("app_sw_ver") !== CURRENT_VERSION) {
           if ("caches" in window) {
             const keys = await caches.keys();
             for (const k of keys) {
-              if (k !== "mobile-sheet-v5") await caches.delete(k);
+              if (k !== "mobile-sheet-v6") await caches.delete(k);
             }
           }
           localStorage.setItem("app_sw_ver", CURRENT_VERSION);
@@ -444,22 +444,32 @@
     // ─────────────────────────────────────────
     async function doLogin(isRedirect = false) {
       const origText = btnLoginBigText ? btnLoginBigText.textContent : "구글 계정으로 로그인";
-      if (btnLoginBigText) btnLoginBigText.textContent = "구글 로그인 여는 중...";
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+        window.matchMedia("(display-mode: standalone)").matches ||
+        window.navigator.standalone === true;
+
+      if (btnLoginBigText) {
+        btnLoginBigText.textContent = (isMobile || isRedirect)
+          ? "구글 로그인 페이지로 이동 중..."
+          : "구글 로그인 여는 중...";
+      }
       if (btnGoogleLogin) btnGoogleLogin.disabled = true;
       if (btnLoginBig) btnLoginBig.disabled = true;
 
       try {
         if (isRedirect) {
           await signInWithGoogleRedirect();
+          // 리디렉션 후에는 이 코드에 도달하지 않음
         } else {
           await signInWithGoogle();
+          // 모바일이면 signInWithGoogle() 내부에서 리디렉션 → 이 코드 도달 안 함
         }
       } catch (err) {
         console.error("로그인 시도 오류:", err);
         if (err.code !== "auth/popup-closed-by-user") {
           alert("로그인 안내: " + (err.message || err.code));
         }
-      } finally {
+        // 오류 시에만 버튼 복구 (리디렉션 성공 시에는 페이지 이동)
         if (btnLoginBigText) btnLoginBigText.textContent = origText;
         if (btnGoogleLogin) btnGoogleLogin.disabled = false;
         if (btnLoginBig) btnLoginBig.disabled = false;
@@ -516,7 +526,10 @@
         console.log("[Auth] Redirect login result caught:", user.email);
         handleAuthUser(user);
       }
-    }).catch(err => console.warn("Redirect auth check:", err));
+    }).catch(err => {
+      console.warn("Redirect auth check:", err);
+      // 리디렉션 결과 오류는 무시하고 onAuthStateChanged가 처리하도록 함
+    });
 
     // 2. 인증 상태 리스너 등록
     onAuthStateChanged((user) => {

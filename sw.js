@@ -1,5 +1,5 @@
-// Service Worker for Mobile Sheet PWA (v5 - Always Fresh, No Stale Code)
-const CACHE_NAME = 'mobile-sheet-v5';
+// Service Worker for Mobile Sheet PWA (v6 - Mobile Redirect Auth Fix)
+const CACHE_NAME = 'mobile-sheet-v6';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/icons/icon-192.png',
@@ -43,6 +43,7 @@ self.addEventListener('fetch', (event) => {
     url.hostname.includes('firebaseio.com') ||
     url.hostname.includes('accounts.google.com') ||
     url.hostname.includes('apis.google.com') ||
+    url.hostname.includes('studio-2726051254-c02c9.firebaseapp.com') ||
     req.method !== 'GET'
   ) {
     return;
