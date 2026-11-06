@@ -190,6 +190,16 @@
         <span class="inline-block animate-spin mr-2">⏳</span> 데이터를 불러오는 중...
       </div>
     </div>
+
+    <!-- 카드 추가 버튼 영역 (모바일에서 새 카드 추가 -> 어드민 시트에 행 추가) -->
+    <div id="addCardSection" class="mt-4 pt-3 border-t border-surface-container flex flex-col gap-2">
+      <button type="button" id="btnAddCard" onclick="window.handleAddNewCard()"
+        class="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-primary hover:bg-primary/90 active:scale-[0.98] text-white font-bold text-[13px] shadow-sm transition-all cursor-pointer">
+        <span class="material-symbols-outlined text-[18px]">add_circle</span>
+        <span>+ 새 카드 추가하기</span>
+      </button>
+      <p class="text-[11px] text-outline text-center">직접 추가한 카드는 카드헤더 및 모든 항목을 자유롭게 편집할 수 있습니다.</p>
+    </div>
   </main>
 
   <!-- ────────── 로그인 안내 화면 ────────── -->
@@ -299,6 +309,8 @@
       isSheetClosed,
       getSheetDeadlineFromMeta,
       updateTask,
+      addTask,
+      deleteTask,
       getTasksForSheet,
       getMetadata,
       getColumnConfigsFromMeta,
@@ -777,6 +789,19 @@
       switch (type) {
 
         case "locked":
+          const isUserAdded = Boolean(t.isUserCreated || (t.createdBy && normalizeEmail(t.createdBy) === normalizeEmail(currentUser?.email)));
+          if (isUserAdded) {
+            return `
+              <div class="${span} flex flex-col gap-1">
+                <label class="text-[11px] text-on-surface-variant font-semibold flex items-center gap-1 truncate">
+                  <span class="material-symbols-outlined text-[13px] text-primary">${col.icon}</span>${label}
+                </label>
+                <input type="text" value="${escapeHtml(val)}" ${isClosed ? 'disabled readonly' : ''}
+                  class="w-full h-[38px] ${isClosed ? 'bg-surface-container/60 text-on-surface opacity-75 cursor-not-allowed shadow-none' : 'bg-surface-container-lowest text-on-surface shadow-2xs focus:border-secondary'} text-[12px] px-2.5 rounded-lg border border-surface-container outline-none"
+                  placeholder="${escapeHtml(label)} 입력"
+                  onchange="window.saveField('${t.id}','${col.key}',this.value)">
+              </div>`;
+          }
           return `
             <div class="${span} flex flex-col gap-1">
               <div class="flex flex-col bg-surface-container-low/80 px-2.5 py-1.5 rounded-lg border border-surface-container justify-center h-[58px]">
@@ -786,7 +811,7 @@
                   </span>
                   <span class="material-symbols-outlined text-[12px] text-outline shrink-0">lock</span>
                 </div>
-                <p class="text-[12px] text-on-surface font-semibold leading-tight truncate mt-0.5">${val || "-"}</p>
+                <p class="text-[12px] text-on-surface font-semibold leading-tight truncate mt-0.5">${escapeHtml(val) || "-"}</p>
               </div>
             </div>`;
 
@@ -797,8 +822,9 @@
               <label class="text-[11px] text-on-surface-variant font-semibold flex items-center gap-1 truncate">
                 <span class="material-symbols-outlined text-[13px] text-primary">${col.icon}</span>${label}
               </label>
-              <input type="text" value="${val}" ${isClosed ? 'disabled readonly' : ''}
+              <input type="text" value="${escapeHtml(val)}" ${isClosed ? 'disabled readonly' : ''}
                 class="w-full h-[38px] ${isClosed ? 'bg-surface-container/60 text-on-surface opacity-75 cursor-not-allowed shadow-none' : 'bg-surface-container-lowest text-on-surface shadow-2xs focus:border-secondary'} text-[12px] px-2.5 rounded-lg border border-surface-container outline-none"
+                placeholder="${escapeHtml(label)} 입력"
                 onchange="window.saveField('${t.id}','${col.key}',this.value)">
             </div>`;
 
@@ -940,6 +966,8 @@
 
       // 카드헤더 열 키 찾기 (설정된 cardHeader 타입 열)
       const cardHeaderColKey = Object.keys(columnConfigs).find(k => columnConfigs[k]?.type === "cardHeader");
+      const cardHeaderCfg = cardHeaderColKey ? columnConfigs[cardHeaderColKey] : null;
+      const cardHeaderLabel = cardHeaderCfg ? (cardHeaderCfg.label || "카드 제목") : "카드 제목";
 
       // googleId 및 cardHeader 열 키 집합 — 카드 본문 필드에서 제외
       // (googleId는 사용자 식별용, cardHeader는 상단 #1 옆 대표 제목으로 표시)
@@ -963,14 +991,26 @@
         headerItemCountBadge.classList.remove("hidden");
       }
 
+      const isClosed = isSheetClosed(currentSheetDeadline);
+
+      // 카드 추가 버튼 영역 상태 제어
+      updateAddCardButton(isClosed);
+
       // 빈 상태
       if (!filtered.length) {
         cardsContainer.innerHTML = `
-          <div class="bg-surface-container-lowest rounded-xl p-8 text-center text-outline border border-surface-container flex flex-col items-center gap-2">
+          <div class="bg-surface-container-lowest rounded-xl p-8 text-center text-outline border border-surface-container flex flex-col items-center gap-2.5">
             <span class="material-symbols-outlined text-[36px] text-outline">search_off</span>
             <span class="text-[13px] font-semibold text-on-surface">배정된 항목이 없습니다</span>
-            <span class="text-[11px]"><strong>${currentUser.email}</strong> 계정에<br>배정된 데이터가 없습니다.</span>
-            <a href="mobile.html" class="mt-2 text-[12px] text-primary underline">목록으로 돌아가기</a>
+            <span class="text-[11px]"><strong>${currentUser.email}</strong> 계정에<br>사전 배정된 데이터가 없습니다.</span>
+            ${!isClosed ? `
+              <button type="button" onclick="window.handleAddNewCard()"
+                class="mt-2 flex items-center justify-center gap-1.5 py-2 px-4 rounded-xl bg-primary text-white text-[12px] font-bold shadow-2xs hover:bg-primary/90 active:scale-[0.98] transition-all cursor-pointer">
+                <span class="material-symbols-outlined text-[16px]">add_circle</span>
+                <span>새 카드 직접 추가하기</span>
+              </button>
+            ` : ''}
+            <a href="mobile.html" class="mt-1 text-[12px] text-primary underline">목록으로 돌아가기</a>
           </div>`;
         return;
       }
@@ -980,18 +1020,47 @@
         const fieldsHtml = colsToRender.map(col => renderField(t, col)).join("");
         const displayStatus = t.status || "";
         const headerTitle = cardHeaderColKey ? String(t[cardHeaderColKey] ?? "").trim() : "";
+        const isSelfCreated = Boolean(
+          t.isUserCreated === true ||
+          (t.createdBy && normalizeEmail(t.createdBy) === normalizeEmail(currentUser.email))
+        );
 
         return `
           <article class="flex flex-col bg-surface-container-lowest rounded-xl border border-surface-container shadow-xs p-3.5 gap-2.5 transition-all" data-id="${t.id}">
-            <div class="flex items-center justify-between pb-1.5 border-b border-surface-container gap-2">
-              <div class="flex items-center gap-2 truncate min-w-0">
+            <div class="flex items-center justify-between pb-2 border-b border-surface-container gap-2">
+              <div class="flex items-center gap-2 flex-1 min-w-0">
                 <span class="font-mono font-bold text-primary px-2 py-0.5 bg-primary-fixed/40 rounded text-[11px] shrink-0">#${idx + 1}</span>
-                ${headerTitle ? `<span class="font-bold text-[13px] text-on-surface truncate">${escapeHtml(headerTitle)}</span>` : ""}
+                ${isSelfCreated ? `
+                  <div class="flex-1 min-w-0 relative">
+                    <input type="text"
+                      class="w-full text-[13px] font-bold text-on-surface bg-surface-container/60 hover:bg-surface-container focus:bg-surface-container-lowest border border-surface-container-high focus:border-primary rounded-lg px-2 py-1 outline-none transition-all placeholder:text-outline/50 placeholder:font-normal"
+                      value="${escapeHtml(headerTitle)}"
+                      placeholder="${escapeHtml(cardHeaderLabel)} 입력"
+                      ${isClosed ? 'disabled readonly' : ''}
+                      onchange="window.saveField('${t.id}', '${cardHeaderColKey || "title"}', this.value)"
+                      onclick="event.stopPropagation()">
+                  </div>
+                ` : (
+                  headerTitle
+                    ? `<span class="font-bold text-[14px] text-on-surface truncate">${escapeHtml(headerTitle)}</span>`
+                    : `<span class="text-[12px] text-outline italic">제목 없음</span>`
+                )}
               </div>
               <div class="flex items-center gap-1 shrink-0">
-                <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium flex items-center gap-0.5">
-                  <span class="material-symbols-outlined text-[11px]">edit</span>편집가능
-                </span>
+                ${isSelfCreated ? `
+                  <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary-fixed/50 text-on-secondary-fixed font-bold flex items-center gap-0.5" title="직접 추가한 항목입니다">
+                    <span class="material-symbols-outlined text-[11px]">person_add</span>직접추가
+                  </span>
+                  ${!isClosed ? `
+                    <button type="button" class="w-6 h-6 flex items-center justify-center rounded text-outline hover:text-error hover:bg-error-container/40 transition-colors cursor-pointer" onclick="window.handleDeleteSelfCard('${t.id}')" title="이 카드 삭제">
+                      <span class="material-symbols-outlined text-[16px]">delete</span>
+                    </button>
+                  ` : ''}
+                ` : `
+                  <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium flex items-center gap-0.5">
+                    <span class="material-symbols-outlined text-[11px]">edit</span>편집가능
+                  </span>
+                `}
                 ${displayStatus ? `<span class="text-[11px] px-2 py-0.5 rounded-full font-medium ${
                   displayStatus === "완료" ? "bg-secondary-fixed text-on-secondary-fixed" :
                   displayStatus === "진행중" ? "bg-primary/10 text-primary" : "bg-surface-variant text-on-surface"
@@ -1004,6 +1073,103 @@
           </article>`;
       }).join("");
     }
+
+    // 카드 추가 버튼 영역 상태 업데이트
+    function updateAddCardButton(isClosed) {
+      const btnAddCard = document.getElementById("btnAddCard");
+      if (!btnAddCard) return;
+      if (isClosed) {
+        btnAddCard.disabled = true;
+        btnAddCard.className = "w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-surface-container text-outline font-medium text-[13px] cursor-not-allowed";
+        btnAddCard.innerHTML = `<span class="material-symbols-outlined text-[18px]">lock</span><span>마감되어 카드를 추가할 수 없습니다</span>`;
+      } else {
+        btnAddCard.disabled = false;
+        btnAddCard.className = "w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-primary hover:bg-primary/90 active:scale-[0.98] text-white font-bold text-[13px] shadow-sm transition-all cursor-pointer";
+        btnAddCard.innerHTML = `<span class="material-symbols-outlined text-[18px]">add_circle</span><span>+ 새 카드 추가하기</span>`;
+      }
+    }
+
+    // 모바일에서 새 카드 추가 (어드민 시트 행 추가 연동)
+    window.handleAddNewCard = async () => {
+      if (!currentUser) {
+        alert("로그인이 필요합니다.");
+        return;
+      }
+      if (!currentSheetId) {
+        alert("시트 정보를 찾을 수 없습니다.");
+        return;
+      }
+      if (isSheetClosed(currentSheetDeadline)) {
+        alert("이 시트는 마감되어 새 카드를 추가할 수 없습니다.");
+        return;
+      }
+
+      const identityCol = getIdentityColumn();
+      if (!identityCol) {
+        alert("이 시트에는 사용자 계정(googleId) 열이 설정되어 있지 않아 카드를 추가할 수 없습니다.");
+        return;
+      }
+
+      indicateSaving();
+
+      try {
+        const newRowData = {
+          // 사용자 구글 계정 자동 매칭 (이 행이 내 모바일 화면에 즉시 표시됨)
+          [identityCol.key]: currentUser.email,
+          // 사용자 직접 추가 메타데이터
+          isUserCreated: true,
+          createdBy: currentUser.email,
+          ownerEmail: currentUser.email
+        };
+
+        // 시트의 모든 열 초기값 설정
+        const allKeys = (currentColumnOrder && currentColumnOrder.length)
+          ? currentColumnOrder
+          : Object.keys(columnConfigs);
+
+        allKeys.forEach(k => {
+          if (k === identityCol.key) return;
+          const cfg = columnConfigs[k] || DEFAULT_COLUMN_CONFIGS[k] || { type: "text" };
+          if (cfg.type === "checkbox") {
+            newRowData[k] = false;
+          } else if (cfg.type === "progress") {
+            newRowData[k] = 0;
+          } else if (cfg.type === "select" || cfg.type === "priority") {
+            newRowData[k] = (cfg.options && cfg.options.length) ? cfg.options[0] : "";
+          } else {
+            newRowData[k] = "";
+          }
+        });
+
+        const newId = await addTask(newRowData, currentSheetId);
+
+        // 추가 후 신규 카드로 스크롤 이동 및 헤더 인풋 자동 포커스
+        setTimeout(() => {
+          const newCard = document.querySelector(`article[data-id="${newId}"]`);
+          if (newCard) {
+            newCard.scrollIntoView({ behavior: "smooth", block: "center" });
+            const headerInput = newCard.querySelector('input[type="text"]');
+            if (headerInput) headerInput.focus();
+          }
+        }, 350);
+
+      } catch (err) {
+        console.error("카드 추가 실패:", err);
+        alert("카드 추가 실패: " + err.message);
+      }
+    };
+
+    // 모바일에서 직접 추가한 카드 삭제 (어드민 시트에서도 해당 행 삭제)
+    window.handleDeleteSelfCard = async (tId) => {
+      if (!confirm("이 카드를 삭제하시겠습니까?\n(어드민 시트에서도 해당 행이 삭제됩니다)")) return;
+      indicateSaving();
+      try {
+        await deleteTask(tId);
+      } catch (err) {
+        console.error("카드 삭제 실패:", err);
+        alert("카드 삭제 실패: " + err.message);
+      }
+    };
 
     // ─────────────────────────────────────────
     //  Save field

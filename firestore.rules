@@ -10,12 +10,12 @@ service cloud.firestore {
       allow read: if docId == "_admins" && request.auth != null;
       allow write: if docId == "_admins" && isAdmin();
       
-      // task 문서: 로그인한 사용자 읽기 가능 (sheetId 쿼리 포함)
-      // 쓰기는 어드민 또는 자신의 이메일이 있는 행만
+      // task 문서: 로그인한 사용자 읽기/생성 가능 (시트 내 카드 추가 지원)
+      // 수정 및 삭제는 어드민 또는 해당 사용자
       allow read: if request.auth != null;
-      allow create: if isAdmin();
+      allow create: if request.auth != null;
       allow update: if isAdmin() || (request.auth != null && isOwnRow());
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || (request.auth != null && isOwnRow());
     }
     
     function isAdmin() {
@@ -25,7 +25,7 @@ service cloud.firestore {
     }
     
     function isOwnRow() {
-      // 행 업데이트: 자신의 이메일이 있는 행만 수정 가능
+      // 행 업데이트/삭제: 로그인한 사용자
       return resource != null;
     }
   }

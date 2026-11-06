@@ -3777,7 +3777,12 @@ kim.minsu@school.kr"></textarea>
 
         return `
           <tr class="h-8 hover:bg-surface-container-low transition-colors group" data-id="${t.id}" data-row="${rowNum}">
-            <td class="text-center bg-surface-container-low text-outline border-r border-surface-variant select-none font-mono text-[11px]">${rowNum}</td>
+            <td class="text-center bg-surface-container-low text-outline border-r border-surface-variant select-none font-mono text-[11px]" title="${t.isUserCreated ? (t.createdBy ? `모바일 직접추가: ${t.createdBy}` : '모바일 직접추가') : ''}">
+              <span class="inline-flex items-center justify-center gap-0.5">
+                ${rowNum}
+                ${t.isUserCreated ? '<span class="w-1.5 h-1.5 rounded-full bg-primary shrink-0" title="모바일 사용자가 직접 추가한 행"></span>' : ''}
+              </span>
+            </td>
             ${cellHtmls}
             <!-- 작업 (삭제) -->
             <td class="text-center px-1">
