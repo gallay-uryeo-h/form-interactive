@@ -8,7 +8,8 @@ interface TypeConfigModalProps {
   colTitle: string;
   config: ColumnConfig;
   isVisibleInUserView?: boolean;
-  onToggleUserView?: (visible: boolean) => Promise<void>;
+  isReadOnlyInUserView?: boolean;
+  onToggleUserView?: (visible: boolean, readOnly: boolean) => Promise<void>;
   onSave: (patch: Partial<ColumnConfig>) => Promise<void>;
   onDeleteColumn?: (colKey: string) => Promise<void>;
 }
@@ -20,6 +21,7 @@ export const TypeConfigModal: React.FC<TypeConfigModalProps> = ({
   colTitle,
   config,
   isVisibleInUserView = true,
+  isReadOnlyInUserView = false,
   onToggleUserView,
   onSave,
   onDeleteColumn,
@@ -27,13 +29,15 @@ export const TypeConfigModal: React.FC<TypeConfigModalProps> = ({
   const [type, setType] = useState<ColumnType>(config.type || 'text');
   const [optionsStr, setOptionsStr] = useState((config.options || []).join('\n'));
   const [userVisible, setUserVisible] = useState(isVisibleInUserView);
+  const [userReadOnly, setUserReadOnly] = useState(isReadOnlyInUserView);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setType(config.type || 'text');
     setOptionsStr((config.options || []).join('\n'));
     setUserVisible(isVisibleInUserView);
-  }, [config, isVisibleInUserView, isOpen]);
+    setUserReadOnly(isReadOnlyInUserView);
+  }, [config, isVisibleInUserView, isReadOnlyInUserView, isOpen]);
 
   if (!isOpen) return null;
 
@@ -52,8 +56,11 @@ export const TypeConfigModal: React.FC<TypeConfigModalProps> = ({
 
       await onSave(patch);
 
-      if (onToggleUserView && userVisible !== isVisibleInUserView) {
-        await onToggleUserView(userVisible);
+      if (
+        onToggleUserView &&
+        (userVisible !== isVisibleInUserView || userReadOnly !== isReadOnlyInUserView)
+      ) {
+        await onToggleUserView(userVisible, userReadOnly);
       }
 
       onClose();
@@ -136,7 +143,7 @@ export const TypeConfigModal: React.FC<TypeConfigModalProps> = ({
 
           {/* User View Visibility Option */}
           {onToggleUserView && (
-            <div className="p-3 bg-surface-container-low border border-surface-variant rounded-xl">
+            <div className="p-3 bg-surface-container-low border border-surface-variant rounded-xl space-y-2.5">
               <label className="flex items-center justify-between cursor-pointer select-none">
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-primary text-[18px]">
@@ -158,6 +165,38 @@ export const TypeConfigModal: React.FC<TypeConfigModalProps> = ({
                   className="rounded text-primary focus:ring-primary h-4 w-4 cursor-pointer"
                 />
               </label>
+
+              {userVisible && (
+                <div className="pt-2 border-t border-surface-variant/60 flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-on-surface">모바일 수정 권한:</span>
+                  <div className="flex items-center rounded-lg border border-surface-variant p-0.5 bg-white shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={() => setUserReadOnly(false)}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                        !userReadOnly
+                          ? 'bg-emerald-100 text-emerald-800 shadow-xs'
+                          : 'text-outline hover:text-on-surface'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-[13px]">edit</span>
+                      수정 가능
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUserReadOnly(true)}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                        userReadOnly
+                          ? 'bg-amber-100 text-amber-800 shadow-xs'
+                          : 'text-outline hover:text-on-surface'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-[13px]">lock</span>
+                      읽기 전용 🔒
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

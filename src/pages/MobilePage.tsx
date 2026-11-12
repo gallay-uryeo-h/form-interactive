@@ -22,7 +22,7 @@ export const MobilePage: React.FC<MobilePageProps> = ({
   const { accessibleSheets, countsBySheet, loading: loadingAccessible } =
     useAccessibleSheets(user?.email);
 
-  const { currentSheet, columns, columnConfigs, userViewColumns, deadlineInfo } =
+  const { currentSheet, columns, columnConfigs, userViewColumns, userReadOnlyColumns, deadlineInfo } =
     useSheet(currentSheetId);
 
   // Fetch all tasks for current sheet, filter strictly by googleId column on client
@@ -289,7 +289,7 @@ export const MobilePage: React.FC<MobilePageProps> = ({
                   const cfg = columnConfigs[col.key] || { type: 'text' };
                   const val = task[col.key];
                   const strVal = val != null ? String(val) : '';
-                  const isLocked = deadlineInfo.isClosed || cfg.type === 'locked';
+                  const isLocked = deadlineInfo.isClosed || cfg.type === 'locked' || (userReadOnlyColumns?.includes(col.key) ?? false);
                   const half = isHalfWidth(col);
 
                   return (

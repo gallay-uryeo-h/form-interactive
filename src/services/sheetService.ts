@@ -73,6 +73,7 @@ export function subscribeSheetMetadata(
     columnConfigs: Record<string, ColumnConfig>;
     columnOrder: string[];
     userViewColumns: string[] | null;
+    userReadOnlyColumns: string[] | null;
     isClosed: boolean;
     deadline: string | null;
     closedMessage: string;
@@ -85,6 +86,7 @@ export function subscribeSheetMetadata(
         columnConfigs: {},
         columnOrder: [],
         userViewColumns: null,
+        userReadOnlyColumns: null,
         isClosed: false,
         deadline: null,
         closedMessage: '',
@@ -95,6 +97,7 @@ export function subscribeSheetMetadata(
     const configKey = `columnConfigs_${sheetId}`;
     const orderKey = `columnOrder_${sheetId}`;
     const userViewKey = `userViewColumns_${sheetId}`;
+    const userReadOnlyKey = `userReadOnlyColumns_${sheetId}`;
     const deadlineKey = `deadline_${sheetId}`;
 
     const deadlineData = data[deadlineKey] || {};
@@ -102,6 +105,7 @@ export function subscribeSheetMetadata(
       columnConfigs: data[configKey] || {},
       columnOrder: data[orderKey] || [],
       userViewColumns: data[userViewKey] || null,
+      userReadOnlyColumns: data[userReadOnlyKey] || null,
       isClosed: deadlineData.isClosed || false,
       deadline: deadlineData.deadline || null,
       closedMessage: deadlineData.closedMessage || '',
@@ -244,6 +248,17 @@ export async function updateUserViewColumns(columns: string[] | null, sheetId: s
     metaDocRef,
     {
       [`userViewColumns_${sheetId}`]: columns,
+    },
+    { merge: true }
+  );
+}
+
+export async function updateUserReadOnlyColumns(columns: string[] | null, sheetId: string): Promise<void> {
+  const metaDocRef = doc(db, COLLECTION_NAME, 'metadata');
+  await setDoc(
+    metaDocRef,
+    {
+      [`userReadOnlyColumns_${sheetId}`]: columns,
     },
     { merge: true }
   );

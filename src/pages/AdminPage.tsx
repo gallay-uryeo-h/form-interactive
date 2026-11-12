@@ -26,10 +26,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     columns,
     columnConfigs,
     userViewColumns,
+    userReadOnlyColumns,
     deadlineInfo,
     updateColumnConfig,
     updateColumnOrder,
     updateUserViewColumns,
+    updateUserReadOnlyColumns,
     addColumn,
     deleteColumn,
     renameSheet,
@@ -260,8 +262,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         isVisibleInUserView={
           !userViewColumns || userViewColumns.includes(typeModal.colKey)
         }
-        onToggleUserView={async (visible) => {
+        isReadOnlyInUserView={userReadOnlyColumns?.includes(typeModal.colKey) ?? false}
+        onToggleUserView={async (visible, readOnly) => {
           const key = typeModal.colKey;
+          // --- Visibility ---
           const allKeys = columns.map((c) => c.key);
           const currentList = userViewColumns || allKeys;
           let nextList: string[] | null;
@@ -272,6 +276,15 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             nextList = currentList.filter((k) => k !== key);
           }
           await updateUserViewColumns(nextList);
+          // --- Read-only ---
+          const currentRO = userReadOnlyColumns || [];
+          let nextRO: string[] | null;
+          if (readOnly) {
+            nextRO = currentRO.includes(key) ? currentRO : [...currentRO, key];
+          } else {
+            nextRO = currentRO.filter((k) => k !== key);
+          }
+          await updateUserReadOnlyColumns(nextRO.length > 0 ? nextRO : null);
         }}
         onSave={async (patch) => {
           await updateColumnConfig(typeModal.colKey, patch);
@@ -301,7 +314,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         onClose={() => setIsUserViewModalOpen(false)}
         columns={columns}
         userViewColumns={userViewColumns}
-        onSave={updateUserViewColumns}
+        userReadOnlyColumns={userReadOnlyColumns}
+        onSave={async (viewCols, readOnlyCols) => {
+          await updateUserViewColumns(viewCols);
+          await updateUserReadOnlyColumns(readOnlyCols);
+        }}
       />
     </div>
   );
