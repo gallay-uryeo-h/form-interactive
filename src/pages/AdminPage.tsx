@@ -237,7 +237,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         isOpen={isExcelModalOpen}
         onClose={() => setIsExcelModalOpen(false)}
         sheetId={currentSheetId}
-        onSuccess={() => {}}
+        onSuccess={() => { }}
       />
 
       <UserViewColumnsModal
