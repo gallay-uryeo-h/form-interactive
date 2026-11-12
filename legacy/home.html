@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>시트 목록 - form-interactive</title>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#006a39",
+            "primary-container": "#008649",
+            "on-primary": "#ffffff",
+            "on-primary-container": "#f6fff4",
+            "secondary": "#0058bb",
+            "surface": "#f7fafd",
+            "surface-container-lowest": "#ffffff",
+            "surface-container-low": "#f1f4f7",
+            "surface-container": "#ebeef2",
+            "surface-container-high": "#e5e8ec",
+            "on-surface": "#181c1f",
+            "on-surface-variant": "#3e4a3f",
+            "outline": "#6d7a6f",
+            "outline-variant": "#bdcabc",
+            "error": "#ba1a1a"
+          },
+          fontFamily: {
+            "sans": ["Inter", "sans-serif"],
+            "mono": ["JetBrains Mono", "monospace"]
+          }
+        }
+      }
+    };
+  </script>
+</head>
+<body class="bg-surface text-on-surface font-sans antialiased min-h-screen flex flex-col">
+
+  <!-- ══ AUTH GUARD OVERLAY ══════════════════════════════════════════════ -->
+  <div id="authGuard" class="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center gap-6">
+    <div id="authGuardLoading" class="flex flex-col items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-primary flex items-center justify-center shadow-md">
+        <span class="material-symbols-outlined text-on-primary text-[26px]">table_chart</span>
+      </div>
+      <div class="flex items-center gap-2 text-on-surface-variant text-[13px]">
+        <span class="material-symbols-outlined text-[16px] animate-spin">sync</span>
+        <span>인증 확인 중...</span>
+      </div>
+    </div>
+    <div id="authGuardLogin" class="hidden flex-col items-center gap-5 text-center px-6">
+      <div class="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center shadow-lg">
+        <span class="material-symbols-outlined text-on-primary text-[30px]">admin_panel_settings</span>
+      </div>
+      <div>
+        <p class="text-[18px] font-bold text-on-surface">관리자 전용 페이지</p>
+        <p class="text-[13px] text-on-surface-variant mt-1">어드민 계정으로 로그인하세요</p>
+      </div>
+      <button id="authGuardSignIn"
+        class="flex items-center gap-3 px-5 py-3 rounded-xl border border-[#dadce0] bg-white hover:bg-[#f8f9fa] shadow-sm transition-colors text-[14px] font-medium text-[#3c4043]">
+        <svg viewBox="0 0 24 24" width="20" height="20">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        구글 계정으로 로그인
+      </button>
+    </div>
+    <div id="authGuardDenied" class="hidden flex-col items-center gap-5 text-center px-6">
+      <div class="w-14 h-14 rounded-2xl bg-error/10 flex items-center justify-center">
+        <span class="material-symbols-outlined text-[30px] text-error">block</span>
+      </div>
+      <div>
+        <p class="text-[18px] font-bold text-on-surface">접근 권한 없음</p>
+        <p class="text-[13px] text-on-surface-variant mt-1">어드민 계정이 아닙니다</p>
+        <p id="authGuardDeniedEmail" class="text-[12px] font-mono text-outline mt-1"></p>
+      </div>
+      <button id="authGuardSwitchAccount"
+        class="px-4 py-2 rounded-lg bg-surface-container hover:bg-surface-variant text-[13px] font-medium text-on-surface transition-colors">
+        다른 계정으로 로그인
+      </button>
+    </div>
+  </div>
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+
+  <!-- Header -->
+  <header class="fixed top-0 left-0 right-0 z-40 bg-surface/90 backdrop-blur-md shadow-xs border-b border-surface-container">
+    <div class="h-16 w-full px-6 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-4 shrink-0">
+        <a href="index.html" class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-lg bg-primary flex items-center justify-center text-on-primary shadow-xs">
+            <span class="material-symbols-outlined text-[20px]">table_chart</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[16px] font-bold text-on-surface leading-none">Workspace Sheets</span>
+            <span class="text-[11px] font-medium text-on-surface-variant uppercase tracking-wider mt-1">Enterprise Drive</span>
+          </div>
+        </a>
+
+        <div class="h-6 w-px bg-outline-variant/40 hidden sm:block"></div>
+
+        <nav class="hidden md:flex items-center gap-1 text-[13px]">
+          <a href="home.html" class="px-3 py-1 bg-primary text-on-primary font-semibold rounded">시트 목록</a>
+          <a href="admin.html" class="px-3 py-1 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded transition-colors">Admin 시트 관리</a>
+          <a href="mobile.html" class="px-3 py-1 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded transition-colors">User 데이터 편집</a>
+          <a href="dashboard.html" class="px-3 py-1 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded transition-colors">대시보드</a>
+        </nav>
+      </div>
+
+      <!-- Search Input -->
+      <div class="flex-1 max-w-xl mx-4">
+        <div class="relative flex items-center w-full">
+          <span class="material-symbols-outlined absolute left-3 text-on-surface-variant text-[18px]">search</span>
+          <input id="sheetSearchInput" class="w-full h-9 pl-9 pr-4 bg-surface-container-low hover:bg-surface-container focus:bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant text-[13px] rounded-lg border border-surface-container outline-none transition-colors" placeholder="스프레드시트 이름으로 검색..." type="text">
+        </div>
+      </div>
+
+      <!-- User Profile & Action -->
+      <div class="flex items-center gap-3 shrink-0">
+        <button type="button" id="btnTopNewSheet" class="px-3.5 py-1.5 bg-primary hover:bg-primary-container text-on-primary font-bold text-[12px] rounded-lg shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer">
+          <span class="material-symbols-outlined text-[16px]">add</span>
+          <span>새 시트 만들기</span>
+        </button>
+
+        <!-- 구글 로그인 영역 -->
+        <div class="h-4 w-px bg-[#dadce0] mx-0.5"></div>
+        <!-- 로그아웃 상태 -->
+        <button id="btnGoogleLogin" type="button"
+          class="flex items-center gap-1.5 h-7 px-2.5 rounded-full border border-[#dadce0] bg-white text-[#3c4043] text-[11px] font-medium hover:bg-[#f8f9fa] shadow-2xs transition-colors"
+          title="구글 계정으로 로그인">
+          <svg viewBox="0 0 24 24" width="13" height="13">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+          </svg>
+          <span>로그인</span>
+        </button>
+        <!-- 로그인 상태: 아바타 + 드롭다운 -->
+        <div id="userAvatarArea" class="hidden relative">
+          <button id="userAvatarBtn" type="button"
+            class="w-7 h-7 rounded-full bg-[#1a73e8] text-white flex items-center justify-center font-bold text-[11px] shrink-0 shadow-xs hover:ring-2 hover:ring-[#1a73e8]/30 transition-all"
+            title="구글 계정">
+            <span id="userAvatarInitial">G</span>
+          </button>
+          <div id="userDropdown"
+            class="hidden absolute right-0 top-9 w-52 bg-white border border-surface-container rounded-xl shadow-lg p-1 z-[100]">
+            <div class="px-3 py-2 border-b border-surface-container mb-1">
+              <p class="text-[12px] font-semibold text-on-surface truncate" id="dropdownName">사용자</p>
+              <p class="text-[10px] text-outline font-mono truncate" id="dropdownEmail">user@gmail.com</p>
+            </div>
+            <div class="px-3 py-1.5 text-[10px] text-outline">
+              <span class="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 rounded px-1.5 py-0.5">
+                <span class="material-symbols-outlined text-[11px]">construction</span>
+                Mock 모드 · Firebase Auth 전환 준비 완료
+              </span>
+            </div>
+            <button type="button" id="btnLogout"
+              class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[12px] text-[#ba1a1a] hover:bg-[#ffdad6] transition-colors">
+              <span class="material-symbols-outlined text-[14px]">logout</span>
+              로그아웃
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="w-full pt-16 flex-1 flex flex-col">
+    <!-- 새 시트 만들기 섹션 -->
+    <section class="w-full bg-surface-container-low px-6 py-6 border-b border-surface-container">
+      <div class="max-w-6xl mx-auto flex flex-col gap-4">
+        <div class="flex items-center justify-between">
+          <span class="text-[14px] font-bold text-on-surface flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[18px] text-primary">add_circle</span>
+            <span>새 스프레드시트 시작</span>
+          </span>
+          <span class="text-[12px] text-on-surface-variant">빈 시트를 만들고 열·데이터를 직접 구성하세요</span>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <!-- 빈 시트 만들기 -->
+          <div class="template-card group flex flex-col gap-2 cursor-pointer" data-template="empty" data-title="">
+            <div class="h-32 w-full rounded-xl bg-surface-container-lowest border-2 border-dashed border-primary/40 hover:border-primary shadow-xs hover:shadow-md transition-all p-3 flex flex-col justify-between items-center group-hover:bg-primary/[0.03]">
+              <div class="flex-1 flex items-center justify-center">
+                <div class="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <span class="material-symbols-outlined text-[28px]">add</span>
+                </div>
+              </div>
+              <div class="w-full flex items-center justify-between text-[11px] text-primary font-bold">
+                <span>빈 스프레드시트</span>
+                <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
+              </div>
+            </div>
+            <span class="text-[13px] text-on-surface font-semibold truncate">새 빈 시트 만들기</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Recent Spreadsheets Section -->
+    <section class="w-full px-6 py-6 flex-1 max-w-6xl mx-auto">
+      <div class="flex items-center justify-between pb-4">
+        <div class="flex items-center gap-2">
+          <span class="text-[15px] font-bold text-on-surface">등록된 스프레드시트 목록</span>
+          <span id="sheetCountBadge" class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold">로딩 중...</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" id="btnOpenCreateModal" class="px-3.5 py-1.5 bg-primary hover:bg-primary-container text-on-primary rounded-lg text-[12px] font-bold shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer">
+            <span class="material-symbols-outlined text-[16px]">add</span>
+            <span>+ 새 시트 만들기</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Spreadsheets Table -->
+      <div class="w-full overflow-x-auto bg-surface-container-lowest rounded-xl border border-surface-container shadow-xs">
+        <table class="w-full text-left text-[13px]">
+          <thead>
+            <tr class="text-on-surface-variant text-[11px] font-semibold bg-surface-container-low/70 border-b border-surface-container">
+              <th class="py-2.5 pl-4 pr-1 w-12 text-center">#</th>
+              <th class="py-2.5 px-3">시트 이름</th>
+              <th class="py-2.5 px-3 w-36 hidden sm:table-cell">소유자</th>
+              <th class="py-2.5 px-3 w-28 text-center">데이터 행 수</th>
+              <th class="py-2.5 px-3 w-40 hidden md:table-cell">생성 일시</th>
+              <th class="py-2.5 pr-4 pl-1 w-44 text-right">시트 열기 및 관리</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-surface-container" id="sheetsTableBody">
+            <tr>
+              <td colspan="6" class="py-12 text-center text-on-surface-variant font-sans">
+                <span class="inline-block animate-spin mr-2">⏳</span> Firestore에서 시트 목록을 불러오는 중...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Create Sheet Modal (Floating Dialog) -->
+  <div id="createSheetModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
+    <div class="bg-surface-container-lowest border-2 border-primary/40 rounded-2xl shadow-2xl p-5 w-[460px] max-w-full text-[12px] font-sans flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between pb-2 border-b border-surface-container">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold">
+            <span class="material-symbols-outlined text-[20px]">add_to_photos</span>
+          </div>
+          <div>
+            <h3 class="font-bold text-on-surface text-[14px]">새 스프레드시트 생성</h3>
+            <p class="text-[11px] text-outline">새 시트의 이름과 시작 템플릿을 선택하세요</p>
+          </div>
+        </div>
+        <button type="button" id="btnCloseCreateModal" class="w-7 h-7 flex items-center justify-center text-outline hover:text-on-surface rounded-full hover:bg-surface-container transition-colors cursor-pointer">
+          <span class="material-symbols-outlined text-[18px]">close</span>
+        </button>
+      </div>
+
+      <!-- Form Inputs -->
+      <div class="flex flex-col gap-3">
+        <!-- Sheet Name -->
+        <!-- Sheet Name -->
+        <div class="flex flex-col gap-1">
+          <label class="font-semibold text-on-surface text-[11px] flex items-center gap-1">
+            <span class="material-symbols-outlined text-[13px] text-primary">edit</span>
+            <span>시트 이름</span>
+          </label>
+          <input type="text" id="newSheetNameInput" placeholder="예: 2025 상반기 신규 과제 관리" class="w-full h-9 px-3 rounded-lg bg-surface-container-lowest border border-surface-container focus:border-primary text-on-surface text-[12px] outline-none shadow-2xs font-medium">
+        </div>
+
+        <p class="text-[11px] text-outline flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-[13px]">info</span>
+          빈 열 3개로 시작합니다. 생성 후 Admin 시트에서 열을 자유롭게 추가·설정하세요.
+        </p>
+
+      <!-- Modal Footer -->
+      <div class="flex items-center justify-between pt-2 border-t border-surface-container mt-1">
+        <button type="button" id="btnCancelCreateModal" class="px-3 py-1.5 rounded-lg text-outline hover:text-on-surface hover:bg-surface-container text-[11px] font-medium transition-colors cursor-pointer">
+          취소
+        </button>
+        <button type="button" id="btnSubmitCreateSheet" class="px-4 py-2 bg-primary hover:bg-primary-container text-on-primary font-bold text-[12px] rounded-lg shadow-sm flex items-center gap-1.5 transition-all cursor-pointer">
+          <span class="material-symbols-outlined text-[16px]">check</span>
+          <span>시트 생성 및 즉시 열기</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import {
+      subscribeSheets,
+      createSheet,
+      deleteSheet,
+      renameSheet,
+      subscribeTasks,
+      isAdminEmail
+    } from "./firebase-service.js";
+
+    import { onAuthStateChanged, signInWithGoogle, signOut } from "./auth-service.js";
+
+    // ══ AUTH GUARD ════════════════════════════════════════════════════════
+    (function initAuthGuard() {
+      const guard        = document.getElementById("authGuard");
+      const loadingEl    = document.getElementById("authGuardLoading");
+      const loginEl      = document.getElementById("authGuardLogin");
+      const deniedEl     = document.getElementById("authGuardDenied");
+      const deniedEmail  = document.getElementById("authGuardDeniedEmail");
+      const btnSignIn    = document.getElementById("authGuardSignIn");
+      const btnSwitch    = document.getElementById("authGuardSwitchAccount");
+
+      function showLoading() {
+        loadingEl.classList.remove("hidden"); loadingEl.classList.add("flex");
+        loginEl.classList.add("hidden");      loginEl.classList.remove("flex");
+        deniedEl.classList.add("hidden");     deniedEl.classList.remove("flex");
+      }
+      function showLogin() {
+        loadingEl.classList.add("hidden");
+        loginEl.classList.remove("hidden");   loginEl.classList.add("flex");
+        deniedEl.classList.add("hidden");     deniedEl.classList.remove("flex");
+      }
+      function showDenied(email) {
+        loadingEl.classList.add("hidden");
+        loginEl.classList.add("hidden");      loginEl.classList.remove("flex");
+        deniedEl.classList.remove("hidden");  deniedEl.classList.add("flex");
+        deniedEmail.textContent = email || "";
+      }
+      function hideGuard() { guard.style.display = "none"; }
+
+      async function handleUser(user) {
+        if (!user) { showLogin(); return; }
+        showLoading();
+        const isAdmin = await isAdminEmail(user.email);
+        if (isAdmin) { hideGuard(); }
+        else { await signOut(); showDenied(user.email); }
+      }
+
+      btnSignIn.addEventListener("click", async () => {
+        showLoading();
+        try { await signInWithGoogle(); } catch { showLogin(); }
+      });
+      btnSwitch.addEventListener("click", async () => {
+        showLoading();
+        try {
+          await signOut();
+          await signInWithGoogle();
+        } catch {
+          showLogin();
+        }
+      });
+
+      onAuthStateChanged(handleUser);
+    })();
+    // ════════════════════════════════════════════════════════════════════
+
+    // ── 헤더 구글 로그인 UI 연동 ─────────────────────────────────
+    (function setupAuth() {
+      const btnLogin   = document.getElementById("btnGoogleLogin");
+      const avatarArea = document.getElementById("userAvatarArea");
+      const avatarBtn  = document.getElementById("userAvatarBtn");
+      const avatarInit = document.getElementById("userAvatarInitial");
+      const dropdown   = document.getElementById("userDropdown");
+      const dropName   = document.getElementById("dropdownName");
+      const dropEmail  = document.getElementById("dropdownEmail");
+      const btnLogout  = document.getElementById("btnLogout");
+
+      function syncAuthUI(user) {
+        if (user) {
+          btnLogin.classList.add("hidden");
+          avatarArea.classList.remove("hidden");
+          const initials = (user.displayName || user.email || "?").charAt(0).toUpperCase();
+          avatarInit.textContent = initials;
+          avatarBtn.style.backgroundColor = "#" + Math.abs(user.email.split("").reduce((a, c) => (a << 5) - a + c.charCodeAt(0), 0) & 0xFFFFFF).toString(16).padStart(6, "0").slice(0, 6);
+          dropName.textContent  = user.displayName || "관리자";
+          dropEmail.textContent = user.email || "";
+        } else {
+          btnLogin.classList.remove("hidden");
+          avatarArea.classList.add("hidden");
+          dropdown.classList.add("hidden");
+        }
+      }
+
+      onAuthStateChanged(syncAuthUI);
+
+      btnLogin.addEventListener("click", async () => {
+        try { await signInWithGoogle(); } catch (err) {
+          if (err.code !== "auth/popup-closed-by-user") alert("로그인 실패: " + err.message);
+        }
+      });
+
+      avatarBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        dropdown.classList.toggle("hidden");
+      });
+
+      btnLogout.addEventListener("click", () => {
+        dropdown.classList.add("hidden");
+        signOut();
+      });
+
+      document.addEventListener("click", (e) => {
+        if (!avatarArea.contains(e.target)) {
+          dropdown.classList.add("hidden");
+        }
+      });
+    })();
+    // ─────────────────────────────────────────────────────────────
+
+    let sheetsList = [];
+    let allTasks = [];
+    let taskCountBySheet = new Map();
+
+    const sheetsTableBody = document.getElementById("sheetsTableBody");
+    const sheetCountBadge = document.getElementById("sheetCountBadge");
+    const sheetSearchInput = document.getElementById("sheetSearchInput");
+    const createSheetModal = document.getElementById("createSheetModal");
+    const btnOpenCreateModal = document.getElementById("btnOpenCreateModal");
+    const btnTopNewSheet = document.getElementById("btnTopNewSheet");
+    const btnCloseCreateModal = document.getElementById("btnCloseCreateModal");
+    const btnCancelCreateModal = document.getElementById("btnCancelCreateModal");
+    const btnSubmitCreateSheet = document.getElementById("btnSubmitCreateSheet");
+    const newSheetNameInput = document.getElementById("newSheetNameInput");
+
+    // Subscribe to Tasks (to display real-time row counts per sheet)
+    subscribeTasks(
+      (tasks) => {
+        allTasks = tasks;
+        taskCountBySheet = new Map();
+        tasks.forEach(t => {
+          const sId = t.sheetId || "unknown";
+          taskCountBySheet.set(sId, (taskCountBySheet.get(sId) || 0) + 1);
+        });
+        renderSheets();
+      },
+      (err) => console.error(err),
+      "ALL"
+    );
+
+    // Subscribe to Sheets
+    subscribeSheets((sheets) => {
+      sheetsList = sheets;
+      renderSheets();
+    });
+
+    function renderSheets() {
+      const q = sheetSearchInput.value.trim().toLowerCase();
+      const filtered = sheetsList.filter(s => s.name.toLowerCase().includes(q));
+
+      sheetCountBadge.textContent = `총 ${sheetsList.length}개 시트`;
+
+      if (!filtered.length) {
+        sheetsTableBody.innerHTML = `
+          <tr>
+            <td colspan="6" class="py-8 text-center text-outline font-sans">
+              ${q ? "검색 조건과 일치하는 시트가 없습니다." : "등록된 시트가 없습니다. '+ 새 시트 만들기'를 눌러 시작하세요."}
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      sheetsTableBody.innerHTML = filtered.map((s, idx) => {
+        const count = taskCountBySheet.get(s.id) || 0;
+        const dateStr = s.createdAt ? new Date(s.createdAt).toLocaleDateString("ko-KR") : "-";
+
+        return `
+          <tr class="hover:bg-surface-container-low transition-colors">
+            <td class="py-3 pl-4 pr-1 text-center font-mono text-[11px] text-outline">
+              ${idx + 1}
+            </td>
+            <td class="py-3 px-3">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[20px] text-secondary shrink-0">table_chart</span>
+                <div class="flex flex-col min-w-0">
+                  <a href="admin.html?sheetId=${s.id}" class="font-bold text-on-surface hover:text-primary transition-colors truncate text-[13px]">${s.name}</a>
+                  <span class="text-[10px] text-outline font-mono">ID: ${s.id}</span>
+                </div>
+              </div>
+            </td>
+            <td class="py-3 px-3 text-on-surface-variant hidden sm:table-cell text-[12px]">
+              <div class="flex items-center gap-1.5">
+                <div class="w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold">
+                  ${(s.owner || "나").charAt(0)}
+                </div>
+                <span>${s.owner || "나 (관리자)"}</span>
+              </div>
+            </td>
+            <td class="py-3 px-3 text-center">
+              <span class="inline-block px-2 py-0.5 rounded-full font-mono text-[11px] font-bold bg-surface-container text-on-surface">
+                ${count}개 행
+              </span>
+            </td>
+            <td class="py-3 px-3 text-on-surface-variant font-mono text-[11px] hidden md:table-cell">
+              ${dateStr}
+            </td>
+            <td class="py-3 pr-4 pl-1 text-right">
+              <div class="flex items-center justify-end gap-1.5">
+                <a href="admin.html?sheetId=${s.id}" class="px-2.5 py-1 rounded-lg bg-primary text-on-primary text-[11px] font-bold hover:bg-primary-container transition-colors shadow-2xs flex items-center gap-0.5" title="웹 스프레드시트로 편집">
+                  <span class="material-symbols-outlined text-[13px]">grid_on</span>
+                  <span>웹 시트</span>
+                </a>
+                <a href="mobile.html?sheetId=${s.id}" class="px-2.5 py-1 rounded-lg bg-secondary text-on-primary text-[11px] font-bold hover:opacity-90 transition-colors shadow-2xs flex items-center gap-0.5" title="모바일 폼으로 편집">
+                  <span class="material-symbols-outlined text-[13px]">phone_iphone</span>
+                  <span>모바일</span>
+                </a>
+                <button type="button" class="btn-rename-sheet p-1 text-outline hover:text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer" data-id="${s.id}" data-name="${s.name}" title="시트 이름 변경">
+                  <span class="material-symbols-outlined text-[16px]">edit</span>
+                </button>
+                <button type="button" class="btn-delete-sheet p-1 text-outline hover:text-error hover:bg-error/10 rounded-lg transition-colors cursor-pointer" data-id="${s.id}" data-name="${s.name}" title="시트 삭제">
+                  <span class="material-symbols-outlined text-[16px]">delete</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join("");
+
+      // Bind rename buttons
+      sheetsTableBody.querySelectorAll(".btn-rename-sheet").forEach(btn => {
+        btn.onclick = async (e) => {
+          e.stopPropagation();
+          const sId = btn.dataset.id;
+          const sName = btn.dataset.name;
+          const newName = prompt(`'${sName}' 시트의 새 이름을 입력하세요:`, sName);
+          if (newName && newName.trim() && newName.trim() !== sName) {
+            try {
+              await renameSheet(sId, newName.trim());
+            } catch (err) {
+              alert("시트 이름 변경 실패: " + err.message);
+            }
+          }
+        };
+      });
+
+      // Bind delete buttons
+      sheetsTableBody.querySelectorAll(".btn-delete-sheet").forEach(btn => {
+        btn.onclick = async (e) => {
+          e.stopPropagation();
+          const sId = btn.dataset.id;
+          const sName = btn.dataset.name;
+          if (confirm(`정말 '${sName}' 시트를 삭제하시겠습니까?\n이 시트에 속한 모든 행 데이터도 함께 삭제됩니다.`)) {
+            try {
+              await deleteSheet(sId);
+            } catch (err) {
+              alert("삭제 실패: " + err.message);
+            }
+          }
+        };
+      });
+    }
+
+    sheetSearchInput.addEventListener("input", renderSheets);
+
+    // Modal Control
+    function openModal(defaultTitle = "") {
+      newSheetNameInput.value = defaultTitle;
+      createSheetModal.classList.remove("hidden");
+      setTimeout(() => newSheetNameInput.focus(), 50);
+    }
+
+    function closeModal() {
+      createSheetModal.classList.add("hidden");
+    }
+
+    btnOpenCreateModal.addEventListener("click", () => openModal(""));
+    btnTopNewSheet.addEventListener("click", () => openModal(""));
+    btnCloseCreateModal.addEventListener("click", closeModal);
+    btnCancelCreateModal.addEventListener("click", closeModal);
+
+    // Template Cards Click — 클릭하면 바로 이름 입력 모달 열기
+    document.querySelectorAll(".template-card").forEach(card => {
+      card.addEventListener("click", () => {
+        openModal(card.dataset.title || "");
+      });
+    });
+
+    // Submit Sheet Creation
+    btnSubmitCreateSheet.addEventListener("click", async () => {
+      const name = newSheetNameInput.value.trim();
+
+      if (!name) {
+        alert("시트 이름을 입력해주세요.");
+        newSheetNameInput.focus();
+        return;
+      }
+
+      btnSubmitCreateSheet.disabled = true;
+      btnSubmitCreateSheet.innerHTML = `<span class="material-symbols-outlined text-[16px] animate-spin">sync</span><span>생성 중...</span>`;
+
+      try {
+        // 항상 빈 시트로 생성 (실사용 — mock 데이터 없음)
+        const created = await createSheet(name, "empty");
+        closeModal();
+        window.location.href = `admin.html?sheetId=${created.id}`;
+      } catch (err) {
+        alert("시트 생성 실패: " + err.message);
+        btnSubmitCreateSheet.disabled = false;
+        btnSubmitCreateSheet.innerHTML = `<span class="material-symbols-outlined text-[16px]">check</span><span>시트 생성 및 즉시 열기</span>`;
+      }
+    });
+  </script>
+</body>
+</html>

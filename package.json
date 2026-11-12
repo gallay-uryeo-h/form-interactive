@@ -1,24 +1,33 @@
 {
   "name": "form-interactive",
-  "version": "1.0.0",
-  "description": "Google Stitch UI & Firebase Firestore 실시간 연동 프로젝트",
-  "main": "index.html",
+  "version": "2.0.0",
+  "description": "Google Stitch UI & Firebase Firestore 실시간 연동 프로젝트 (React + Vite + TS)",
+  "type": "module",
   "scripts": {
-    "start": "npx serve . -p 3000",
-    "dev": "npx serve . -p 3000",
-    "deploy": "npx firebase-tools deploy",
-    "deploy:hosting": "npx firebase-tools deploy --only hosting",
-    "deploy:admin": "npx firebase-tools deploy --only hosting:admin",
-    "deploy:mobile": "npx firebase-tools deploy --only hosting:mobile",
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "deploy": "npm run build && npx firebase-tools deploy",
+    "deploy:hosting": "npm run build && npx firebase-tools deploy --only hosting",
+    "deploy:admin": "npm run build && npx firebase-tools deploy --only hosting:admin",
+    "deploy:mobile": "npm run build && npx firebase-tools deploy --only hosting:mobile",
     "deploy:rules": "npx firebase-tools deploy --only firestore:rules"
   },
-  "keywords": [
-    "stitch",
-    "firebase",
-    "firestore",
-    "google-sheets",
-    "interactive-form"
-  ],
-  "author": "",
-  "license": "ISC"
+  "dependencies": {
+    "firebase": "^11.4.0",
+    "lucide-react": "^1.16.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.3",
+    "vite": "^6.2.0"
+  }
 }

@@ -5,15 +5,11 @@
   "hosting": [
     {
       "target": "admin",
-      "public": ".",
+      "public": "dist",
       "ignore": [
         "firebase.json",
         "**/.*",
-        "**/node_modules/**",
-        "server.js",
-        "package.json",
-        "README.md",
-        "stitch-raw/**"
+        "**/node_modules/**"
       ],
       "rewrites": [
         {
@@ -30,61 +26,27 @@
               "value": "no-cache, no-store, must-revalidate"
             }
           ]
-        },
-        {
-          "source": "/sw.js",
-          "headers": [
-            {
-              "key": "Service-Worker-Allowed",
-              "value": "/"
-            },
-            {
-              "key": "Cache-Control",
-              "value": "no-cache, no-store, must-revalidate"
-            }
-          ]
         }
       ]
     },
     {
       "target": "mobile",
-      "public": ".",
+      "public": "dist",
       "ignore": [
         "firebase.json",
         "**/.*",
-        "**/node_modules/**",
-        "server.js",
-        "package.json",
-        "README.md",
-        "stitch-raw/**",
-        "home.html",
-        "admin.html",
-        "dashboard.html",
-        "index.html"
+        "**/node_modules/**"
       ],
       "rewrites": [
         {
           "source": "**",
-          "destination": "/mobile.html"
+          "destination": "/index.html"
         }
       ],
       "headers": [
         {
           "source": "**/*.@(js|html|css)",
           "headers": [
-            {
-              "key": "Cache-Control",
-              "value": "no-cache, no-store, must-revalidate"
-            }
-          ]
-        },
-        {
-          "source": "/sw.js",
-          "headers": [
-            {
-              "key": "Service-Worker-Allowed",
-              "value": "/"
-            },
             {
               "key": "Cache-Control",
               "value": "no-cache, no-store, must-revalidate"

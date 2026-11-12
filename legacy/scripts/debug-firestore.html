@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>Firestore 디버그 도구</title>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #e0e0e0; }
+    pre { background: #2a2a2a; padding: 10px; border-radius: 6px; overflow-x: auto; font-size: 12px; }
+    button { margin: 5px; padding: 8px 16px; background: #006a39; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #008649; }
+    h2 { color: #82faab; }
+    .section { margin-bottom: 24px; border: 1px solid #444; border-radius: 8px; padding: 16px; }
+    .email-match { color: #82faab; font-weight: bold; }
+    .email-miss { color: #ff6b6b; }
+    #output { white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h2>🔍 Firestore 디버그 도구</h2>
+  <div class="section">
+    <button onclick="checkAll()">전체 분석</button>
+    <button onclick="checkMetadata()">메타데이터만</button>
+    <button onclick="checkTasks()">태스크만</button>
+    <button onclick="checkUserEmail()">이메일 매칭 확인</button>
+    <input id="emailInput" type="text" value="gallay01@uryeo-h.gne.go.kr" style="padding:6px;width:300px;background:#333;color:#eee;border:1px solid #555;border-radius:4px;">
+  </div>
+  <pre id="output">버튼을 클릭하세요...</pre>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, collection, doc, getDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAodFwVZvSAlMxppnODM4VVR5fSjfkhvi4",
+      authDomain: "studio-2726051254-c02c9.firebaseapp.com",
+      projectId: "studio-2726051254-c02c9",
+      storageBucket: "studio-2726051254-c02c9.firebasestorage.app",
+      messagingSenderId: "58367223801",
+      appId: "1:58367223801:web:817b230c96124a828dff28"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const COLLECTION_NAME = "form-interactive";
+    const out = document.getElementById("output");
+
+    function log(text) {
+      out.textContent += text + "\n";
+    }
+
+    function clearLog() {
+      out.textContent = "";
+    }
+
+    window.checkMetadata = async function() {
+      clearLog();
+      log("📋 metadata 문서 조회...\n");
+      try {
+        const snap = await getDoc(doc(db, COLLECTION_NAME, "metadata"));
+        if (!snap.exists()) {
+          log("❌ metadata 문서가 없습니다!");
+          return;
+        }
+        const data = snap.data();
+        log("✅ metadata 문서 존재\n");
+        log("📌 sheets 목록:");
+        const sheets = data.sheets || [];
+        if (!sheets.length) {
+          log("  ⚠️  sheets 배열이 비어있음");
+        }
+        sheets.forEach(s => log(`  - id: ${s.id}, name: ${s.name}`));
+        log("\n📌 columnConfigs 키:");
+        Object.keys(data).filter(k => k.startsWith("columnConfigs_")).forEach(k => {
+          const cfg = data[k];
+          log(`  ${k}:`);
+          Object.entries(cfg).forEach(([col, config]) => {
+            log(`    ${col}: type=${config.type}, label=${config.label}`);
+          });
+        });
+        log("\n📌 columnOrder 키:");
+        Object.keys(data).filter(k => k.startsWith("columnOrder_")).forEach(k => {
+          log(`  ${k}: [${data[k].join(", ")}]`);
+        });
+      } catch(e) {
+        log("❌ 오류: " + e.message);
+      }
+    };
+
+    window.checkTasks = async function() {
+      clearLog();
+      log("📦 task 문서 전체 조회...\n");
+      try {
+        const snap = await getDocs(collection(db, COLLECTION_NAME));
+        let count = 0;
+        snap.forEach(d => {
+          const data = d.data();
+          if (data.type === "task" || data.sheetId) {
+            count++;
+            log(`  [${d.id}]`);
+            log(`    sheetId: ${data.sheetId}`);
+            log(`    type: ${data.type}`);
+            log(`    rowNumber: ${data.rowNumber}`);
+            // 모든 col_ 필드 표시
+            Object.keys(data).filter(k => k.startsWith("col_")).forEach(k => {
+              log(`    ${k}: "${data[k]}"`);
+            });
+            log("");
+          }
+        });
+        log(`\n총 ${count}개 task 문서`);
+      } catch(e) {
+        log("❌ 오류: " + e.message);
+      }
+    };
+
+    window.checkUserEmail = async function() {
+      clearLog();
+      const targetEmail = document.getElementById("emailInput").value.trim().toLowerCase();
+      log(`🔍 이메일 매칭 확인: "${targetEmail}"\n`);
+      try {
+        // 1. 메타데이터에서 시트 목록
+        const metaSnap = await getDoc(doc(db, COLLECTION_NAME, "metadata"));
+        if (!metaSnap.exists()) { log("❌ metadata 없음"); return; }
+        const meta = metaSnap.data();
+        const sheets = meta.sheets || [];
+        log(`📋 시트 ${sheets.length}개 발견: ${sheets.map(s=>s.name).join(", ")}\n`);
+
+        for (const sheet of sheets) {
+          log(`\n━━━ 시트: "${sheet.name}" (${sheet.id}) ━━━`);
+          
+          // 2. columnConfigs 확인
+          const cfgKey = `columnConfigs_${sheet.id}`;
+          const colCfg = meta[cfgKey] || {};
+          const colKeys = Object.keys(colCfg);
+          
+          if (!colKeys.length) {
+            log("  ⚠️  컬럼 설정 없음");
+            continue;
+          }
+          
+          // 3. googleId 컬럼 찾기
+          const gColKey = colKeys.find(k => colCfg[k]?.type === "googleId");
+          if (!gColKey) {
+            log("  ⚠️  googleId 타입 컬럼 없음 → 이 시트는 모바일에서 안 보임");
+            log(`  컬럼 목록: ${colKeys.map(k=>`${k}(${colCfg[k]?.type})`).join(", ")}`);
+            continue;
+          }
+          log(`  ✅ googleId 컬럼: ${gColKey} (label: ${colCfg[gColKey]?.label})`);
+
+          // 4. 이 시트의 task 문서 쿼리
+          const q = query(collection(db, COLLECTION_NAME), where("sheetId", "==", sheet.id));
+          const taskSnap = await getDocs(q);
+          log(`  📦 task 문서 ${taskSnap.size}개`);
+
+          let found = false;
+          taskSnap.forEach(d => {
+            const data = d.data();
+            const raw = data[gColKey];
+            const normalized = (raw || "").trim().toLowerCase();
+            const match = normalized === targetEmail;
+            const icon = match ? "✅" : "  ";
+            log(`  ${icon} [${d.id}] ${gColKey}="${raw}" → normalize="${normalized}" ${match ? "← 매칭!" : ""}`);
+            if (match) found = true;
+          });
+
+          if (!found) {
+            log(`  ❌ "${targetEmail}" 와 매칭되는 행 없음`);
+          } else {
+            log(`  ✅ 매칭 발견! 이 시트가 목록에 표시되어야 함`);
+          }
+        }
+      } catch(e) {
+        log("❌ 오류: " + e.message + "\n" + e.stack);
+      }
+    };
+
+    window.checkAll = async function() {
+      await checkMetadata();
+      log("\n" + "=".repeat(60) + "\n");
+      await checkTasks();
+    };
+  </script>
+</body>
+</html>
+

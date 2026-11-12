@@ -1,0 +1,40 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "primary": "#006a39",
+        "primary-container": "#008649",
+        "primary-fixed": "#82faab",
+        "on-primary-fixed": "#00210e",
+        "on-primary": "#ffffff",
+        "secondary": "#0058bb",
+        "secondary-container": "#1471e6",
+        "secondary-fixed": "#d8e2ff",
+        "on-secondary-fixed": "#001a41",
+        "tertiary": "#8d4b00",
+        "surface": "#f7fafd",
+        "surface-dim": "#d7dade",
+        "surface-container-lowest": "#ffffff",
+        "surface-container-low": "#f1f4f7",
+        "surface-container": "#ebeef2",
+        "surface-container-high": "#e5e8ec",
+        "surface-container-highest": "#e0e3e6",
+        "surface-variant": "#e0e3e6",
+        "on-surface": "#181c1f",
+        "on-surface-variant": "#3e4a3f",
+        "outline": "#6d7a6f",
+        "outline-variant": "#bdcabc",
+        "error": "#ba1a1a",
+        "error-container": "#ffdad6",
+        "on-error-container": "#93000a",
+      },
+    },
+  },
+  plugins: [],
+}

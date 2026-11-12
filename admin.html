@@ -111,6 +111,56 @@
     .drag-handle-header:active {
       cursor: grabbing;
     }
+    /* Google Sheets Column Resizer */
+    .col-resize-handle {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      right: -5px;
+      width: 10px;
+      cursor: col-resize;
+      z-index: 35;
+      pointer-events: auto !important;
+      user-select: none;
+    }
+    .col-resize-handle::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 4px;
+      width: 2px;
+      background-color: transparent;
+      transition: background-color 0.15s ease;
+    }
+    .col-resize-handle:hover::after,
+    .col-resize-handle.resizing::after {
+      background-color: #006a39 !important;
+    }
+    #colResizeGuideLine {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background-color: #006a39;
+      z-index: 999;
+      pointer-events: none;
+      display: none;
+    }
+    #colResizeTooltip {
+      position: absolute;
+      top: 6px;
+      background-color: #006a39;
+      color: #ffffff;
+      font-size: 11px;
+      font-family: monospace;
+      padding: 2px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+      pointer-events: none;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+      transform: translateX(-50%);
+    }
   </style>
 </head>
 <body class="bg-surface text-on-surface h-screen flex flex-col font-sans select-none overflow-hidden">
@@ -376,6 +426,8 @@
         </tr>
       </tbody>
     </table>
+    <div id="colResizeGuideLine"></div>
+    <div id="colResizeTooltip"></div>
   </main>
 
   <!-- 5. Bottom Sheet Status Band (고정 28px) -->
@@ -1531,14 +1583,14 @@ kim.minsu@school.kr"></textarea>
     // Render Type Row Chips (헤더 위의 데이터타입/폼타입 변경 칩)
     function renderTypeRowChips() {
       typeRow.innerHTML = `
-        <th class="border-r border-surface-variant text-center text-outline">
+        <th class="border-r border-surface-variant text-center text-outline w-10 min-w-10">
           <span class="material-symbols-outlined text-[13px]">tune</span>
         </th>
-        ${COLUMNS.map(col => `<th class="px-1 border-r border-surface-variant" data-colkey="${col.key}"></th>`).join("")}
-        <th class="text-center text-outline text-[10px]">-</th>
+        ${COLUMNS.map((col, cIdx) => `<th class="px-1 border-r border-surface-variant relative overflow-hidden group select-none" data-colkey="${col.key}" data-c="${cIdx}" style="width: ${col.width || 100}px; min-width: ${col.width || 100}px; max-width: ${col.width || 100}px;"></th>`).join("")}
+        <th class="text-center text-outline text-[10px] w-14 min-w-14">-</th>
       `;
 
-      COLUMNS.forEach((col) => {
+      COLUMNS.forEach((col, cIdx) => {
         const th = typeRow.querySelector(`th[data-colkey="${col.key}"]`);
         if (!th) return;
 
@@ -1560,29 +1612,30 @@ kim.minsu@school.kr"></textarea>
         const chipClass = styleMap[typeId] || "text-on-surface bg-surface-container";
 
         const optBadge = (typeId === "select" || typeId === "priority" || typeId === "googleId") && cfg.options && cfg.options.length
-          ? `<span class="text-[9px] px-1 rounded ${typeId === "googleId" ? "bg-[#1a73e8]/10 text-[#1a73e8] font-bold" : "bg-black/5 opacity-80"} ml-0.5">${cfg.options.length}${typeId === "googleId" ? "명" : ""}</span>`
+          ? `<span class="text-[9px] px-1 rounded ${typeId === "googleId" ? "bg-[#1a73e8]/10 text-[#1a73e8] font-bold" : "bg-black/5 opacity-80"} ml-0.5 shrink-0">${cfg.options.length}${typeId === "googleId" ? "명" : ""}</span>`
           : "";
 
         const isHiddenFromUser = Array.isArray(currentUserViewColumns) && !currentUserViewColumns.includes(col.key);
         const hiddenBadge = isHiddenFromUser
-          ? `<span class="material-symbols-outlined text-[11px] text-outline ml-0.5" title="사용자(모바일) 화면에서 숨김">visibility_off</span>`
+          ? `<span class="material-symbols-outlined text-[11px] text-outline ml-0.5 shrink-0" title="사용자(모바일) 화면에서 숨김">visibility_off</span>`
           : "";
 
         th.innerHTML = `
-          <button type="button" class="col-type-btn w-full flex items-center justify-between px-1.5 py-0.5 rounded transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-[0.98] ${chipClass}" data-colkey="${col.key}" data-title="${col.title}" title="클릭하여 [${col.letter}열: ${col.title}] 타입 및 드롭다운 옵션 설정">
-            <span class="inline-flex items-center gap-1 truncate text-[10px]">
-              ${typeId === "googleId" ? `<svg viewBox="0 0 24 24" width="12" height="12" class="shrink-0"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>` : `<span class="material-symbols-outlined text-[12px]">${typeInfo.icon}</span>`}
+          <button type="button" class="col-type-btn w-full flex items-center justify-between px-1.5 py-0.5 rounded transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-[0.98] overflow-hidden ${chipClass}" data-colkey="${col.key}" data-title="${col.title}" title="클릭하여 [${col.letter}열: ${col.title}] 타입 및 드롭다운 옵션 설정">
+            <span class="flex items-center gap-1 min-w-0 truncate text-[10px]">
+              ${typeId === "googleId" ? `<svg viewBox="0 0 24 24" width="12" height="12" class="shrink-0"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>` : `<span class="material-symbols-outlined text-[12px] shrink-0">${typeInfo.icon}</span>`}
               <span class="truncate">${typeInfo.label}</span>
               ${optBadge}
               ${hiddenBadge}
             </span>
-            <span class="material-symbols-outlined text-[13px] opacity-70">arrow_drop_down</span>
+            <span class="material-symbols-outlined text-[13px] opacity-70 shrink-0">arrow_drop_down</span>
           </button>
+          <div class="col-resize-handle" data-colkey="${col.key}" data-c="${cIdx}" title="드래그하여 [${col.letter}열] 너비 조절 (더블클릭: 자동 맞춤)"></div>
         `;
       });
 
       // Bind Click to Open Settings Modal
-      document.querySelectorAll(".col-type-btn").forEach((btn) => {
+      typeRow.querySelectorAll(".col-type-btn").forEach((btn) => {
         btn.addEventListener("click", (e) => {
           e.stopPropagation();
           const colKey = btn.dataset.colkey;
@@ -1590,6 +1643,9 @@ kim.minsu@school.kr"></textarea>
           openTypeSettingsModal(btn, colKey, colTitle);
         });
       });
+
+      // Re-bind resizing on handles
+      bindColumnResizing();
     }
 
     // ── Header Cell Inline Editing (헤더 셀 일반 셀처럼 키보드/마우스 편집) ──

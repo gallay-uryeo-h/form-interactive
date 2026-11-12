@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>Firestore 정리 도구 (1회성)</title>
+  <style>
+    body { font-family: monospace; max-width: 700px; margin: 40px auto; padding: 20px; background: #f7fafd; }
+    button { padding: 10px 20px; background: #006a39; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: monospace; }
+    button:disabled { background: #888; }
+    pre { background: #1a1a1a; color: #82faab; padding: 16px; border-radius: 8px; white-space: pre-wrap; overflow-y: auto; max-height: 400px; }
+    .warn { background: #fce8e6; color: #ba1a1a; border: 1px solid #ba1a1a; padding: 12px; border-radius: 8px; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <h2>🔧 Firestore 정리 도구</h2>
+  <div class="warn">
+    ⚠️ <strong>이 페이지는 관리자 전용입니다.</strong><br>
+    아래 버튼을 누르면 Firestore에서 <code>sheet_default</code> mock 데이터가 삭제됩니다.<br>
+    <strong>되돌릴 수 없습니다.</strong> 실제 업무 데이터가 아닌 테스트 데이터만 삭제됩니다.
+  </div>
+
+  <button id="btnClean" onclick="runCleanup()">🗑️ sheet_default mock 데이터 삭제 시작</button>
+  <br><br>
+  <pre id="log">대기 중...</pre>
+
+  <script type="module">
+    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import {
+      getFirestore, collection, doc, getDocs, deleteDoc, updateDoc, getDoc, setDoc
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAodFwVZvSAlMxppnODM4VVR5fSjfkhvi4",
+      authDomain: "studio-2726051254-c02c9.firebaseapp.com",
+      projectId: "studio-2726051254-c02c9",
+      storageBucket: "studio-2726051254-c02c9.firebasestorage.app",
+      messagingSenderId: "58367223801",
+      appId: "1:58367223801:web:817b230c96124a828dff28"
+    };
+
+    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    function log(msg) {
+      const pre = document.getElementById("log");
+      pre.textContent += "\n" + msg;
+      pre.scrollTop = pre.scrollHeight;
+    }
+
+    window.runCleanup = async function() {
+      const btn = document.getElementById("btnClean");
+      btn.disabled = true;
+      btn.textContent = "정리 중...";
+      document.getElementById("log").textContent = "시작...";
+
+      try {
+        const colRef = collection(db, "form-interactive");
+        const snap = await getDocs(colRef);
+
+        let deletedTasks = 0;
+        let skippedTasks = 0;
+
+        for (const d of snap.docs) {
+          const data = d.data();
+
+          // metadata 문서: sheet_default 관련 필드 제거
+          if (d.id === "metadata") {
+            const removeFields = {};
+            const keysToRemove = [
+              "columnConfigs", "columnTypes", "columnOrder",  // sheet_default용 필드
+              "title", "seededAt"
+            ];
+            for (const k of keysToRemove) {
+              if (data[k] !== undefined) removeFields[k] = null;
+            }
+            // sheets 배열에서 sheet_default 제거
+            if (Array.isArray(data.sheets)) {
+              const newSheets = data.sheets.filter(s => s.id !== "sheet_default");
+              removeFields.sheets = newSheets;
+              log(`📋 metadata.sheets: sheet_default 제거 → ${newSheets.length}개 남음`);
+            }
+            if (Object.keys(removeFields).length) {
+              await updateDoc(d.ref, removeFields);
+              log(`📋 metadata 문서 정리 완료 (${Object.keys(removeFields).join(", ")})`);
+            }
+            continue;
+          }
+
+          // _admins 등 시스템 문서 스킵
+          if (d.id.startsWith("_")) {
+            log(`⏭️ 시스템 문서 스킵: ${d.id}`);
+            continue;
+          }
+
+          // sheetId가 "sheet_default" 또는 없는 task 문서 삭제
+          const sheetId = data.sheetId || "sheet_default";
+          if (data.type === "task" && sheetId === "sheet_default") {
+            await deleteDoc(d.ref);
+            log(`🗑️ 삭제: ${d.id} (${data.name || data.empNo || "?"})`);
+            deletedTasks++;
+          } else {
+            log(`✅ 유지: ${d.id} → sheetId=${sheetId}`);
+            skippedTasks++;
+          }
+        }
+
+        log(`\n✨ 완료! 삭제: ${deletedTasks}건, 유지: ${skippedTasks}건`);
+        btn.textContent = "✅ 정리 완료";
+      } catch (err) {
+        log(`❌ 오류: ${err.message}`);
+        btn.disabled = false;
+        btn.textContent = "다시 시도";
+      }
+    };
+  </script>
+</body>
+</html>
+
