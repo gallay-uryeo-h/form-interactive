@@ -1,4 +1,4 @@
-name: Deploy to Firebase Hosting & Firestore Rules
+name: Deploy to Firebase Hosting
 
 on:
   push:
@@ -11,15 +11,6 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
-      - name: Deploy Firestore Rules
-        run: |
-          echo "$FIREBASE_SERVICE_ACCOUNT" > /tmp/sa.json
-          export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json
-          npx firebase-tools deploy --only firestore:rules --project studio-2726051254-c02c9
-          rm -f /tmp/sa.json
-        env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
       - name: Deploy Admin Site
         uses: FirebaseExtended/action-hosting-deploy@v0
