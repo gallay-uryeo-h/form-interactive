@@ -1,0 +1,17 @@
+{
+  "projects": {
+    "default": "studio-2726051254-c02c9"
+  },
+  "targets": {
+    "studio-2726051254-c02c9": {
+      "hosting": {
+        "admin": [
+          "studio-2726051254-c02c9-7d373"
+        ],
+        "mobile": [
+          "studio-2726051254-c02c9-f92f8"
+        ]
+      }
+    }
+  }
+}

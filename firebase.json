@@ -4,7 +4,7 @@
   },
   "hosting": [
     {
-      "site": "studio-2726051254-c02c9-7d373",
+      "target": "admin",
       "public": ".",
       "ignore": [
         "firebase.json",
@@ -47,7 +47,7 @@
       ]
     },
     {
-      "site": "studio-2726051254-c02c9-f92f8",
+      "target": "mobile",
       "public": ".",
       "ignore": [
         "firebase.json",

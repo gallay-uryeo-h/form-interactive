@@ -5,7 +5,12 @@
   "main": "index.html",
   "scripts": {
     "start": "npx serve . -p 3000",
-    "dev": "npx serve . -p 3000"
+    "dev": "npx serve . -p 3000",
+    "deploy": "npx firebase-tools deploy",
+    "deploy:hosting": "npx firebase-tools deploy --only hosting",
+    "deploy:admin": "npx firebase-tools deploy --only hosting:admin",
+    "deploy:mobile": "npx firebase-tools deploy --only hosting:mobile",
+    "deploy:rules": "npx firebase-tools deploy --only firestore:rules"
   },
   "keywords": [
     "stitch",
@@ -17,4 +22,3 @@
   "author": "",
   "license": "ISC"
 }
-
