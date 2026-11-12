@@ -95,8 +95,14 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl shadow-2xl border border-surface-variant max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh]">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150 cursor-pointer"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-2xl shadow-2xl border border-surface-variant max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh] cursor-default"
+      >
         <div className="px-5 py-4 border-b border-surface-variant flex items-center justify-between bg-surface-container-low">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-emerald-700 text-[20px]">upload_file</span>

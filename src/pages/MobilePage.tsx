@@ -375,8 +375,14 @@ export const MobilePage: React.FC<MobilePageProps> = ({
 
       {/* Add New Card Modal */}
       {isAddCardOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl shadow-2xl border border-surface-variant max-w-md w-full overflow-hidden flex flex-col max-h-[85vh]">
+        <div
+          onClick={() => setIsAddCardOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-2xl border border-surface-variant max-w-md w-full overflow-hidden flex flex-col max-h-[85vh] cursor-default"
+          >
             <div className="px-5 py-4 border-b border-surface-variant flex items-center justify-between bg-surface-container-low">
               <h3 className="font-bold text-sm text-on-surface">새 항목 등록</h3>
               <button

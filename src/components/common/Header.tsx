@@ -155,7 +155,12 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             {showProfileMenu && (
-              <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-surface-variant p-3 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+              <>
+                <div
+                  className="fixed inset-0 z-40 cursor-default"
+                  onClick={() => setShowProfileMenu(false)}
+                />
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-surface-variant p-3 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                 <div className="flex items-center gap-3 p-2 border-b border-surface-variant pb-3 mb-2">
                   <div className="w-10 h-10 rounded-full bg-primary/10 text-primary font-bold text-sm flex items-center justify-center">
                     {user.photoURL ? (
@@ -183,6 +188,7 @@ export const Header: React.FC<HeaderProps> = ({
                   로그아웃
                 </button>
               </div>
+            </>
             )}
           </div>
         )}
