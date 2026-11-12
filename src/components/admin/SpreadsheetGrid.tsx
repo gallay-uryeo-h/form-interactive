@@ -426,6 +426,14 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
       return;
     }
 
+    // Ctrl+X (Cut = Copy then clear)
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'x') {
+      e.preventDefault();
+      await handleCopy();
+      await handleDeleteSelected();
+      return;
+    }
+
     // Ctrl+V (Paste)
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
       e.preventDefault();
