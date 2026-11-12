@@ -27,6 +27,7 @@ const BlurSaveInput: React.FC<{
   }, [value]);
 
   const handleBlur = () => {
+    if (disabled) return; // 읽기 전용이면 저장 안 함
     if (local !== committed.current) {
       committed.current = local;
       onCommit(local);

@@ -14,6 +14,7 @@ interface SpreadsheetGridProps {
   tasks: Task[];
   columnConfigs: Record<string, ColumnConfig>;
   userViewColumns: string[] | null;
+  userReadOnlyColumns: string[] | null;
   onUpdateUserViewColumns?: (cols: string[] | null) => Promise<void>;
   onUpdateCell: (taskId: string, colKey: string, value: any) => Promise<void>;
   onBatchUpdateCells?: (updates: { taskId: string; colKey: string; nextValue: any }[]) => Promise<void>;
@@ -33,6 +34,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   tasks,
   columnConfigs,
   userViewColumns,
+  userReadOnlyColumns,
   onUpdateUserViewColumns,
   onUpdateCell,
   onBatchUpdateCells,
@@ -699,6 +701,8 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
               const cfg = columnConfigs[col.key] || { type: 'text' };
               const typeInfo = AVAILABLE_TYPES.find((t) => t.id === cfg.type) || AVAILABLE_TYPES[0];
               const isHidden = Array.isArray(userViewColumns) && !userViewColumns.includes(col.key);
+              const isReadOnly = !isHidden && Array.isArray(userReadOnlyColumns) && userReadOnlyColumns.includes(col.key);
+              const isVisibleEditable = !isHidden && !isReadOnly;
 
               return (
                 <th
@@ -737,9 +741,25 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                       {isHidden && (
                         <span
                           className="material-symbols-outlined text-[11px] text-outline ml-0.5"
-                          title="사용자 폼 화면에서 숨김"
+                          title="모바일에서 숨김"
                         >
                           visibility_off
+                        </span>
+                      )}
+                      {isReadOnly && (
+                        <span
+                          className="material-symbols-outlined text-[11px] text-amber-600 ml-0.5"
+                          title="모바일에서 읽기 전용"
+                        >
+                          lock
+                        </span>
+                      )}
+                      {isVisibleEditable && userViewColumns !== null && (
+                        <span
+                          className="material-symbols-outlined text-[11px] text-emerald-600 ml-0.5"
+                          title="모바일에서 수정 가능"
+                        >
+                          edit
                         </span>
                       )}
                     </span>

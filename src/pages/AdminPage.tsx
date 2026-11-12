@@ -227,6 +227,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           tasks={filteredTasks}
           columnConfigs={columnConfigs}
           userViewColumns={userViewColumns}
+          userReadOnlyColumns={userReadOnlyColumns}
           onUpdateUserViewColumns={updateUserViewColumns}
           onUpdateCell={handleCellUpdateWithHistory}
           onBatchUpdateCells={handleBatchUpdateWithHistory}
