@@ -234,39 +234,56 @@ export const UserViewColumnsModal: React.FC<UserViewColumnsModalProps> = ({
                       <span className="truncate font-semibold">{col.title}</span>
                     </label>
 
-                    {/* Right: Editable vs Read-Only Toggle (Only when checked) */}
+                    {/* Right: state icon badge + editable/read-only toggle */}
                     {isChecked ? (
-                      <div className="flex items-center rounded-lg border border-surface-variant p-0.5 bg-white shadow-2xs shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => setColReadOnly(col.key, false)}
-                          className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer ${
-                            !isReadOnly
-                              ? 'bg-emerald-100 text-emerald-800 shadow-xs'
-                              : 'text-outline hover:text-on-surface'
-                          }`}
-                          title="학생/사용자가 모바일에서 값을 수정할 수 있습니다."
-                        >
-                          <span className="material-symbols-outlined text-[12px]">edit</span>
-                          수정 가능
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setColReadOnly(col.key, true)}
-                          className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                      <div className="flex items-center gap-1 shrink-0">
+                        {/* Current state badge */}
+                        <span
+                          className={`flex items-center justify-center w-6 h-6 rounded-lg text-[15px] transition-colors ${
                             isReadOnly
-                              ? 'bg-amber-100 text-amber-800 shadow-xs'
-                              : 'text-outline hover:text-on-surface'
+                              ? 'text-amber-600 bg-amber-50'
+                              : 'text-emerald-600 bg-emerald-50'
                           }`}
-                          title="학생/사용자는 모바일에서 읽기만 가능하며 수정할 수 없습니다."
+                          title={isReadOnly ? '읽기 전용' : '수정 가능'}
                         >
-                          <span className="material-symbols-outlined text-[12px]">lock</span>
-                          읽기 전용
-                        </button>
+                          <span className="material-symbols-outlined text-[15px]">
+                            {isReadOnly ? 'lock' : 'edit'}
+                          </span>
+                        </span>
+                        {/* Toggle segmented control */}
+                        <div className="flex items-center rounded-lg border border-surface-variant p-0.5 bg-white shadow-2xs">
+                          <button
+                            type="button"
+                            onClick={() => setColReadOnly(col.key, false)}
+                            className={`flex items-center justify-center w-6 h-6 rounded transition-all cursor-pointer ${
+                              !isReadOnly
+                                ? 'bg-emerald-100 text-emerald-700 shadow-xs'
+                                : 'text-outline hover:text-emerald-600 hover:bg-emerald-50'
+                            }`}
+                            title="수정 가능 — 학생/사용자가 모바일에서 값을 수정할 수 있습니다."
+                          >
+                            <span className="material-symbols-outlined text-[14px]">edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setColReadOnly(col.key, true)}
+                            className={`flex items-center justify-center w-6 h-6 rounded transition-all cursor-pointer ${
+                              isReadOnly
+                                ? 'bg-amber-100 text-amber-700 shadow-xs'
+                                : 'text-outline hover:text-amber-600 hover:bg-amber-50'
+                            }`}
+                            title="읽기 전용 — 학생/사용자는 모바일에서 읽기만 가능합니다."
+                          >
+                            <span className="material-symbols-outlined text-[14px]">lock</span>
+                          </button>
+                        </div>
                       </div>
                     ) : (
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-surface-container text-outline shrink-0 font-medium">
-                        모바일 숨김
+                      <span
+                        className="flex items-center justify-center w-6 h-6 rounded-lg bg-surface-container text-outline shrink-0"
+                        title="모바일 숨김"
+                      >
+                        <span className="material-symbols-outlined text-[15px]">visibility_off</span>
                       </span>
                     )}
                   </div>
