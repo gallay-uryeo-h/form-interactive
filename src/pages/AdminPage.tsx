@@ -8,6 +8,7 @@ import { TypeConfigModal } from '../components/admin/TypeConfigModal';
 import { FilterSortModal } from '../components/admin/FilterSortModal';
 import { ExcelImportModal } from '../components/admin/ExcelImportModal';
 import { UserViewColumnsModal } from '../components/admin/UserViewColumnsModal';
+import { UserClosingModal } from '../components/admin/UserClosingModal';
 
 interface AdminPageProps {
   currentSheetId: string;
@@ -27,11 +28,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     columnConfigs,
     userViewColumns,
     userReadOnlyColumns,
+    userStatuses,
     deadlineInfo,
     updateColumnConfig,
     updateColumnOrder,
     updateUserViewColumns,
     updateUserReadOnlyColumns,
+    updateUserStatuses,
     addColumn,
     deleteColumn,
     renameSheet,
@@ -126,6 +129,21 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
   const [isUserViewModalOpen, setIsUserViewModalOpen] = useState(false);
+  const [isUserClosingModalOpen, setIsUserClosingModalOpen] = useState(false);
+
+  // Extract unique user emails from googleId column
+  const sheetUsers = React.useMemo(() => {
+    const googleCol = columns.find((c) => columnConfigs[c.key]?.type === 'googleId');
+    if (!googleCol) return [];
+    const set = new Set<string>();
+    tasks.forEach((t) => {
+      const email = t[googleCol.key];
+      if (email && typeof email === 'string' && email.trim()) {
+        set.add(email.trim().toLowerCase());
+      }
+    });
+    return Array.from(set);
+  }, [columns, columnConfigs, tasks]);
 
   return (
     <div className="min-h-screen flex flex-col bg-surface-container-lowest">
@@ -199,10 +217,28 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           </button>
         </div>
 
-        {/* Right: Deadline & Closing Toggle */}
+        {/* Right: Deadline & Closing Controls */}
         <div className="flex items-center gap-2">
+          {/* User Closing Management Modal Trigger */}
+          <button
+            type="button"
+            onClick={() => setIsUserClosingModalOpen(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-surface-container border border-surface-variant rounded-lg text-xs font-semibold text-on-surface transition-colors shadow-2xs"
+            title="사용자별 입력 마감 및 연결 해제 설정"
+          >
+            <span className="material-symbols-outlined text-[16px] text-red-600">
+              lock_person
+            </span>
+            <span>사용자별 마감 관리</span>
+            {Object.values(userStatuses || {}).some((s) => s.inputClosed || s.disconnected) && (
+              <span className="w-2 h-2 rounded-full bg-red-600 shrink-0"></span>
+            )}
+          </button>
+
+          <div className="h-4 w-[1px] bg-outline-variant mx-0.5"></div>
+
           <label className="flex items-center gap-2 cursor-pointer select-none">
-            <span className="text-xs font-semibold text-on-surface">시트 마감 (입력 잠금)</span>
+            <span className="text-xs font-semibold text-on-surface">전체 시트 마감</span>
             <input
               type="checkbox"
               checked={deadlineInfo.isClosed}
@@ -319,6 +355,20 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         onSave={async (viewCols, readOnlyCols) => {
           await updateUserViewColumns(viewCols);
           await updateUserReadOnlyColumns(readOnlyCols);
+        }}
+      />
+
+      <UserClosingModal
+        isOpen={isUserClosingModalOpen}
+        onClose={() => setIsUserClosingModalOpen(false)}
+        users={sheetUsers}
+        userStatuses={userStatuses}
+        onSave={async (statuses) => {
+          await updateUserStatuses(statuses);
+        }}
+        sheetIsClosed={deadlineInfo.isClosed}
+        onToggleSheetClosed={async (closed) => {
+          await setSheetClosed(closed, deadlineInfo.deadline, deadlineInfo.closedMessage);
         }}
       />
     </div>

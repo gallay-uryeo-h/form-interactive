@@ -66,7 +66,7 @@ export const MobilePage: React.FC<MobilePageProps> = ({
   const { accessibleSheets, countsBySheet, loading: loadingAccessible } =
     useAccessibleSheets(user?.email);
 
-  const { currentSheet, columns, columnConfigs, userViewColumns, userReadOnlyColumns, deadlineInfo } =
+  const { currentSheet, columns, columnConfigs, userViewColumns, userReadOnlyColumns, userStatuses, deadlineInfo } =
     useSheet(currentSheetId);
 
   // Fetch all tasks for current sheet, filter strictly by googleId column on client
@@ -86,7 +86,13 @@ export const MobilePage: React.FC<MobilePageProps> = ({
     }
   }, [accessibleSheets, currentSheetId, onSelectSheet]);
 
-  // 1. Identify the Google ID column (학생 구글 계정 열)
+  const isUserClosed = useMemo(() => {
+    if (!user?.email) return false;
+    const myEmail = user.email.trim().toLowerCase();
+    return !!userStatuses?.[myEmail]?.inputClosed;
+  }, [user?.email, userStatuses]);
+
+  const isSheetEffectivelyClosed = deadlineInfo.isClosed || isUserClosed;
   const googleIdCol = useMemo(() => {
     return columns.find((c) => columnConfigs[c.key]?.type === 'googleId');
   }, [columns, columnConfigs]);
@@ -206,11 +212,13 @@ export const MobilePage: React.FC<MobilePageProps> = ({
       </header>
 
       {/* Closed Deadline Banner */}
-      {deadlineInfo.isClosed && (
+      {isSheetEffectivelyClosed && (
         <div className="bg-red-50 border-b border-red-200 px-4 py-2.5 flex items-center gap-2 text-red-800 text-xs font-semibold">
           <span className="material-symbols-outlined text-base text-red-600">lock</span>
           <span>
-            {deadlineInfo.closedMessage || '이 시트는 마감되어 현재 읽기 전용입니다.'}
+            {isUserClosed
+              ? '관리자에 의해 입력이 마감되어 현재 읽기 전용입니다.'
+              : deadlineInfo.closedMessage || '이 시트는 마감되어 현재 읽기 전용입니다.'}
           </span>
         </div>
       )}
@@ -233,7 +241,7 @@ export const MobilePage: React.FC<MobilePageProps> = ({
 
             <button
               onClick={() => setIsAddCardOpen(true)}
-              disabled={deadlineInfo.isClosed || !googleIdCol}
+              disabled={isSheetEffectivelyClosed || !googleIdCol}
               className="flex items-center gap-1 bg-primary hover:bg-primary/90 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-xs transition-all disabled:opacity-50 shrink-0 cursor-pointer"
             >
               <span className="material-symbols-outlined text-[16px]">add</span>
@@ -333,7 +341,7 @@ export const MobilePage: React.FC<MobilePageProps> = ({
                   const cfg = columnConfigs[col.key] || { type: 'text' };
                   const val = task[col.key];
                   const strVal = val != null ? String(val) : '';
-                  const isLocked = deadlineInfo.isClosed || cfg.type === 'locked' || (userReadOnlyColumns?.includes(col.key) ?? false);
+                  const isLocked = isSheetEffectivelyClosed || cfg.type === 'locked' || (userReadOnlyColumns?.includes(col.key) ?? false);
                   const half = isHalfWidth(col);
 
                   return (
@@ -480,9 +488,8 @@ export const MobilePage: React.FC<MobilePageProps> = ({
                       onChange={(e) =>
                         setNewCardData({ ...newCardData, [col.key]: e.target.value })
                       }
-                      className={`w-full text-xs px-3 py-2 border border-surface-variant rounded-xl outline-none focus:border-primary ${
-                        cfg.type === 'number' ? 'text-right font-mono' : ''
-                      }`}
+                      className={`w-full text-xs px-3 py-2 border border-surface-variant rounded-xl outline-none focus:border-primary ${cfg.type === 'number' ? 'text-right font-mono' : ''
+                        }`}
                     />
                   </div>
                 );

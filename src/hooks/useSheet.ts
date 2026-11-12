@@ -8,6 +8,8 @@ import {
   updateColumnOrder,
   updateUserViewColumns,
   updateUserReadOnlyColumns,
+  updateUserStatuses,
+  UserStatus,
   addColumn,
   deleteColumn,
   renameSheet,
@@ -22,6 +24,7 @@ export function useSheet(sheetId?: string | null) {
   const [columnOrder, setColumnOrder] = useState<string[]>([]);
   const [userViewColumns, setUserViewColumns] = useState<string[] | null>(null);
   const [userReadOnlyColumns, setUserReadOnlyColumns] = useState<string[] | null>(null);
+  const [userStatuses, setUserStatuses] = useState<Record<string, UserStatus>>({});
   const [deadlineInfo, setDeadlineInfo] = useState<{
     isClosed: boolean;
     deadline: string | null;
@@ -46,6 +49,7 @@ export function useSheet(sheetId?: string | null) {
       setColumnOrder(meta.columnOrder);
       setUserViewColumns(meta.userViewColumns);
       setUserReadOnlyColumns(meta.userReadOnlyColumns);
+      setUserStatuses(meta.userStatuses);
       setDeadlineInfo({
         isClosed: meta.isClosed,
         deadline: meta.deadline,
@@ -129,11 +133,13 @@ export function useSheet(sheetId?: string | null) {
     columnOrder,
     userViewColumns,
     userReadOnlyColumns,
+    userStatuses,
     deadlineInfo,
     updateColumnConfig: handleUpdateColumnConfig,
     updateColumnOrder: handleUpdateColumnOrder,
     updateUserViewColumns: (cols: string[] | null) => sheetId && updateUserViewColumns(cols, sheetId),
     updateUserReadOnlyColumns: (cols: string[] | null) => sheetId && updateUserReadOnlyColumns(cols, sheetId),
+    updateUserStatuses: (statuses: Record<string, UserStatus>) => sheetId && updateUserStatuses(statuses, sheetId),
     addColumn: handleAddColumn,
     deleteColumn: handleDeleteColumn,
     renameSheet: handleRenameSheet,

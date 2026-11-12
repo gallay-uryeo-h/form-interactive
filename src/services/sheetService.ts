@@ -67,6 +67,8 @@ export function subscribeSheets(
   );
 }
 
+export type UserStatus = { inputClosed: boolean; disconnected: boolean };
+
 export function subscribeSheetMetadata(
   sheetId: string,
   callback: (meta: {
@@ -74,6 +76,7 @@ export function subscribeSheetMetadata(
     columnOrder: string[];
     userViewColumns: string[] | null;
     userReadOnlyColumns: string[] | null;
+    userStatuses: Record<string, UserStatus>;
     isClosed: boolean;
     deadline: string | null;
     closedMessage: string;
@@ -87,6 +90,7 @@ export function subscribeSheetMetadata(
         columnOrder: [],
         userViewColumns: null,
         userReadOnlyColumns: null,
+        userStatuses: {},
         isClosed: false,
         deadline: null,
         closedMessage: '',
@@ -98,6 +102,7 @@ export function subscribeSheetMetadata(
     const orderKey = `columnOrder_${sheetId}`;
     const userViewKey = `userViewColumns_${sheetId}`;
     const userReadOnlyKey = `userReadOnlyColumns_${sheetId}`;
+    const userStatusesKey = `userStatuses_${sheetId}`;
     const deadlineKey = `deadline_${sheetId}`;
 
     const deadlineData = data[deadlineKey] || {};
@@ -106,6 +111,7 @@ export function subscribeSheetMetadata(
       columnOrder: data[orderKey] || [],
       userViewColumns: data[userViewKey] || null,
       userReadOnlyColumns: data[userReadOnlyKey] || null,
+      userStatuses: data[userStatusesKey] || {},
       isClosed: deadlineData.isClosed || false,
       deadline: deadlineData.deadline || null,
       closedMessage: deadlineData.closedMessage || '',
@@ -260,6 +266,18 @@ export async function updateUserReadOnlyColumns(columns: string[] | null, sheetI
     {
       [`userReadOnlyColumns_${sheetId}`]: columns,
     },
+    { merge: true }
+  );
+}
+
+export async function updateUserStatuses(
+  statuses: Record<string, UserStatus>,
+  sheetId: string
+): Promise<void> {
+  const metaDocRef = doc(db, COLLECTION_NAME, 'metadata');
+  await setDoc(
+    metaDocRef,
+    { [`userStatuses_${sheetId}`]: statuses },
     { merge: true }
   );
 }

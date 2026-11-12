@@ -53,6 +53,11 @@ export function useAccessibleSheets(userEmail: string | null | undefined) {
       // googleId 열이 없는 시트는 접근 불가
       if (!gColKey) return;
 
+      // 연결 해제된 사용자는 해당 시트 접근 불가
+      const userStatuses = metadata[`userStatuses_${sheet.id}`] || {};
+      const myStatus = userStatuses[myEmail] || {};
+      if (myStatus.disconnected) return;
+
       // 내 이메일이 매칭되는 행 수 계산
       const myRows = allTasks.filter(
         (t) => t.sheetId === sheet.id && normalizeEmail(t[gColKey]) === myEmail
