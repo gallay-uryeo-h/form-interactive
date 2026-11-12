@@ -190,8 +190,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           onUpdateCell={handleCellUpdateWithHistory}
           onDeleteRow={deleteRow}
           onAddRow={addRow}
-          onAddColumn={async (title) => {
-            await addColumn(title);
+          onAddColumn={async (title, insertIndex) => {
+            await addColumn(title, 'text', insertIndex);
+          }}
+          onDeleteColumn={deleteColumn}
+          onUpdateColumnTitle={async (key, newTitle) => {
+            await updateColumnConfig(key, { label: newTitle });
           }}
           onUpdateColumnWidth={async (key, width) => {
             await updateColumnConfig(key, { width });

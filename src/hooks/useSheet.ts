@@ -93,9 +93,13 @@ export function useSheet(sheetId?: string | null) {
     await updateColumnOrder(newOrder, sheetId);
   };
 
-  const handleAddColumn = async (title: string, type: ColumnConfig['type'] = 'text') => {
+  const handleAddColumn = async (
+    title: string,
+    type: ColumnConfig['type'] = 'text',
+    insertIndex?: number
+  ) => {
     if (!sheetId) return '';
-    return await addColumn(sheetId, title, type);
+    return await addColumn(sheetId, title, type, insertIndex);
   };
 
   const handleDeleteColumn = async (colKey: string) => {

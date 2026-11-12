@@ -10,7 +10,9 @@ interface SpreadsheetGridProps {
   onUpdateCell: (taskId: string, colKey: string, value: any) => Promise<void>;
   onDeleteRow: (taskId: string) => Promise<void>;
   onAddRow: () => Promise<void>;
-  onAddColumn: (title: string) => Promise<void>;
+  onAddColumn: (title: string, insertIndex?: number) => Promise<void>;
+  onDeleteColumn?: (colKey: string) => Promise<void>;
+  onUpdateColumnTitle?: (colKey: string, newTitle: string) => Promise<void>;
   onUpdateColumnWidth: (colKey: string, width: number) => Promise<void>;
   onUpdateColumnOrder: (newOrder: string[]) => Promise<void>;
   onOpenTypeConfig: (colKey: string, colTitle: string) => void;
@@ -26,6 +28,8 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   onDeleteRow,
   onAddRow,
   onAddColumn,
+  onDeleteColumn,
+  onUpdateColumnTitle,
   onUpdateColumnWidth,
   onUpdateColumnOrder,
   onOpenTypeConfig,
@@ -52,8 +56,56 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   const [editingHeaderKey, setEditingHeaderKey] = useState<string | null>(null);
   const [headerEditTitle, setHeaderEditTitle] = useState<string>('');
 
+  // Column Header Right-Click Context Menu State
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    colKey: string;
+    colTitle: string;
+    colIndex: number;
+    letter: string;
+  } | null>(null);
+
   const gridContainerRef = useRef<HTMLDivElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
+
+  // Close Context Menu on Global Click / Escape / Scroll
+  useEffect(() => {
+    if (!contextMenu) return;
+
+    const handleCloseMenu = () => setContextMenu(null);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setContextMenu(null);
+    };
+
+    window.addEventListener('click', handleCloseMenu);
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('scroll', handleCloseMenu, true);
+
+    return () => {
+      window.removeEventListener('click', handleCloseMenu);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('scroll', handleCloseMenu, true);
+    };
+  }, [contextMenu]);
+
+  // Open Header Context Menu Helper
+  const handleHeaderContextMenu = (e: React.MouseEvent, col: ColumnDef, idx: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const menuWidth = 230;
+    const menuHeight = 280;
+    const x = Math.min(e.clientX, window.innerWidth - menuWidth - 10);
+    const y = Math.min(e.clientY, window.innerHeight - menuHeight - 10);
+    setContextMenu({
+      x: Math.max(10, x),
+      y: Math.max(10, y),
+      colKey: col.key,
+      colTitle: col.title,
+      colIndex: idx,
+      letter: col.letter,
+    });
+  };
 
   // Focus edit input when entering edit mode
   useEffect(() => {
@@ -272,7 +324,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
             <th className="border-r border-surface-variant text-center text-outline w-11">
               <span className="material-symbols-outlined text-[13px]">tune</span>
             </th>
-            {columns.map((col) => {
+            {columns.map((col, idx) => {
               const cfg = columnConfigs[col.key] || { type: 'text' };
               const typeInfo = AVAILABLE_TYPES.find((t) => t.id === cfg.type) || AVAILABLE_TYPES[0];
               const isHidden = Array.isArray(userViewColumns) && !userViewColumns.includes(col.key);
@@ -280,6 +332,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
               return (
                 <th
                   key={col.key}
+                  onContextMenu={(e) => handleHeaderContextMenu(e, col, idx)}
                   className="px-1 border-r border-surface-variant relative overflow-visible group"
                 >
                   <button
@@ -288,6 +341,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                       e.stopPropagation();
                       onOpenTypeConfig(col.key, col.title);
                     }}
+                    onContextMenu={(e) => handleHeaderContextMenu(e, col, idx)}
                     className={`w-full flex items-center justify-between px-1.5 py-0.5 rounded transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-[0.98] ${
                       cfg.type === 'googleId'
                         ? 'text-[#1a73e8] bg-[#f8fafd] border border-[#dadce0] font-bold'
@@ -347,7 +401,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
           {/* Row 2: Header Label Row (A, B, C...) */}
           <tr className="h-7 text-[11px] bg-surface-container">
             <th className="border-r border-surface-variant text-center text-outline">#</th>
-            {columns.map((col) => {
+            {columns.map((col, idx) => {
               const isDragging = draggedColKey === col.key;
               const isDragOver = dragOverColKey === col.key;
 
@@ -358,6 +412,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                   onDragStart={(e) => handleDragStart(e, col.key)}
                   onDragOver={(e) => handleDragOver(e, col.key)}
                   onDrop={(e) => handleDrop(e, col.key)}
+                  onContextMenu={(e) => handleHeaderContextMenu(e, col, idx)}
                   className={`px-1.5 py-0.5 border-r border-surface-variant relative group overflow-visible transition-colors ${
                     isDragging ? 'opacity-40 bg-primary/10' : ''
                   } ${isDragOver ? 'border-l-2 border-l-primary bg-primary/5' : ''}`}
@@ -381,7 +436,11 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                           onBlur={async () => {
                             setEditingHeaderKey(null);
                             if (headerEditTitle.trim() && headerEditTitle !== col.title) {
-                              await onOpenTypeConfig(col.key, headerEditTitle.trim());
+                              if (onUpdateColumnTitle) {
+                                await onUpdateColumnTitle(col.key, headerEditTitle.trim());
+                              } else {
+                                await onOpenTypeConfig(col.key, headerEditTitle.trim());
+                              }
                             }
                           }}
                           onKeyDown={(e) => {
@@ -400,7 +459,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                             setHeaderEditTitle(col.title);
                           }}
                           className="truncate font-semibold text-on-surface hover:text-primary cursor-pointer"
-                          title="더블클릭하여 이름 변경"
+                          title="더블클릭 또는 우클릭으로 이름 변경"
                         >
                           {col.title}
                         </span>
@@ -534,6 +593,140 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
             {resizingCol.currentWidth}px
           </div>
         </div>
+      )}
+
+      {/* Column Header Right-Click Context Menu */}
+      {contextMenu && (
+        <>
+          {/* Backdrop to close menu on click */}
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setContextMenu(null)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setContextMenu(null);
+            }}
+          />
+          <div
+            style={{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }}
+            className="fixed z-50 bg-white border border-surface-variant rounded-xl shadow-2xl py-1.5 min-w-[210px] text-xs font-medium text-on-surface select-none"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header info chip */}
+            <div className="px-3 py-1.5 border-b border-surface-variant/70 flex items-center justify-between text-outline bg-surface-container-low/60 rounded-t-lg">
+              <span className="font-bold text-on-surface truncate text-[11px]">
+                {contextMenu.letter}열: {contextMenu.colTitle}
+              </span>
+              <span className="text-[10px] font-mono text-outline">#{contextMenu.colIndex + 1}</span>
+            </div>
+
+            {/* Insert Column Left */}
+            <button
+              type="button"
+              onClick={async () => {
+                const targetIdx = contextMenu.colIndex;
+                const refTitle = contextMenu.colTitle;
+                setContextMenu(null);
+                const title = prompt(`'${refTitle}' 왼쪽에 추가할 열 이름을 입력하세요:`);
+                if (title && title.trim()) {
+                  await onAddColumn(title.trim(), targetIdx);
+                }
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-primary/10 hover:text-primary transition-colors text-left cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[17px] text-primary">arrow_left_alt</span>
+              <span>왼쪽에 1개 열 삽입</span>
+            </button>
+
+            {/* Insert Column Right */}
+            <button
+              type="button"
+              onClick={async () => {
+                const targetIdx = contextMenu.colIndex + 1;
+                const refTitle = contextMenu.colTitle;
+                setContextMenu(null);
+                const title = prompt(`'${refTitle}' 오른쪽에 추가할 열 이름을 입력하세요:`);
+                if (title && title.trim()) {
+                  await onAddColumn(title.trim(), targetIdx);
+                }
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-primary/10 hover:text-primary transition-colors text-left cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[17px] text-primary">arrow_right_alt</span>
+              <span>오른쪽에 1개 열 삽입</span>
+            </button>
+
+            <div className="my-1 border-t border-surface-variant/60"></div>
+
+            {/* Rename Column */}
+            <button
+              type="button"
+              onClick={() => {
+                const { colKey, colTitle } = contextMenu;
+                setContextMenu(null);
+                setEditingHeaderKey(colKey);
+                setHeaderEditTitle(colTitle);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-surface-container transition-colors text-left cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[17px] text-outline">edit</span>
+              <span>열 이름 변경</span>
+            </button>
+
+            {/* Type & Attributes Config */}
+            <button
+              type="button"
+              onClick={() => {
+                const { colKey, colTitle } = contextMenu;
+                setContextMenu(null);
+                onOpenTypeConfig(colKey, colTitle);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-surface-container transition-colors text-left cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[17px] text-indigo-600">tune</span>
+              <span>데이터 타입 및 옵션 설정</span>
+            </button>
+
+            {/* Filter & Sort */}
+            <button
+              type="button"
+              onClick={() => {
+                const { colKey, colTitle } = contextMenu;
+                setContextMenu(null);
+                onOpenFilterSort(colKey, colTitle);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-surface-container transition-colors text-left cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[17px] text-outline">filter_alt</span>
+              <span>필터 및 정렬</span>
+            </button>
+
+            {onDeleteColumn && (
+              <>
+                <div className="my-1 border-t border-surface-variant/60"></div>
+                {/* Delete Column */}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const { colKey, colTitle } = contextMenu;
+                    setContextMenu(null);
+                    if (
+                      confirm(
+                        `'${colTitle}' 열을 삭제하시겠습니까?\n해당 열은 시트 보기 목록에서 제거됩니다.`
+                      )
+                    ) {
+                      await onDeleteColumn(colKey);
+                    }
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-red-50 text-red-600 transition-colors text-left cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[17px] text-red-500">delete</span>
+                  <span>열 삭제</span>
+                </button>
+              </>
+            )}
+          </div>
+        </>
       )}
     </div>
   );

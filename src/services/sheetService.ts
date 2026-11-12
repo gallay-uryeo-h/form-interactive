@@ -228,7 +228,8 @@ export async function updateUserViewColumns(columns: string[] | null, sheetId: s
 export async function addColumn(
   sheetId: string,
   title: string,
-  type: ColumnConfig['type'] = 'text'
+  type: ColumnConfig['type'] = 'text',
+  insertIndex?: number
 ): Promise<string> {
   const metaDocRef = doc(db, COLLECTION_NAME, 'metadata');
   const snap = await getDoc(metaDocRef);
@@ -248,7 +249,12 @@ export async function addColumn(
   });
   const newColKey = `col_${maxIdx + 1}`;
 
-  currentOrder.push(newColKey);
+  if (typeof insertIndex === 'number' && insertIndex >= 0 && insertIndex <= currentOrder.length) {
+    currentOrder.splice(insertIndex, 0, newColKey);
+  } else {
+    currentOrder.push(newColKey);
+  }
+
   currentConfigs[newColKey] = {
     label: title,
     type: type,
