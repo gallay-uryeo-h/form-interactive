@@ -718,6 +718,8 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                         ? 'text-[#1a73e8] bg-[#f8fafd] border border-[#dadce0] font-bold'
                         : cfg.type === 'cardHeader'
                         ? 'text-indigo-700 bg-indigo-50 border border-indigo-200 font-bold'
+                        : cfg.type === 'number'
+                        ? 'text-teal-700 bg-teal-50 border border-teal-200 font-bold'
                         : cfg.type === 'select' || cfg.type === 'priority'
                         ? 'text-primary bg-primary/10 border border-primary/20 font-bold'
                         : 'text-on-surface bg-surface-container border border-surface-variant font-medium'
@@ -1109,9 +1111,10 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
 // ==========================================
 const CellEditor: React.FC<{
   initialValue: string;
+  isNumber?: boolean;
   onCommit: (val: string, moveDirection?: 'down' | 'right') => void;
   onCancel: () => void;
-}> = ({ initialValue, onCommit, onCancel }) => {
+}> = ({ initialValue, isNumber, onCommit, onCancel }) => {
   const [val, setVal] = useState(initialValue);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -1139,7 +1142,9 @@ const CellEditor: React.FC<{
           onCancel();
         }
       }}
-      className="w-full h-full bg-white text-on-surface text-[11px] px-1 outline-none font-mono"
+      className={`w-full h-full bg-white text-on-surface text-[11px] px-1 outline-none font-mono ${
+        isNumber ? 'text-right' : ''
+      }`}
     />
   );
 };
@@ -1261,6 +1266,7 @@ const GridRow = React.memo<GridRowProps>(({
             {isEditing ? (
               <CellEditor
                 initialValue={initialEditValue !== undefined ? initialEditValue : strVal}
+                isNumber={cfg.type === 'number'}
                 onCommit={(val, move) => onCommitCellEdit(rIdx, cIdx, val, move)}
                 onCancel={onCancelCellEdit}
               />
@@ -1347,6 +1353,13 @@ const CellContent = React.memo<{
 
   if (type === 'cardHeader') {
     return <span className="font-bold text-indigo-900">{value}</span>;
+  }
+
+  if (type === 'number') {
+    if (!value || value.trim() === '') return null;
+    const num = Number(value.replace(/,/g, ''));
+    const displayVal = !isNaN(num) ? num.toLocaleString() : value;
+    return <span className="block text-right w-full font-mono">{displayVal}</span>;
   }
 
   if (type === 'progress') {

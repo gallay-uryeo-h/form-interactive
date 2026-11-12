@@ -355,6 +355,16 @@ export const MobilePage: React.FC<MobilePageProps> = ({
                           onChange={(e) => updateCell(task.id, col.key, e.target.value)}
                           className="w-full h-[38px] text-xs px-2.5 bg-surface-container-low border border-surface-variant rounded-xl outline-none focus:border-primary disabled:opacity-60 font-mono shadow-2xs"
                         />
+                      ) : cfg.type === 'number' ? (
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          disabled={isLocked}
+                          value={strVal}
+                          onChange={(e) => updateCell(task.id, col.key, e.target.value)}
+                          className="w-full h-[38px] text-xs px-2.5 bg-surface-container-low border border-surface-variant rounded-xl outline-none focus:border-primary disabled:opacity-60 font-mono text-right shadow-2xs"
+                          placeholder="0"
+                        />
                       ) : (
                         <input
                           type="text"
@@ -421,12 +431,15 @@ export const MobilePage: React.FC<MobilePageProps> = ({
                       {col.title}
                     </label>
                     <input
-                      type="text"
+                      type={cfg.type === 'number' ? 'number' : 'text'}
+                      inputMode={cfg.type === 'number' ? 'numeric' : undefined}
                       value={newCardData[col.key] || ''}
                       onChange={(e) =>
                         setNewCardData({ ...newCardData, [col.key]: e.target.value })
                       }
-                      className="w-full text-xs px-3 py-2 border border-surface-variant rounded-xl outline-none focus:border-primary"
+                      className={`w-full text-xs px-3 py-2 border border-surface-variant rounded-xl outline-none focus:border-primary ${
+                        cfg.type === 'number' ? 'text-right font-mono' : ''
+                      }`}
                     />
                   </div>
                 );

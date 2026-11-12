@@ -186,18 +186,42 @@ export async function updateColumnConfig(
   const snap = await getDoc(metaDocRef);
   const metaData = snap.exists() ? snap.data() : {};
   const configKey = `columnConfigs_${sheetId}`;
-  const currentConfigs = metaData[configKey] || {};
+  const currentConfigs: Record<string, any> = metaData[configKey] || {};
 
   const existing = currentConfigs[colKey] || { type: 'text', label: colKey };
-  const merged = { ...existing, ...config };
+  const merged: any = { ...existing };
+
+  Object.entries(config).forEach(([k, v]) => {
+    if (v !== undefined) {
+      merged[k] = v;
+    } else {
+      delete merged[k];
+    }
+  });
+
+  // If type is not one with options, remove options
+  if (merged.type !== 'select' && merged.type !== 'priority' && merged.type !== 'googleId') {
+    delete merged.options;
+  }
+
+  // Remove any remaining undefined values across all currentConfigs
+  const sanitizedCurrentConfigs: Record<string, any> = {};
+  Object.entries(currentConfigs).forEach(([k, cfg]: [string, any]) => {
+    if (cfg && typeof cfg === 'object') {
+      const cleanCfg: any = {};
+      Object.entries(cfg).forEach(([ck, cv]) => {
+        if (cv !== undefined) cleanCfg[ck] = cv;
+      });
+      sanitizedCurrentConfigs[k] = cleanCfg;
+    }
+  });
+
+  sanitizedCurrentConfigs[colKey] = merged;
 
   await setDoc(
     metaDocRef,
     {
-      [configKey]: {
-        ...currentConfigs,
-        [colKey]: merged,
-      },
+      [configKey]: sanitizedCurrentConfigs,
     },
     { merge: true }
   );

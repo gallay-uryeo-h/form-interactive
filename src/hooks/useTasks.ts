@@ -57,8 +57,18 @@ export function useTasks(sheetId?: string | null, userEmail?: string | null) {
       const col = filterSortState.sortCol;
       const dir = filterSortState.sortDir === 'asc' ? 1 : -1;
       result.sort((a, b) => {
-        const valA = a[col] != null ? String(a[col]) : '';
-        const valB = b[col] != null ? String(b[col]) : '';
+        const valA = a[col] != null ? String(a[col]).trim() : '';
+        const valB = b[col] != null ? String(b[col]).trim() : '';
+        if (!valA && !valB) return 0;
+        if (!valA) return 1;
+        if (!valB) return -1;
+
+        const numA = Number(valA.replace(/,/g, ''));
+        const numB = Number(valB.replace(/,/g, ''));
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return (numA - numB) * dir;
+        }
+
         return valA.localeCompare(valB, 'ko', { numeric: true }) * dir;
       });
     }

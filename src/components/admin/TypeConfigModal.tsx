@@ -45,10 +45,12 @@ export const TypeConfigModal: React.FC<TypeConfigModalProps> = ({
         .map((s) => s.trim())
         .filter(Boolean);
 
-      await onSave({
-        type,
-        options: type === 'select' || type === 'priority' || type === 'googleId' ? options : undefined,
-      });
+      const patch: Partial<ColumnConfig> = { type };
+      if (type === 'select' || type === 'priority' || type === 'googleId') {
+        patch.options = options;
+      }
+
+      await onSave(patch);
 
       if (onToggleUserView && userVisible !== isVisibleInUserView) {
         await onToggleUserView(userVisible);

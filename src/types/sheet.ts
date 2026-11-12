@@ -1,5 +1,6 @@
 export type ColumnType =
   | 'text'
+  | 'number'
   | 'select'
   | 'date'
   | 'priority'
@@ -18,6 +19,7 @@ export interface ColumnTypeInfo {
 
 export const AVAILABLE_TYPES: ColumnTypeInfo[] = [
   { id: 'text', label: '텍스트', icon: 'short_text', desc: '자유 텍스트 입력' },
+  { id: 'number', label: '숫자', icon: 'numbers', desc: '정수, 소수, 점수 등 수치 데이터' },
   { id: 'cardHeader', label: '카드 제목', icon: 'badge', desc: '모바일 카드 최상단 대표 제목' },
   { id: 'googleId', label: '구글 ID', icon: 'account_circle', desc: '사용자 이메일 기반 필터링 및 권한 제어' },
   { id: 'select', label: '드롭다운', icon: 'arrow_drop_down_circle', desc: '선택형 단일 옵션' },
