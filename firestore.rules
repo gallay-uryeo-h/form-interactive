@@ -20,8 +20,14 @@ service cloud.firestore {
     
     function isAdmin() {
       return request.auth != null &&
-        exists(/databases/$(database)/documents/form-interactive/_admins) &&
-        request.auth.token.email in get(/databases/$(database)/documents/form-interactive/_admins).data.emails;
+        request.auth.token.email != null &&
+        (
+          request.auth.token.email.lower() == "gallay@uryeo-h.gne.go.kr" ||
+          (
+            exists(/databases/$(database)/documents/form-interactive/_admins) &&
+            request.auth.token.email.lower() in get(/databases/$(database)/documents/form-interactive/_admins).data.emails
+          )
+        );
     }
     
     function isOwnRow() {

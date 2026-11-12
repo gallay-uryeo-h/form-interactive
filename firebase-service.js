@@ -568,6 +568,7 @@ export async function deleteTask(id) {
 // ─────────────────────────────────────────────────────────────
 
 const ADMIN_DOC_ID = "_admins";
+export const DEFAULT_ADMINS = ["gallay@uryeo-h.gne.go.kr"];
 
 /**
  * 어드민 이메일 목록 조회
@@ -576,16 +577,22 @@ const ADMIN_DOC_ID = "_admins";
 export async function getAdminEmails() {
   try {
     const snap = await getDoc(doc(db, COLLECTION_NAME, ADMIN_DOC_ID));
-    if (snap.exists()) {
-      return snap.data().emails || [];
+    if (snap.exists() && snap.data() && Array.isArray(snap.data().emails)) {
+      const combined = new Set([...DEFAULT_ADMINS, ...snap.data().emails]);
+      return Array.from(combined);
     }
-    // 문서 없으면 기본 어드민 초기화
-    await setDoc(doc(db, COLLECTION_NAME, ADMIN_DOC_ID), {
-      emails: ["gallay@uryeo-h.gne.go.kr"]
-    });
-    return ["gallay@uryeo-h.gne.go.kr"];
-  } catch {
-    return [];
+    // 문서 없으면 기본 어드민으로 초기화 시도
+    try {
+      await setDoc(doc(db, COLLECTION_NAME, ADMIN_DOC_ID), {
+        emails: DEFAULT_ADMINS
+      });
+    } catch (e) {
+      console.warn("기본 어드민 문서 초기화 대기/실패:", e);
+    }
+    return [...DEFAULT_ADMINS];
+  } catch (err) {
+    console.warn("어드민 목록 조회 실패, 기본 어드민 적용:", err);
+    return [...DEFAULT_ADMINS];
   }
 }
 
@@ -596,8 +603,13 @@ export async function getAdminEmails() {
  */
 export async function isAdminEmail(email) {
   if (!email) return false;
+  const normalized = email.toLowerCase().trim();
+  // 기본 관리자는 Firestore 통신 지연이나 문서 부재와 무관하게 항상 즉시 허용
+  if (DEFAULT_ADMINS.map(e => e.toLowerCase().trim()).includes(normalized)) {
+    return true;
+  }
   const emails = await getAdminEmails();
-  return emails.map(e => e.toLowerCase()).includes(email.toLowerCase());
+  return emails.map(e => e.toLowerCase().trim()).includes(normalized);
 }
 
 // ─────────────────────────────────────────────────────────────
