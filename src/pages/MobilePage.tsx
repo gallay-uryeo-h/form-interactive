@@ -1,9 +1,52 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useSheet } from '../hooks/useSheet';
 import { useTasks } from '../hooks/useTasks';
 import { useAccessibleSheets } from '../hooks/useAccessibleSheets';
 import { ColumnDef } from '../types/sheet';
+
+/** 타이핑 중에는 로컬 state만 업데이트하고, 셀을 떠날 때(blur)에만 Firestore에 저장 */
+const BlurSaveInput: React.FC<{
+  type: 'text' | 'number';
+  value: string;
+  disabled: boolean;
+  className: string;
+  placeholder?: string;
+  onCommit: (val: string) => void;
+}> = ({ type, value, disabled, className, placeholder, onCommit }) => {
+  const [local, setLocal] = useState(value);
+  const committed = useRef(value);
+
+  // 외부(Firestore 실시간 업데이트)에서 값이 바뀌면 포커스 없을 때만 반영
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (document.activeElement !== inputRef.current) {
+      setLocal(value);
+      committed.current = value;
+    }
+  }, [value]);
+
+  const handleBlur = () => {
+    if (local !== committed.current) {
+      committed.current = local;
+      onCommit(local);
+    }
+  };
+
+  return (
+    <input
+      ref={inputRef}
+      type={type}
+      inputMode={type === 'number' ? 'numeric' : undefined}
+      disabled={disabled}
+      value={local}
+      placeholder={placeholder}
+      className={className}
+      onChange={(e) => setLocal(e.target.value)}
+      onBlur={handleBlur}
+    />
+  );
+};
 
 interface MobilePageProps {
   currentSheetId: string;
@@ -356,21 +399,20 @@ export const MobilePage: React.FC<MobilePageProps> = ({
                           className="w-full h-[38px] text-xs px-2.5 bg-surface-container-low border border-surface-variant rounded-xl outline-none focus:border-primary disabled:opacity-60 font-mono shadow-2xs"
                         />
                       ) : cfg.type === 'number' ? (
-                        <input
+                        <BlurSaveInput
                           type="number"
-                          inputMode="numeric"
                           disabled={isLocked}
                           value={strVal}
-                          onChange={(e) => updateCell(task.id, col.key, e.target.value)}
+                          onCommit={(val) => updateCell(task.id, col.key, val)}
                           className="w-full h-[38px] text-xs px-2.5 bg-surface-container-low border border-surface-variant rounded-xl outline-none focus:border-primary disabled:opacity-60 font-mono text-right shadow-2xs"
                           placeholder="0"
                         />
                       ) : (
-                        <input
+                        <BlurSaveInput
                           type="text"
                           disabled={isLocked}
                           value={strVal}
-                          onChange={(e) => updateCell(task.id, col.key, e.target.value)}
+                          onCommit={(val) => updateCell(task.id, col.key, val)}
                           className="w-full h-[38px] text-xs px-2.5 bg-surface-container-low border border-surface-variant rounded-xl outline-none focus:border-primary disabled:opacity-60 font-sans shadow-2xs"
                         />
                       )}
