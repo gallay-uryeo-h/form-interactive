@@ -500,6 +500,19 @@
       }
     });
 
+    // 목록 화면: 관리자의 실시간 행 추가/이메일 변경을 즉시 감지하여 목록 갱신
+    let listRenderTimer = null;
+    if (!currentSheetId) {
+      subscribeTasks(() => {
+        if (currentUser) {
+          clearTimeout(listRenderTimer);
+          listRenderTimer = setTimeout(() => {
+            renderSheetList();
+          }, 300);
+        }
+      }, (err) => console.warn("[Mobile] Tasks list subscription warning:", err), "ALL");
+    }
+
     // ─────────────────────────────────────────
     //  내 입력 화면용 Firestore 구독 (sheetId 있을 때만)
     // ─────────────────────────────────────────
@@ -685,8 +698,25 @@
             <div class="bg-surface-container-lowest rounded-xl p-8 text-center text-outline border border-surface-container flex flex-col items-center gap-2">
               <span class="material-symbols-outlined text-[36px]">search_off</span>
               <span class="text-[13px] font-semibold text-on-surface">배정된 시트가 없습니다</span>
-              <span class="text-[11px]"><strong>${currentUser.email}</strong> 계정으로<br>배정된 데이터가 없습니다.<br>관리자에게 문의하세요.</span>
+              <span class="text-[11px]"><strong>${escapeHtml(currentUser.email)}</strong> 계정으로<br>배정된 데이터가 없습니다.<br>관리자에게 문의하세요.</span>
+              <button type="button" id="btnSwitchAccountFromEmpty"
+                class="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-surface-container bg-surface-container-low hover:bg-surface-container text-on-surface text-[12px] font-semibold transition-colors cursor-pointer shadow-2xs">
+                <span class="material-symbols-outlined text-[15px]">switch_account</span>
+                <span>다른 계정으로 로그인</span>
+              </button>
             </div>`;
+
+          const btnSwitch = document.getElementById("btnSwitchAccountFromEmpty");
+          if (btnSwitch) {
+            btnSwitch.addEventListener("click", async () => {
+              try {
+                await signOut();
+                await signInWithGoogle();
+              } catch (e) {
+                console.error("계정 전환 오류:", e);
+              }
+            });
+          }
           return;
         }
 
