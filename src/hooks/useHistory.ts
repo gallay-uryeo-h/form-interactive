@@ -1,11 +1,17 @@
 import { useState, useCallback } from 'react';
 
 export interface HistoryAction {
-  type: 'cell_edit';
-  taskId: string;
-  colKey: string;
-  prevValue: any;
-  nextValue: any;
+  type: 'cell_edit' | 'batch_cell_edit';
+  taskId?: string;
+  colKey?: string;
+  prevValue?: any;
+  nextValue?: any;
+  batchItems?: {
+    taskId: string;
+    colKey: string;
+    prevValue: any;
+    nextValue: any;
+  }[];
 }
 
 export function useHistory(onApplyAction: (action: HistoryAction, isUndo: boolean) => Promise<void>) {

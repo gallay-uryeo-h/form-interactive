@@ -44,6 +44,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     filterSortState,
     setFilterSortState,
     updateCell,
+    batchUpdateCells,
     addRow,
     deleteRow,
   } = useTasks(currentSheetId);
@@ -51,8 +52,17 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   // History system (Undo/Redo)
   const { pushAction, undo, redo, canUndo, canRedo } = useHistory(
     async (action, isUndo) => {
-      const val = isUndo ? action.prevValue : action.nextValue;
-      await updateCell(action.taskId, action.colKey, val);
+      if (action.type === 'batch_cell_edit' && action.batchItems) {
+        const updates = action.batchItems.map((item) => ({
+          taskId: item.taskId,
+          colKey: item.colKey,
+          value: isUndo ? item.prevValue : item.nextValue,
+        }));
+        await batchUpdateCells(updates);
+      } else if (action.taskId && action.colKey) {
+        const val = isUndo ? action.prevValue : action.nextValue;
+        await updateCell(action.taskId, action.colKey, val);
+      }
     }
   );
 
@@ -69,6 +79,34 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       nextValue,
     });
     await updateCell(taskId, colKey, nextValue);
+  };
+
+  const handleBatchUpdateWithHistory = async (
+    updates: { taskId: string; colKey: string; nextValue: any }[]
+  ) => {
+    if (updates.length === 0) return;
+    const batchItems = updates.map((u) => {
+      const task = tasks.find((t) => t.id === u.taskId);
+      return {
+        taskId: u.taskId,
+        colKey: u.colKey,
+        prevValue: task ? task[u.colKey] : '',
+        nextValue: u.nextValue,
+      };
+    });
+
+    pushAction({
+      type: 'batch_cell_edit',
+      batchItems,
+    });
+
+    await batchUpdateCells(
+      updates.map((u) => ({
+        taskId: u.taskId,
+        colKey: u.colKey,
+        value: u.nextValue,
+      }))
+    );
   };
 
   // Modal States
@@ -188,6 +226,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           columnConfigs={columnConfigs}
           userViewColumns={userViewColumns}
           onUpdateCell={handleCellUpdateWithHistory}
+          onBatchUpdateCells={handleBatchUpdateWithHistory}
           onDeleteRow={deleteRow}
           onAddRow={addRow}
           onAddColumn={async (title, insertIndex) => {

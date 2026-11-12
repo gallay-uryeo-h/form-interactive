@@ -87,6 +87,34 @@ export async function updateTask(
   });
 }
 
+export async function batchUpdateTasks(
+  updates: { taskId: string; fields: Record<string, any> }[]
+): Promise<void> {
+  if (updates.length === 0) return;
+  // Merge multiple fields for same taskId if any
+  const mergedMap = new Map<string, Record<string, any>>();
+  updates.forEach(({ taskId, fields }) => {
+    const existing = mergedMap.get(taskId) || {};
+    mergedMap.set(taskId, { ...existing, ...fields });
+  });
+
+  const mergedList = Array.from(mergedMap.entries()).map(([taskId, fields]) => ({ taskId, fields }));
+  const chunkSize = 400;
+
+  for (let i = 0; i < mergedList.length; i += chunkSize) {
+    const chunk = mergedList.slice(i, i + chunkSize);
+    const batch = writeBatch(db);
+    chunk.forEach(({ taskId, fields }) => {
+      const docRef = doc(db, COLLECTION_NAME, taskId);
+      batch.update(docRef, {
+        ...fields,
+        updatedAt: serverTimestamp(),
+      });
+    });
+    await batch.commit();
+  }
+}
+
 export async function deleteTask(taskId: string): Promise<void> {
   const docRef = doc(db, COLLECTION_NAME, taskId);
   await deleteDoc(docRef);

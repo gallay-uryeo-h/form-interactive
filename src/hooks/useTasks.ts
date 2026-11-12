@@ -4,6 +4,7 @@ import {
   subscribeTasks,
   addTask,
   updateTask,
+  batchUpdateTasks,
   deleteTask,
 } from '../services/taskService';
 
@@ -77,6 +78,25 @@ export function useTasks(sheetId?: string | null, userEmail?: string | null) {
     }
   };
 
+  const handleBatchUpdateCells = async (
+    updates: { taskId: string; colKey: string; value: any }[]
+  ) => {
+    if (updates.length === 0) return;
+    setSaving(true);
+    try {
+      const formatted = updates.map((u) => ({
+        taskId: u.taskId,
+        fields: { [u.colKey]: u.value },
+      }));
+      await batchUpdateTasks(formatted);
+    } catch (err) {
+      console.error('일괄 셀 저장 실패:', err);
+      throw err;
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleAddRow = async (initialData: Record<string, any> = {}) => {
     if (!sheetId) return;
     setSaving(true);
@@ -110,6 +130,7 @@ export function useTasks(sheetId?: string | null, userEmail?: string | null) {
     filterSortState,
     setFilterSortState,
     updateCell: handleUpdateCell,
+    batchUpdateCells: handleBatchUpdateCells,
     addRow: handleAddRow,
     deleteRow: handleDeleteRow,
   };

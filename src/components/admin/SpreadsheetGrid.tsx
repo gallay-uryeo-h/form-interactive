@@ -1,6 +1,13 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { ColumnDef, ColumnConfig, AVAILABLE_TYPES } from '../../types/sheet';
 import { Task } from '../../types/task';
+
+export interface CellRange {
+  startR: number;
+  startC: number;
+  endR: number;
+  endC: number;
+}
 
 interface SpreadsheetGridProps {
   columns: ColumnDef[];
@@ -8,6 +15,7 @@ interface SpreadsheetGridProps {
   columnConfigs: Record<string, ColumnConfig>;
   userViewColumns: string[] | null;
   onUpdateCell: (taskId: string, colKey: string, value: any) => Promise<void>;
+  onBatchUpdateCells?: (updates: { taskId: string; colKey: string; nextValue: any }[]) => Promise<void>;
   onDeleteRow: (taskId: string) => Promise<void>;
   onAddRow: () => Promise<void>;
   onAddColumn: (title: string, insertIndex?: number) => Promise<void>;
@@ -25,6 +33,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   columnConfigs,
   userViewColumns,
   onUpdateCell,
+  onBatchUpdateCells,
   onDeleteRow,
   onAddRow,
   onAddColumn,
@@ -35,11 +44,19 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   onOpenTypeConfig,
   onOpenFilterSort,
 }) => {
-  // Active selected cell: { rIdx, cIdx }
+  // Active selected cell (cursor anchor)
   const [activeCell, setActiveCell] = useState<{ rIdx: number; cIdx: number } | null>(null);
+
+  // Multi-cell selection range
+  const [selectionRange, setSelectionRange] = useState<CellRange | null>(null);
+
+  // Editing cell state
   const [editingCell, setEditingCell] = useState<{ rIdx: number; cIdx: number; initialChar?: string } | null>(null);
 
-  // Column Resizing State (using direct overlay guide line for 60fps buttery smooth performance)
+  // Mouse Drag selection tracker
+  const isMouseDownRef = useRef(false);
+
+  // Column Resizing State
   const [resizingActive, setResizingActive] = useState<{
     key: string;
     letter: string;
@@ -68,6 +85,15 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   } | null>(null);
 
   const gridContainerRef = useRef<HTMLDivElement>(null);
+
+  // Stop mouse drag selection on window mouseup
+  useEffect(() => {
+    const handleMouseUp = () => {
+      isMouseDownRef.current = false;
+    };
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => window.removeEventListener('mouseup', handleMouseUp);
+  }, []);
 
   // Close Context Menu on Global Click / Escape / Scroll
   useEffect(() => {
@@ -135,93 +161,416 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
     };
   }, [resizingActive, onUpdateColumnWidth]);
 
+  // Helper: Get Range Bounds
+  const getBounds = useCallback(() => {
+    if (selectionRange) {
+      return {
+        minR: Math.min(selectionRange.startR, selectionRange.endR),
+        maxR: Math.max(selectionRange.startR, selectionRange.endR),
+        minC: Math.min(selectionRange.startC, selectionRange.endC),
+        maxC: Math.max(selectionRange.startC, selectionRange.endC),
+      };
+    }
+    if (activeCell) {
+      return {
+        minR: activeCell.rIdx,
+        maxR: activeCell.rIdx,
+        minC: activeCell.cIdx,
+        maxC: activeCell.cIdx,
+      };
+    }
+    return null;
+  }, [selectionRange, activeCell]);
+
+  // Helper: Google Sheets Ctrl+Arrow Content Boundary Jump Algorithm
+  const findContentBoundary = useCallback(
+    (startR: number, startC: number, direction: 'up' | 'down' | 'left' | 'right') => {
+      const isCellEmpty = (r: number, c: number) => {
+        const t = tasks[r];
+        const col = columns[c];
+        if (!t || !col) return true;
+        const v = t[col.key];
+        return v == null || String(v).trim() === '';
+      };
+
+      let r = startR;
+      let c = startC;
+      const dr = direction === 'up' ? -1 : direction === 'down' ? 1 : 0;
+      const dc = direction === 'left' ? -1 : direction === 'right' ? 1 : 0;
+
+      const inBounds = (row: number, col: number) =>
+        row >= 0 && row < tasks.length && col >= 0 && col < columns.length;
+
+      if (!inBounds(r + dr, c + dc)) return { r, c };
+
+      const currentEmpty = isCellEmpty(r, c);
+
+      if (currentEmpty) {
+        // Current is empty: jump to the next non-empty cell in direction
+        while (inBounds(r + dr, c + dc)) {
+          r += dr;
+          c += dc;
+          if (!isCellEmpty(r, c)) return { r, c };
+        }
+        return { r, c };
+      }
+
+      // Current is non-empty
+      const nextEmpty = isCellEmpty(r + dr, c + dc);
+      if (nextEmpty) {
+        // Next is empty: jump across whitespace to next data block
+        while (inBounds(r + dr, c + dc)) {
+          r += dr;
+          c += dc;
+          if (!isCellEmpty(r, c)) return { r, c };
+        }
+        return { r, c };
+      } else {
+        // Next is non-empty: jump to the last contiguous non-empty cell
+        while (inBounds(r + dr, c + dc) && !isCellEmpty(r + dr, c + dc)) {
+          r += dr;
+          c += dc;
+        }
+        return { r, c };
+      }
+    },
+    [tasks, columns]
+  );
+
+  // Clipboard: Copy (Ctrl+C)
+  const handleCopy = useCallback(async () => {
+    const bounds = getBounds();
+    if (!bounds) return;
+
+    const { minR, maxR, minC, maxC } = bounds;
+    const rows: string[] = [];
+
+    for (let r = minR; r <= maxR; r++) {
+      const task = tasks[r];
+      const rowVals: string[] = [];
+      for (let c = minC; c <= maxC; c++) {
+        const col = columns[c];
+        const val = task ? task[col.key] : '';
+        rowVals.push(val != null ? String(val) : '');
+      }
+      rows.push(rowVals.join('\t'));
+    }
+
+    const tsv = rows.join('\n');
+    try {
+      await navigator.clipboard.writeText(tsv);
+    } catch (err) {
+      console.error('클립보드 복사 실패:', err);
+    }
+  }, [getBounds, tasks, columns]);
+
+  // Clipboard: Paste (Ctrl+V)
+  const handlePaste = useCallback(async () => {
+    let clipText = '';
+    try {
+      clipText = await navigator.clipboard.readText();
+    } catch (err) {
+      console.error('클립보드 읽기 실패:', err);
+      return;
+    }
+    if (!clipText) return;
+
+    const bounds = getBounds();
+    const startR = bounds ? bounds.minR : 0;
+    const startC = bounds ? bounds.minC : 0;
+
+    const rawRows = clipText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+    if (rawRows.length > 1 && rawRows[rawRows.length - 1] === '') {
+      rawRows.pop();
+    }
+
+    const grid = rawRows.map((r) => r.split('\t'));
+    const pRows = grid.length;
+    const pCols = Math.max(...grid.map((r) => r.length));
+
+    const updates: { taskId: string; colKey: string; nextValue: any }[] = [];
+
+    // Single copied value pasted into multi-cell range fills entire range
+    if (
+      pRows === 1 &&
+      pCols === 1 &&
+      bounds &&
+      (bounds.minR !== bounds.maxR || bounds.minC !== bounds.maxC)
+    ) {
+      const singleVal = grid[0][0];
+      for (let r = bounds.minR; r <= bounds.maxR; r++) {
+        const task = tasks[r];
+        if (!task) continue;
+        for (let c = bounds.minC; c <= bounds.maxC; c++) {
+          const col = columns[c];
+          if (!col) continue;
+          updates.push({
+            taskId: task.id,
+            colKey: col.key,
+            nextValue: singleVal,
+          });
+        }
+      }
+    } else {
+      // Multi-cell grid pasted starting from startR, startC
+      for (let r = 0; r < pRows; r++) {
+        const targetR = startR + r;
+        if (targetR >= tasks.length) break;
+        const task = tasks[targetR];
+        if (!task) continue;
+
+        for (let c = 0; c < grid[r].length; c++) {
+          const targetC = startC + c;
+          if (targetC >= columns.length) break;
+          const col = columns[targetC];
+          if (!col) continue;
+
+          updates.push({
+            taskId: task.id,
+            colKey: col.key,
+            nextValue: grid[r][c],
+          });
+        }
+      }
+    }
+
+    if (updates.length === 0) return;
+
+    if (onBatchUpdateCells) {
+      await onBatchUpdateCells(updates);
+    } else {
+      for (const u of updates) {
+        await onUpdateCell(u.taskId, u.colKey, u.nextValue);
+      }
+    }
+  }, [getBounds, tasks, columns, onBatchUpdateCells, onUpdateCell]);
+
+  // Delete Selected Cells (Delete / Backspace)
+  const handleDeleteSelected = useCallback(async () => {
+    const bounds = getBounds();
+    if (!bounds) return;
+
+    const updates: { taskId: string; colKey: string; nextValue: any }[] = [];
+    for (let r = bounds.minR; r <= bounds.maxR; r++) {
+      const task = tasks[r];
+      if (!task) continue;
+      for (let c = bounds.minC; c <= bounds.maxC; c++) {
+        const col = columns[c];
+        if (!col) continue;
+        updates.push({
+          taskId: task.id,
+          colKey: col.key,
+          nextValue: '',
+        });
+      }
+    }
+
+    if (updates.length === 0) return;
+
+    if (onBatchUpdateCells) {
+      await onBatchUpdateCells(updates);
+    } else {
+      for (const u of updates) {
+        await onUpdateCell(u.taskId, u.colKey, '');
+      }
+    }
+  }, [getBounds, tasks, columns, onBatchUpdateCells, onUpdateCell]);
+
   // Cell Edit Actions
-  const startCellEdit = useCallback((rIdx: number, cIdx: number, initialChar?: string) => {
-    const task = tasks[rIdx];
-    const col = columns[cIdx];
-    if (!task || !col) return;
-    const cfg = columnConfigs[col.key] || { type: 'text' };
-    if (cfg.type === 'locked') return;
+  const startCellEdit = useCallback(
+    (rIdx: number, cIdx: number, initialChar?: string) => {
+      const task = tasks[rIdx];
+      const col = columns[cIdx];
+      if (!task || !col) return;
+      const cfg = columnConfigs[col.key] || { type: 'text' };
+      if (cfg.type === 'locked') return;
 
-    setEditingCell({ rIdx, cIdx, initialChar });
-    setActiveCell({ rIdx, cIdx });
-  }, [tasks, columns, columnConfigs]);
+      setEditingCell({ rIdx, cIdx, initialChar });
+      setActiveCell({ rIdx, cIdx });
+      setSelectionRange({ startR: rIdx, startC: cIdx, endR: rIdx, endC: cIdx });
+    },
+    [tasks, columns, columnConfigs]
+  );
 
-  const commitCellEdit = useCallback(async (rIdx: number, cIdx: number, val: string, moveDirection?: 'down' | 'right') => {
-    setEditingCell(null);
-    const task = tasks[rIdx];
-    const col = columns[cIdx];
-    if (task && col) {
-      await onUpdateCell(task.id, col.key, val);
-    }
-    if (moveDirection === 'down' && rIdx < tasks.length - 1) {
-      setActiveCell({ rIdx: rIdx + 1, cIdx });
-    } else if (moveDirection === 'right' && cIdx < columns.length - 1) {
-      setActiveCell({ rIdx, cIdx: cIdx + 1 });
-    }
-  }, [tasks, columns, onUpdateCell]);
+  const commitCellEdit = useCallback(
+    async (rIdx: number, cIdx: number, val: string, moveDirection?: 'down' | 'right') => {
+      setEditingCell(null);
+      const task = tasks[rIdx];
+      const col = columns[cIdx];
+      if (task && col) {
+        await onUpdateCell(task.id, col.key, val);
+      }
+      if (moveDirection === 'down' && rIdx < tasks.length - 1) {
+        setActiveCell({ rIdx: rIdx + 1, cIdx });
+        setSelectionRange({ startR: rIdx + 1, startC: cIdx, endR: rIdx + 1, endC: cIdx });
+      } else if (moveDirection === 'right' && cIdx < columns.length - 1) {
+        setActiveCell({ rIdx, cIdx: cIdx + 1 });
+        setSelectionRange({ startR: rIdx, startC: cIdx + 1, endR: rIdx, endC: cIdx + 1 });
+      }
+    },
+    [tasks, columns, onUpdateCell]
+  );
 
   const cancelCellEdit = useCallback(() => {
     setEditingCell(null);
   }, []);
 
-  // Handle Keyboard Navigation (Google Sheets style)
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  // Google Sheets Keyboard Navigation & Shortcuts
+  const handleKeyDown = async (e: React.KeyboardEvent) => {
     if (editingCell) return; // Handled directly inside CellEditor
 
+    // Ctrl+C (Copy)
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+      e.preventDefault();
+      await handleCopy();
+      return;
+    }
+
+    // Ctrl+V (Paste)
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+      e.preventDefault();
+      await handlePaste();
+      return;
+    }
+
+    // Ctrl+A (Select All)
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
+      e.preventDefault();
+      if (tasks.length > 0 && columns.length > 0) {
+        setSelectionRange({
+          startR: 0,
+          startC: 0,
+          endR: tasks.length - 1,
+          endC: columns.length - 1,
+        });
+      }
+      return;
+    }
+
     if (!activeCell) return;
-
     const { rIdx, cIdx } = activeCell;
+    const currentRange = selectionRange || { startR: rIdx, startC: cIdx, endR: rIdx, endC: cIdx };
 
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        if (rIdx < tasks.length - 1) setActiveCell({ rIdx: rIdx + 1, cIdx });
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        if (rIdx > 0) setActiveCell({ rIdx: rIdx - 1, cIdx });
-        break;
-      case 'ArrowRight':
-        e.preventDefault();
-        if (cIdx < columns.length - 1) setActiveCell({ rIdx, cIdx: cIdx + 1 });
-        break;
-      case 'ArrowLeft':
-        e.preventDefault();
-        if (cIdx > 0) setActiveCell({ rIdx, cIdx: cIdx - 1 });
-        break;
-      case 'Enter':
-      case 'F2':
-        e.preventDefault();
-        startCellEdit(rIdx, cIdx);
-        break;
-      case 'Tab':
-        e.preventDefault();
-        if (e.shiftKey) {
-          if (cIdx > 0) setActiveCell({ rIdx, cIdx: cIdx - 1 });
-        } else {
-          if (cIdx < columns.length - 1) setActiveCell({ rIdx, cIdx: cIdx + 1 });
-        }
-        break;
-      case 'Delete':
-      case 'Backspace':
-        e.preventDefault();
-        const task = tasks[rIdx];
-        const col = columns[cIdx];
-        if (task && col) {
-          onUpdateCell(task.id, col.key, '');
-        }
-        break;
-      default:
-        // Direct typing support
-        if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-          startCellEdit(rIdx, cIdx, e.key);
-        }
-        break;
+    // Arrows navigation with Shift and Ctrl
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+      e.preventDefault();
+      const isShift = e.shiftKey;
+      const isCtrl = e.ctrlKey || e.metaKey;
+
+      let targetR = isShift ? currentRange.endR : rIdx;
+      let targetC = isShift ? currentRange.endC : cIdx;
+
+      const dir =
+        e.key === 'ArrowUp'
+          ? 'up'
+          : e.key === 'ArrowDown'
+          ? 'down'
+          : e.key === 'ArrowLeft'
+          ? 'left'
+          : 'right';
+
+      if (isCtrl) {
+        const boundary = findContentBoundary(targetR, targetC, dir);
+        targetR = boundary.r;
+        targetC = boundary.c;
+      } else {
+        if (dir === 'up') targetR = Math.max(0, targetR - 1);
+        if (dir === 'down') targetR = Math.min(tasks.length - 1, targetR + 1);
+        if (dir === 'left') targetC = Math.max(0, targetC - 1);
+        if (dir === 'right') targetC = Math.min(columns.length - 1, targetC + 1);
+      }
+
+      if (isShift) {
+        setSelectionRange({
+          startR: currentRange.startR,
+          startC: currentRange.startC,
+          endR: targetR,
+          endC: targetC,
+        });
+      } else {
+        setActiveCell({ rIdx: targetR, cIdx: targetC });
+        setSelectionRange({
+          startR: targetR,
+          startC: targetC,
+          endR: targetR,
+          endC: targetC,
+        });
+      }
+      return;
+    }
+
+    // Delete / Backspace
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      await handleDeleteSelected();
+      return;
+    }
+
+    // Enter / F2
+    if (e.key === 'Enter' || e.key === 'F2') {
+      e.preventDefault();
+      startCellEdit(rIdx, cIdx);
+      return;
+    }
+
+    // Tab
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const nextC = e.shiftKey ? Math.max(0, cIdx - 1) : Math.min(columns.length - 1, cIdx + 1);
+      setActiveCell({ rIdx, cIdx: nextC });
+      setSelectionRange({ startR: rIdx, startC: nextC, endR: rIdx, endC: nextC });
+      return;
+    }
+
+    // Direct typing
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      startCellEdit(rIdx, cIdx, e.key);
     }
   };
 
-  // Start column resize on handle mousedown
+  // Mouse Selection Handlers for Cells
+  const handleCellMouseDown = useCallback(
+    (e: React.MouseEvent, rIdx: number, cIdx: number) => {
+      if (e.button !== 0) return; // Only main left click
+
+      if (e.shiftKey && activeCell) {
+        setSelectionRange({
+          startR: activeCell.rIdx,
+          startC: activeCell.cIdx,
+          endR: rIdx,
+          endC: cIdx,
+        });
+      } else {
+        isMouseDownRef.current = true;
+        setActiveCell({ rIdx, cIdx });
+        setSelectionRange({
+          startR: rIdx,
+          startC: cIdx,
+          endR: rIdx,
+          endC: cIdx,
+        });
+      }
+    },
+    [activeCell]
+  );
+
+  const handleCellMouseEnter = useCallback(
+    (rIdx: number, cIdx: number) => {
+      if (isMouseDownRef.current && selectionRange) {
+        setSelectionRange((prev) => (prev ? { ...prev, endR: rIdx, endC: cIdx } : null));
+      }
+    },
+    [selectionRange]
+  );
+
+  const handleCellDoubleClick = useCallback(
+    (rIdx: number, cIdx: number) => {
+      startCellEdit(rIdx, cIdx);
+    },
+    [startCellEdit]
+  );
+
+  // Column Resizing Handlers
   const handleResizeStart = (e: React.MouseEvent, col: ColumnDef) => {
     e.stopPropagation();
     e.preventDefault();
@@ -235,7 +584,6 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
     });
   };
 
-  // Double click on resize handle -> auto fit
   const handleResizeDoubleClick = async (e: React.MouseEvent, col: ColumnDef) => {
     e.stopPropagation();
     let maxLen = (col.title || '').length;
@@ -277,24 +625,24 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
     await onUpdateColumnOrder(newCols.map((c) => c.key));
   };
 
-  // Memoized Callbacks for Row Items to avoid unnecessary row re-renders
-  const handleCellClick = useCallback((rIdx: number, cIdx: number) => {
-    setActiveCell({ rIdx, cIdx });
-  }, []);
+  const handleToggleCheckbox = useCallback(
+    async (taskId: string, colKey: string, checked: boolean) => {
+      await onUpdateCell(taskId, colKey, checked);
+    },
+    [onUpdateCell]
+  );
 
-  const handleCellDoubleClick = useCallback((rIdx: number, cIdx: number) => {
-    startCellEdit(rIdx, cIdx);
-  }, [startCellEdit]);
+  const handleDeleteRowClick = useCallback(
+    (taskId: string, rIdx: number) => {
+      if (confirm(`${rIdx + 1}번 행 데이터를 삭제하시겠습니까?`)) {
+        onDeleteRow(taskId);
+      }
+    },
+    [onDeleteRow]
+  );
 
-  const handleToggleCheckbox = useCallback(async (taskId: string, colKey: string, checked: boolean) => {
-    await onUpdateCell(taskId, colKey, checked);
-  }, [onUpdateCell]);
-
-  const handleDeleteRowClick = useCallback((taskId: string, rIdx: number) => {
-    if (confirm(`${rIdx + 1}번 행 데이터를 삭제하시겠습니까?`)) {
-      onDeleteRow(taskId);
-    }
-  }, [onDeleteRow]);
+  // Calculate current range bounds for row highlight optimization
+  const bounds = useMemo(() => getBounds(), [getBounds]);
 
   return (
     <div
@@ -491,11 +839,23 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
           </tr>
         </thead>
 
-        {/* Table Body - Memoized Rows for Pure Speed */}
+        {/* Table Body - Memoized Rows with Google Sheets Range Selection */}
         <tbody className="divide-y divide-surface-variant font-mono">
           {tasks.map((task, rIdx) => {
             const isActiveRow = activeCell?.rIdx === rIdx;
             const isEditingRow = editingCell?.rIdx === rIdx;
+
+            // Range info for this row
+            let rangeCols = null;
+            if (bounds && rIdx >= bounds.minR && rIdx <= bounds.maxR) {
+              rangeCols = {
+                minC: bounds.minC,
+                maxC: bounds.maxC,
+                isTop: rIdx === bounds.minR,
+                isBottom: rIdx === bounds.maxR,
+                isSingleCell: bounds.minR === bounds.maxR && bounds.minC === bounds.maxC,
+              };
+            }
 
             return (
               <GridRow
@@ -507,7 +867,9 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                 activeColIdx={isActiveRow ? activeCell.cIdx : null}
                 editingColIdx={isEditingRow ? editingCell.cIdx : null}
                 initialEditValue={isEditingRow ? editingCell.initialChar : undefined}
-                onCellClick={handleCellClick}
+                rangeCols={rangeCols}
+                onCellMouseDown={handleCellMouseDown}
+                onCellMouseEnter={handleCellMouseEnter}
                 onCellDoubleClick={handleCellDoubleClick}
                 onCommitCellEdit={commitCellEdit}
                 onCancelCellEdit={cancelCellEdit}
@@ -547,7 +909,6 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
       {/* Column Header Right-Click Context Menu */}
       {contextMenu && (
         <>
-          {/* Backdrop to close menu on click */}
           <div
             className="fixed inset-0 z-40"
             onClick={() => setContextMenu(null)}
@@ -561,7 +922,6 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
             className="fixed z-50 bg-white border border-surface-variant rounded-xl shadow-2xl py-1.5 min-w-[210px] text-xs font-medium text-on-surface select-none animate-in fade-in zoom-in-95 duration-75"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header info chip */}
             <div className="px-3 py-1.5 border-b border-surface-variant/70 flex items-center justify-between text-outline bg-surface-container-low/60 rounded-t-lg">
               <span className="font-bold text-on-surface truncate text-[11px]">
                 {contextMenu.letter}열: {contextMenu.colTitle}
@@ -682,7 +1042,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
 };
 
 // ==========================================
-// Isolated Local Cell Editor (Zero Table Re-renders during typing!)
+// Isolated Local Cell Editor
 // ==========================================
 const CellEditor: React.FC<{
   initialValue: string;
@@ -722,8 +1082,16 @@ const CellEditor: React.FC<{
 };
 
 // ==========================================
-// Memoized Row Component: Skips 98% of table re-renders on cell selection!
+// Memoized Row Component with Google Sheets Selection Box
 // ==========================================
+interface RangeColsInfo {
+  minC: number;
+  maxC: number;
+  isTop: boolean;
+  isBottom: boolean;
+  isSingleCell: boolean;
+}
+
 interface GridRowProps {
   task: Task;
   rIdx: number;
@@ -732,7 +1100,9 @@ interface GridRowProps {
   activeColIdx: number | null;
   editingColIdx: number | null;
   initialEditValue?: string;
-  onCellClick: (rIdx: number, cIdx: number) => void;
+  rangeCols: RangeColsInfo | null;
+  onCellMouseDown: (e: React.MouseEvent, rIdx: number, cIdx: number) => void;
+  onCellMouseEnter: (rIdx: number, cIdx: number) => void;
   onCellDoubleClick: (rIdx: number, cIdx: number) => void;
   onCommitCellEdit: (rIdx: number, cIdx: number, val: string, moveDirection?: 'down' | 'right') => void;
   onCancelCellEdit: () => void;
@@ -741,14 +1111,24 @@ interface GridRowProps {
 }
 
 const areRowsEqual = (prev: GridRowProps, next: GridRowProps) => {
-  // Only re-render row if this specific task data changed or selection/edit status on this row changed
   if (prev.task !== next.task) return false;
   if (prev.activeColIdx !== next.activeColIdx) return false;
   if (prev.editingColIdx !== next.editingColIdx) return false;
   if (prev.columns !== next.columns) return false;
   if (prev.columnConfigs !== next.columnConfigs) return false;
   if (prev.initialEditValue !== next.initialEditValue) return false;
-  return true;
+
+  const pR = prev.rangeCols;
+  const nR = next.rangeCols;
+  if (pR === nR) return true;
+  if (!pR || !nR) return false;
+  return (
+    pR.minC === nR.minC &&
+    pR.maxC === nR.maxC &&
+    pR.isTop === nR.isTop &&
+    pR.isBottom === nR.isBottom &&
+    pR.isSingleCell === nR.isSingleCell
+  );
 };
 
 const GridRow = React.memo<GridRowProps>(({
@@ -759,7 +1139,9 @@ const GridRow = React.memo<GridRowProps>(({
   activeColIdx,
   editingColIdx,
   initialEditValue,
-  onCellClick,
+  rangeCols,
+  onCellMouseDown,
+  onCellMouseEnter,
   onCellDoubleClick,
   onCommitCellEdit,
   onCancelCellEdit,
@@ -768,7 +1150,7 @@ const GridRow = React.memo<GridRowProps>(({
 }) => {
   return (
     <tr
-      className="h-7 hover:bg-surface-container-low/50 group transition-colors"
+      className="h-7 hover:bg-surface-container-low/40 group transition-colors select-none"
       style={{ contentVisibility: 'auto', containIntrinsicSize: '28px' }}
     >
       {/* Row Number */}
@@ -778,22 +1160,40 @@ const GridRow = React.memo<GridRowProps>(({
 
       {/* Data Cells */}
       {columns.map((col, cIdx) => {
-        const isSelected = activeColIdx === cIdx;
+        const isCurrentActive = activeColIdx === cIdx;
         const isEditing = editingColIdx === cIdx;
+        const inRange = rangeCols && cIdx >= rangeCols.minC && cIdx <= rangeCols.maxC;
+        const isSingle = rangeCols?.isSingleCell;
+
         const cfg = columnConfigs[col.key] || { type: 'text' };
         const rawVal = task[col.key];
         const strVal = rawVal != null ? String(rawVal) : '';
 
+        // Google Sheets selection classes
+        let selectionClasses = '';
+        if (inRange) {
+          if (isCurrentActive && isSingle) {
+            selectionClasses = 'ring-2 ring-primary ring-inset bg-white z-10 font-medium';
+          } else if (isCurrentActive) {
+            selectionClasses = 'ring-2 ring-primary ring-inset bg-primary/10 z-10 font-medium';
+          } else {
+            // Inner cell in multi-cell selection
+            const borders = ['bg-primary/10'];
+            if (rangeCols.isTop) borders.push('border-t-2 border-t-primary');
+            if (rangeCols.isBottom) borders.push('border-b-2 border-b-primary');
+            if (cIdx === rangeCols.minC) borders.push('border-l-2 border-l-primary');
+            if (cIdx === rangeCols.maxC) borders.push('border-r-2 border-r-primary');
+            selectionClasses = borders.join(' ');
+          }
+        }
+
         return (
           <td
             key={col.key}
-            onClick={() => onCellClick(rIdx, cIdx)}
+            onMouseDown={(e) => onCellMouseDown(e, rIdx, cIdx)}
+            onMouseEnter={() => onCellMouseEnter(rIdx, cIdx)}
             onDoubleClick={() => onCellDoubleClick(rIdx, cIdx)}
-            className={`px-2 py-0.5 border-r border-surface-variant relative truncate text-[11px] transition-colors cursor-cell ${
-              isSelected
-                ? 'ring-2 ring-primary ring-inset bg-primary/5 font-medium'
-                : 'hover:bg-black/2'
-            }`}
+            className={`px-2 py-0.5 border-r border-surface-variant relative truncate text-[11px] transition-none cursor-cell ${selectionClasses}`}
           >
             {isEditing ? (
               <CellEditor
