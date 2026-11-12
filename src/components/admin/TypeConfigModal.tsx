@@ -20,16 +20,14 @@ export const TypeConfigModal: React.FC<TypeConfigModalProps> = ({
   onSave,
   onDeleteColumn,
 }) => {
-  const [label, setLabel] = useState(config.label || colTitle);
   const [type, setType] = useState<ColumnType>(config.type || 'text');
   const [optionsStr, setOptionsStr] = useState((config.options || []).join('\n'));
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setLabel(config.label || colTitle);
     setType(config.type || 'text');
     setOptionsStr((config.options || []).join('\n'));
-  }, [config, colTitle, isOpen]);
+  }, [config, isOpen]);
 
   if (!isOpen) return null;
 
@@ -42,7 +40,6 @@ export const TypeConfigModal: React.FC<TypeConfigModalProps> = ({
         .filter(Boolean);
 
       await onSave({
-        label: label.trim() || colTitle,
         type,
         options: type === 'select' || type === 'priority' || type === 'googleId' ? options : undefined,
       });
@@ -60,7 +57,7 @@ export const TypeConfigModal: React.FC<TypeConfigModalProps> = ({
         <div className="px-5 py-4 border-b border-surface-variant flex items-center justify-between bg-surface-container-low">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-primary text-[20px]">tune</span>
-            <h3 className="font-bold text-sm text-on-surface">열 속성 및 데이터 타입 설정</h3>
+            <h3 className="font-bold text-sm text-on-surface">[{colTitle}] 데이터 타입 및 옵션 설정</h3>
           </div>
           <button
             onClick={onClose}
@@ -71,21 +68,9 @@ export const TypeConfigModal: React.FC<TypeConfigModalProps> = ({
         </div>
 
         <div className="p-5 overflow-y-auto space-y-4">
-          {/* Column Label */}
-          <div>
-            <label className="block text-xs font-bold text-on-surface mb-1.5">열 이름 (표시 제목)</label>
-            <input
-              type="text"
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              className="w-full text-xs px-3 py-2 border border-surface-variant rounded-xl focus:border-primary focus:ring-1 focus:ring-primary outline-none"
-              placeholder="예: 담당자, 진행상태, 마감일"
-            />
-          </div>
-
           {/* Type Picker */}
           <div>
-            <label className="block text-xs font-bold text-on-surface mb-1.5">데이터 타입</label>
+            <label className="block text-xs font-bold text-on-surface mb-2">데이터 타입 선택</label>
             <div className="grid grid-cols-2 gap-2">
               {AVAILABLE_TYPES.map((t) => (
                 <button

@@ -297,11 +297,11 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                         ? 'text-primary bg-primary/10 border border-primary/20 font-bold'
                         : 'text-on-surface bg-surface-container border border-surface-variant font-medium'
                     }`}
-                    title="클릭하여 데이터 타입 및 옵션 설정"
+                    title={`클릭하여 [${col.title}] 데이터 타입 및 옵션 설정`}
                   >
                     <span className="flex items-center gap-1 min-w-0 truncate text-[10px]">
                       <span className="material-symbols-outlined text-[12px] shrink-0">{typeInfo.icon}</span>
-                      <span className="truncate">{cfg.label || typeInfo.label}</span>
+                      <span className="truncate font-semibold">{typeInfo.label}</span>
                       {cfg.options && cfg.options.length > 0 && (
                         <span className="text-[9px] px-1 bg-black/5 rounded font-bold">
                           {cfg.options.length}
