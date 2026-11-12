@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useSheet } from '../hooks/useSheet';
 import { useTasks } from '../hooks/useTasks';
+import { useAccessibleSheets } from '../hooks/useAccessibleSheets';
 import { ColumnDef } from '../types/sheet';
 
 interface MobilePageProps {
@@ -16,15 +17,30 @@ export const MobilePage: React.FC<MobilePageProps> = ({
   onTabChange,
 }) => {
   const { user, logout } = useAuth();
-  const { sheets, currentSheet, columns, columnConfigs, userViewColumns, deadlineInfo } =
+
+  // 1. 내 구글 계정으로 접근 가능한 시트만 실시간 구독
+  const { accessibleSheets, countsBySheet, loading: loadingAccessible } =
+    useAccessibleSheets(user?.email);
+
+  const { currentSheet, columns, columnConfigs, userViewColumns, deadlineInfo } =
     useSheet(currentSheetId);
 
-  // Fetch all tasks for sheet, filter strictly by googleId column on client
+  // Fetch all tasks for current sheet, filter strictly by googleId column on client
   const { tasks, loading, saving, updateCell, addRow } = useTasks(currentSheetId, null);
 
   const [search, setSearch] = useState('');
   const [isAddCardOpen, setIsAddCardOpen] = useState(false);
   const [newCardData, setNewCardData] = useState<Record<string, any>>({});
+
+  // 접근 가능한 시트 중 첫 번째 시트로 자동 선택 (현재 선택된 시트가 목록에 없거나 유효하지 않을 때)
+  useEffect(() => {
+    if (accessibleSheets.length > 0) {
+      const isCurrentValid = accessibleSheets.some((s) => s.id === currentSheetId);
+      if (!isCurrentValid) {
+        onSelectSheet(accessibleSheets[0].id);
+      }
+    }
+  }, [accessibleSheets, currentSheetId, onSelectSheet]);
 
   // 1. Identify the Google ID column (학생 구글 계정 열)
   const googleIdCol = useMemo(() => {
@@ -156,51 +172,72 @@ export const MobilePage: React.FC<MobilePageProps> = ({
       )}
 
       {/* Sheet Selector & Search Bar */}
-      <div className="p-4 space-y-2.5 max-w-lg w-full mx-auto">
-        <div className="flex items-center gap-2">
-          <select
-            value={currentSheetId}
-            onChange={(e) => onSelectSheet(e.target.value)}
-            className="flex-1 text-xs font-semibold px-3 py-2 bg-white border border-[#dadce0] rounded-xl shadow-2xs outline-none focus:border-primary"
-          >
-            {sheets.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name} {s.isClosed ? '(마감)' : ''}
-              </option>
-            ))}
-          </select>
+      {accessibleSheets.length > 0 && (
+        <div className="p-4 space-y-2.5 max-w-lg w-full mx-auto">
+          <div className="flex items-center gap-2">
+            <select
+              value={currentSheetId}
+              onChange={(e) => onSelectSheet(e.target.value)}
+              className="flex-1 text-xs font-semibold px-3 py-2 bg-white border border-[#dadce0] rounded-xl shadow-2xs outline-none focus:border-primary"
+            >
+              {accessibleSheets.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} ({countsBySheet[s.id] || 0}건){s.isClosed ? ' - 마감' : ''}
+                </option>
+              ))}
+            </select>
 
-          <button
-            onClick={() => setIsAddCardOpen(true)}
-            disabled={deadlineInfo.isClosed || !googleIdCol}
-            className="flex items-center gap-1 bg-primary hover:bg-primary/90 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-xs transition-all disabled:opacity-50 shrink-0 cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[16px]">add</span>
-            새 항목
-          </button>
-        </div>
+            <button
+              onClick={() => setIsAddCardOpen(true)}
+              disabled={deadlineInfo.isClosed || !googleIdCol}
+              className="flex items-center gap-1 bg-primary hover:bg-primary/90 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-xs transition-all disabled:opacity-50 shrink-0 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[16px]">add</span>
+              새 항목
+            </button>
+          </div>
 
-        {/* Search Bar */}
-        <div className="relative">
-          <span className="material-symbols-outlined absolute left-3 top-2.5 text-[18px] text-outline">
-            search
-          </span>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="내용 검색..."
-            className="w-full text-xs pl-9 pr-3 py-2 bg-white border border-[#dadce0] rounded-xl outline-none focus:border-primary"
-          />
+          {/* Search Bar */}
+          <div className="relative">
+            <span className="material-symbols-outlined absolute left-3 top-2.5 text-[18px] text-outline">
+              search
+            </span>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="내용 검색..."
+              className="w-full text-xs pl-9 pr-3 py-2 bg-white border border-[#dadce0] rounded-xl outline-none focus:border-primary"
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Card List */}
       <main className="px-4 max-w-lg w-full mx-auto space-y-3 flex-1">
-        {loading ? (
+        {loadingAccessible || loading ? (
           <div className="py-12 text-center text-xs text-outline">
             <span className="animate-spin mr-2">⏳</span>
-            데이터를 불러오는 중입니다...
+            내게 배정된 시트를 확인하는 중입니다...
+          </div>
+        ) : accessibleSheets.length === 0 ? (
+          <div className="bg-white rounded-2xl p-8 text-center border border-[#dadce0] shadow-2xs space-y-3 mt-8">
+            <div className="w-14 h-14 rounded-full bg-surface-variant flex items-center justify-center text-outline mx-auto">
+              <span className="material-symbols-outlined text-3xl">search_off</span>
+            </div>
+            <div className="text-sm font-bold text-on-surface">배정된 시트가 없습니다</div>
+            <p className="text-xs text-outline leading-relaxed">
+              <strong>{user?.email}</strong> 계정으로<br />
+              배정된 데이터가 없습니다.<br />
+              관리자에게 문의하세요.
+            </p>
+            <button
+              onClick={logout}
+              className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-surface-container hover:bg-surface-variant text-xs font-semibold text-on-surface transition-colors cursor-pointer shadow-2xs"
+            >
+              <span className="material-symbols-outlined text-[16px]">switch_account</span>
+              다른 계정으로 로그인
+            </button>
           </div>
         ) : !googleIdCol ? (
           <div className="bg-red-50 rounded-2xl p-8 text-center border border-red-200 shadow-2xs space-y-3">

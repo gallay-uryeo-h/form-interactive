@@ -119,3 +119,4 @@ export const UserViewColumnsModal: React.FC<UserViewColumnsModalProps> = ({
     </div>
   );
 };
+

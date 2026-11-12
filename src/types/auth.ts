@@ -5,3 +5,4 @@ export interface AppUser {
   photoURL: string | null;
   isAdmin: boolean;
 }
+

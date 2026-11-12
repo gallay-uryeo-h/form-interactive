@@ -169,3 +169,4 @@ export const TypeConfigModal: React.FC<TypeConfigModalProps> = ({
     </div>
   );
 };
+

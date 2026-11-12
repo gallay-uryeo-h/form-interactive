@@ -76,3 +76,4 @@ export function subscribeAuth(callback: (user: AppUser | null, loading: boolean)
     }, false);
   });
 }
+

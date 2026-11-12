@@ -31,6 +31,23 @@ export async function getMetadata(): Promise<any> {
   return snap.exists() ? snap.data() : {};
 }
 
+export function subscribeFullMetadata(
+  callback: (data: any) => void,
+  onError?: (err: any) => void
+) {
+  const metaDocRef = doc(db, COLLECTION_NAME, 'metadata');
+  return onSnapshot(
+    metaDocRef,
+    (snap) => {
+      callback(snap.exists() ? snap.data() : {});
+    },
+    (err) => {
+      console.error('[Firestore] subscribeFullMetadata 에러:', err);
+      onError?.(err);
+    }
+  );
+}
+
 export function subscribeSheets(
   onSuccess: (sheets: Sheet[]) => void,
   onError?: (err: any) => void
@@ -295,3 +312,4 @@ export async function setSheetClosed(
     { merge: true }
   );
 }
+

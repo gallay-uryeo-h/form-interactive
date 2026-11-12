@@ -71,3 +71,4 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children, requireAdmin = f
 
   return <>{children}</>;
 };
+

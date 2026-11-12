@@ -12,3 +12,4 @@ export interface FilterSortState {
   sortDir: 'asc' | 'desc' | null;
   filters: Record<string, string[]>;
 }
+

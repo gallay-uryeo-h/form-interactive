@@ -41,3 +41,4 @@ export function useHistory(onApplyAction: (action: HistoryAction, isUndo: boolea
     canRedo: redoStack.length > 0,
   };
 }
+
