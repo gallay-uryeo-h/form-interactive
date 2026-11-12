@@ -3,7 +3,6 @@ import { useAuth } from '../hooks/useAuth';
 import { useSheet } from '../hooks/useSheet';
 import { useTasks } from '../hooks/useTasks';
 import { ColumnDef } from '../types/sheet';
-import { Task } from '../types/task';
 
 interface MobilePageProps {
   currentSheetId: string;
@@ -20,52 +19,87 @@ export const MobilePage: React.FC<MobilePageProps> = ({
   const { sheets, currentSheet, columns, columnConfigs, userViewColumns, deadlineInfo } =
     useSheet(currentSheetId);
 
-  // Filter tasks by logged-in user email unless user is admin
-  const userEmail = user?.isAdmin ? null : user?.email;
-  const { tasks, loading, saving, updateCell, addRow } = useTasks(currentSheetId, userEmail);
+  // Fetch all tasks for sheet, filter strictly by googleId column on client
+  const { tasks, loading, saving, updateCell, addRow } = useTasks(currentSheetId, null);
 
   const [search, setSearch] = useState('');
   const [isAddCardOpen, setIsAddCardOpen] = useState(false);
   const [newCardData, setNewCardData] = useState<Record<string, any>>({});
 
-  // Visible columns for user
-  const visibleColumns = useMemo(() => {
+  // 1. Identify the Google ID column (학생 구글 계정 열)
+  const googleIdCol = useMemo(() => {
+    return columns.find((c) => columnConfigs[c.key]?.type === 'googleId');
+  }, [columns, columnConfigs]);
+
+  // 2. Identify the Card Header column (카드 대표 제목)
+  const headerCol = useMemo(() => {
+    return columns.find((c) => columnConfigs[c.key]?.type === 'cardHeader');
+  }, [columns, columnConfigs]);
+
+  // 3. Filter tasks strictly by student Google ID
+  const myTasks = useMemo(() => {
+    if (!googleIdCol) return [];
+    const myEmail = (user?.email || '').trim().toLowerCase();
+    return tasks.filter((t) => {
+      const val = t[googleIdCol.key];
+      if (val == null) return false;
+      return String(val).trim().toLowerCase() === myEmail;
+    });
+  }, [tasks, googleIdCol, user?.email]);
+
+  // 4. Columns to render in the card body:
+  // - Exclude googleId (학생 구글 계정 셀은 카드 본문에 표시하지 않음)
+  // - Exclude cardHeader (카드 상단 헤더에 이미 표시됨)
+  // - Apply userViewColumns visibility
+  const bodyColumns = useMemo(() => {
     return columns.filter((col) => {
+      const cfg = columnConfigs[col.key] || { type: 'text' };
+      // 학생 구글 계정 셀 및 카드 제목 셀 제외
+      if (cfg.type === 'googleId' || cfg.type === 'cardHeader') {
+        return false;
+      }
+      // 어드민 사용자 표시 설정 적용
       if (Array.isArray(userViewColumns) && !userViewColumns.includes(col.key)) {
         return false;
       }
       return true;
     });
-  }, [columns, userViewColumns]);
-
-  // Card header column (if configured)
-  const headerCol = useMemo(() => {
-    return (
-      visibleColumns.find((c) => columnConfigs[c.key]?.type === 'cardHeader') ||
-      visibleColumns[0]
-    );
-  }, [visibleColumns, columnConfigs]);
+  }, [columns, columnConfigs, userViewColumns]);
 
   // Search filtered tasks
   const displayTasks = useMemo(() => {
-    if (!search.trim()) return tasks;
+    if (!search.trim()) return myTasks;
     const q = search.toLowerCase();
-    return tasks.filter((t) =>
+    return myTasks.filter((t) =>
       Object.values(t).some((val) => val != null && String(val).toLowerCase().includes(q))
     );
-  }, [tasks, search]);
+  }, [myTasks, search]);
 
   const handleCreateCard = async () => {
+    if (!googleIdCol) {
+      alert('이 시트에는 학생 구글 계정(googleId) 열이 설정되어 있지 않아 카드를 추가할 수 없습니다.');
+      return;
+    }
+
     const dataToSave = { ...newCardData };
-    // Auto-fill user email into googleId column
-    const googleIdCol = columns.find((c) => columnConfigs[c.key]?.type === 'googleId');
-    if (googleIdCol && user?.email) {
+    // 사용자 구글 계정 자동 입력
+    if (user?.email) {
       dataToSave[googleIdCol.key] = user.email;
     }
 
     await addRow(dataToSave);
     setNewCardData({});
     setIsAddCardOpen(false);
+  };
+
+  // Check if column is short (절반 너비: 1행에 2개 셀 배치)
+  const isHalfWidth = (col: ColumnDef): boolean => {
+    const cfg = columnConfigs[col.key] || { type: 'text' };
+    if (cfg.type === 'checkbox' || cfg.type === 'priority' || cfg.type === 'date') {
+      return true;
+    }
+    const width = cfg.width || col.width || 120;
+    return width <= 135;
   };
 
   return (
@@ -80,8 +114,8 @@ export const MobilePage: React.FC<MobilePageProps> = ({
             <h1 className="text-sm font-bold text-on-surface truncate">
               {currentSheet?.name || '업무 양식'}
             </h1>
-            <span className="text-[10px] text-outline font-medium">
-              {user?.email} {user?.isAdmin && '(관리자 모드)'}
+            <span className="text-[10px] text-outline font-medium truncate max-w-[200px]">
+              {user?.email}
             </span>
           </div>
         </div>
@@ -103,7 +137,7 @@ export const MobilePage: React.FC<MobilePageProps> = ({
           )}
           <button
             onClick={logout}
-            className="text-[11px] text-outline hover:text-red-600 px-2 py-1 rounded-lg border border-surface-variant hover:bg-red-50"
+            className="text-[11px] text-outline hover:text-red-600 px-2 py-1 rounded-lg border border-surface-variant hover:bg-red-50 transition-colors"
             title="계정 전환"
           >
             로그아웃
@@ -138,8 +172,8 @@ export const MobilePage: React.FC<MobilePageProps> = ({
 
           <button
             onClick={() => setIsAddCardOpen(true)}
-            disabled={deadlineInfo.isClosed}
-            className="flex items-center gap-1 bg-primary hover:bg-primary/90 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-xs transition-all disabled:opacity-50 shrink-0"
+            disabled={deadlineInfo.isClosed || !googleIdCol}
+            className="flex items-center gap-1 bg-primary hover:bg-primary/90 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-xs transition-all disabled:opacity-50 shrink-0 cursor-pointer"
           >
             <span className="material-symbols-outlined text-[16px]">add</span>
             새 항목
@@ -168,6 +202,16 @@ export const MobilePage: React.FC<MobilePageProps> = ({
             <span className="animate-spin mr-2">⏳</span>
             데이터를 불러오는 중입니다...
           </div>
+        ) : !googleIdCol ? (
+          <div className="bg-red-50 rounded-2xl p-8 text-center border border-red-200 shadow-2xs space-y-3">
+            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600 mx-auto">
+              <span className="material-symbols-outlined text-2xl">block</span>
+            </div>
+            <div className="text-sm font-bold text-red-800">접근할 수 없는 시트입니다</div>
+            <p className="text-xs text-red-600">
+              이 시트에는 학생 구글 계정(googleId) 열이 설정되어 있지 않아 모바일 사용자 화면에서 열람할 수 없습니다.
+            </p>
+          </div>
         ) : displayTasks.length === 0 ? (
           <div className="bg-white rounded-2xl p-8 text-center border border-[#dadce0] shadow-2xs space-y-3">
             <div className="w-12 h-12 rounded-full bg-surface-variant flex items-center justify-center text-outline mx-auto">
@@ -186,12 +230,12 @@ export const MobilePage: React.FC<MobilePageProps> = ({
           </div>
         ) : (
           displayTasks.map((task, idx) => (
-            <div
+            <article
               key={task.id}
               className="bg-white rounded-2xl border border-[#dadce0] p-4 shadow-2xs space-y-3 hover:shadow-xs transition-shadow"
             >
-              {/* Card Title */}
-              <div className="flex items-center justify-between pb-2 border-b border-[#f1f3f4]">
+              {/* Card Top Title (#1 + cardHeader value) */}
+              <div className="flex items-center justify-between pb-2.5 border-b border-[#f1f3f4]">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full shrink-0">
                     #{idx + 1}
@@ -202,39 +246,45 @@ export const MobilePage: React.FC<MobilePageProps> = ({
                 </div>
               </div>
 
-              {/* Card Fields */}
-              <div className="space-y-2.5">
-                {visibleColumns.map((col) => {
+              {/* Card Fields: 2-Column Grid (짧은 열은 col-span-1으로 1행에 2개 셀, 긴 열은 col-span-2) */}
+              <div className="grid grid-cols-2 gap-2.5">
+                {bodyColumns.map((col) => {
                   const cfg = columnConfigs[col.key] || { type: 'text' };
-                  if (cfg.type === 'cardHeader') return null; // Already rendered in title
-
                   const val = task[col.key];
                   const strVal = val != null ? String(val) : '';
                   const isLocked = deadlineInfo.isClosed || cfg.type === 'locked';
+                  const half = isHalfWidth(col);
 
                   return (
-                    <div key={col.key} className="flex flex-col gap-1 text-xs">
-                      <span className="text-[11px] font-bold text-outline">{col.title}</span>
+                    <div
+                      key={col.key}
+                      className={`${half ? 'col-span-1' : 'col-span-2'} flex flex-col gap-1 text-xs`}
+                    >
+                      <label className="text-[11px] font-semibold text-outline truncate">
+                        {col.title}
+                      </label>
 
                       {cfg.type === 'checkbox' ? (
-                        <label className="flex items-center gap-2 cursor-pointer select-none">
-                          <input
-                            type="checkbox"
-                            disabled={isLocked}
-                            checked={strVal === 'true' || strVal === '1' || strVal === 'Y'}
-                            onChange={(e) => updateCell(task.id, col.key, e.target.checked)}
-                            className="rounded text-primary focus:ring-primary h-4 w-4"
-                          />
-                          <span className="text-xs text-on-surface font-medium">
-                            {strVal === 'true' || strVal === '1' || strVal === 'Y' ? '완료' : '미완료'}
-                          </span>
-                        </label>
+                        <div className="flex items-center h-[38px] px-3 rounded-xl bg-surface-container-low border border-surface-variant shadow-2xs">
+                          <label className="flex items-center gap-2 cursor-pointer select-none w-full">
+                            <input
+                              type="checkbox"
+                              disabled={isLocked}
+                              checked={strVal === 'true' || strVal === '1' || strVal === 'Y'}
+                              onChange={(e) => updateCell(task.id, col.key, e.target.checked)}
+                              className="rounded text-primary focus:ring-primary h-4 w-4 accent-primary"
+                            />
+                            <span className="text-xs font-semibold text-on-surface">
+                              {strVal === 'true' || strVal === '1' || strVal === 'Y' ? '완료' : '미완료'}
+                            </span>
+                          </label>
+                        </div>
                       ) : cfg.type === 'select' && cfg.options && cfg.options.length > 0 ? (
                         <select
                           disabled={isLocked}
                           value={strVal}
                           onChange={(e) => updateCell(task.id, col.key, e.target.value)}
-                          className="w-full text-xs px-3 py-2 bg-surface-container-low border border-surface-variant rounded-xl outline-none focus:border-primary disabled:opacity-60"
+                          className="w-full h-[38px] text-xs px-2.5 bg-surface-container-low border border-surface-variant rounded-xl outline-none focus:border-primary disabled:opacity-60 font-medium shadow-2xs"
                         >
                           <option value="">(선택 안 됨)</option>
                           {cfg.options.map((opt) => (
@@ -244,30 +294,29 @@ export const MobilePage: React.FC<MobilePageProps> = ({
                           ))}
                         </select>
                       ) : cfg.type === 'priority' ? (
-                        <div className="flex gap-1.5 flex-wrap">
-                          {['긴급', '높음', '보통', '낮음'].map((p) => (
-                            <button
-                              key={p}
-                              type="button"
-                              disabled={isLocked}
-                              onClick={() => updateCell(task.id, col.key, p)}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                                strVal === p
-                                  ? 'bg-primary text-white shadow-2xs'
-                                  : 'bg-surface-container text-outline hover:bg-surface-variant'
-                              }`}
-                            >
+                        <select
+                          disabled={isLocked}
+                          value={strVal}
+                          onChange={(e) => updateCell(task.id, col.key, e.target.value)}
+                          className="w-full h-[38px] text-xs px-2.5 bg-surface-container-low border border-surface-variant rounded-xl outline-none focus:border-primary disabled:opacity-60 font-bold shadow-2xs"
+                        >
+                          <option value="">(선택 안 됨)</option>
+                          {(cfg.options && cfg.options.length > 0
+                            ? cfg.options
+                            : ['긴급', '높음', '보통', '낮음']
+                          ).map((p) => (
+                            <option key={p} value={p}>
                               {p}
-                            </button>
+                            </option>
                           ))}
-                        </div>
+                        </select>
                       ) : cfg.type === 'date' ? (
                         <input
                           type="date"
                           disabled={isLocked}
                           value={strVal}
                           onChange={(e) => updateCell(task.id, col.key, e.target.value)}
-                          className="w-full text-xs px-3 py-2 bg-surface-container-low border border-surface-variant rounded-xl outline-none focus:border-primary disabled:opacity-60"
+                          className="w-full h-[38px] text-xs px-2.5 bg-surface-container-low border border-surface-variant rounded-xl outline-none focus:border-primary disabled:opacity-60 font-mono shadow-2xs"
                         />
                       ) : (
                         <input
@@ -275,14 +324,14 @@ export const MobilePage: React.FC<MobilePageProps> = ({
                           disabled={isLocked}
                           value={strVal}
                           onChange={(e) => updateCell(task.id, col.key, e.target.value)}
-                          className="w-full text-xs px-3 py-2 bg-surface-container-low border border-surface-variant rounded-xl outline-none focus:border-primary disabled:opacity-60 font-sans"
+                          className="w-full h-[38px] text-xs px-2.5 bg-surface-container-low border border-surface-variant rounded-xl outline-none focus:border-primary disabled:opacity-60 font-sans shadow-2xs"
                         />
                       )}
                     </div>
                   );
                 })}
               </div>
-            </div>
+            </article>
           ))
         )}
       </main>
@@ -302,9 +351,26 @@ export const MobilePage: React.FC<MobilePageProps> = ({
             </div>
 
             <div className="p-4 space-y-3 overflow-y-auto">
-              {visibleColumns.map((col) => {
+              {headerCol && (
+                <div>
+                  <label className="block text-xs font-bold text-on-surface mb-1">
+                    {headerCol.title} (대표 항목명)
+                  </label>
+                  <input
+                    type="text"
+                    value={newCardData[headerCol.key] || ''}
+                    onChange={(e) =>
+                      setNewCardData({ ...newCardData, [headerCol.key]: e.target.value })
+                    }
+                    className="w-full text-xs px-3 py-2 border border-surface-variant rounded-xl outline-none focus:border-primary"
+                    placeholder="예: 서울대학교 (컴퓨터공학)"
+                  />
+                </div>
+              )}
+
+              {bodyColumns.map((col) => {
                 const cfg = columnConfigs[col.key] || { type: 'text' };
-                if (cfg.type === 'googleId' || cfg.type === 'locked') return null;
+                if (cfg.type === 'locked') return null;
 
                 return (
                   <div key={col.key}>
