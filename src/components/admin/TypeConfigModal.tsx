@@ -7,6 +7,8 @@ interface TypeConfigModalProps {
   colKey: string;
   colTitle: string;
   config: ColumnConfig;
+  isVisibleInUserView?: boolean;
+  onToggleUserView?: (visible: boolean) => Promise<void>;
   onSave: (patch: Partial<ColumnConfig>) => Promise<void>;
   onDeleteColumn?: (colKey: string) => Promise<void>;
 }
@@ -17,17 +19,21 @@ export const TypeConfigModal: React.FC<TypeConfigModalProps> = ({
   colKey,
   colTitle,
   config,
+  isVisibleInUserView = true,
+  onToggleUserView,
   onSave,
   onDeleteColumn,
 }) => {
   const [type, setType] = useState<ColumnType>(config.type || 'text');
   const [optionsStr, setOptionsStr] = useState((config.options || []).join('\n'));
+  const [userVisible, setUserVisible] = useState(isVisibleInUserView);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setType(config.type || 'text');
     setOptionsStr((config.options || []).join('\n'));
-  }, [config, isOpen]);
+    setUserVisible(isVisibleInUserView);
+  }, [config, isVisibleInUserView, isOpen]);
 
   if (!isOpen) return null;
 
@@ -43,6 +49,11 @@ export const TypeConfigModal: React.FC<TypeConfigModalProps> = ({
         type,
         options: type === 'select' || type === 'priority' || type === 'googleId' ? options : undefined,
       });
+
+      if (onToggleUserView && userVisible !== isVisibleInUserView) {
+        await onToggleUserView(userVisible);
+      }
+
       onClose();
     } catch (err: any) {
       alert('설정 저장 실패: ' + err.message);
@@ -118,6 +129,33 @@ export const TypeConfigModal: React.FC<TypeConfigModalProps> = ({
                     : '진행전\n진행중\n완료\n보류'
                 }
               />
+            </div>
+          )}
+
+          {/* User View Visibility Option */}
+          {onToggleUserView && (
+            <div className="p-3 bg-surface-container-low border border-surface-variant rounded-xl">
+              <label className="flex items-center justify-between cursor-pointer select-none">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary text-[18px]">
+                    {userVisible ? 'visibility' : 'visibility_off'}
+                  </span>
+                  <div>
+                    <div className="text-xs font-bold text-on-surface">모바일 사용자 화면에 표시</div>
+                    <div className="text-[10px] text-outline">
+                      {userVisible
+                        ? '학생/사용자 모바일 카드에 이 열이 표시됩니다.'
+                        : '관리자 화면에서만 보이고 모바일 카드에서는 숨겨집니다.'}
+                    </div>
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={userVisible}
+                  onChange={(e) => setUserVisible(e.target.checked)}
+                  className="rounded text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                />
+              </label>
             </div>
           )}
         </div>

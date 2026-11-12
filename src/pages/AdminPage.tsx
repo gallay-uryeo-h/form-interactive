@@ -225,6 +225,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           tasks={filteredTasks}
           columnConfigs={columnConfigs}
           userViewColumns={userViewColumns}
+          onUpdateUserViewColumns={updateUserViewColumns}
           onUpdateCell={handleCellUpdateWithHistory}
           onBatchUpdateCells={handleBatchUpdateWithHistory}
           onDeleteRow={deleteRow}
@@ -256,6 +257,22 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         colKey={typeModal.colKey}
         colTitle={typeModal.colTitle}
         config={columnConfigs[typeModal.colKey] || { type: 'text' }}
+        isVisibleInUserView={
+          !userViewColumns || userViewColumns.includes(typeModal.colKey)
+        }
+        onToggleUserView={async (visible) => {
+          const key = typeModal.colKey;
+          const allKeys = columns.map((c) => c.key);
+          const currentList = userViewColumns || allKeys;
+          let nextList: string[] | null;
+          if (visible) {
+            const added = [...currentList, key];
+            nextList = added.length >= allKeys.length ? null : added;
+          } else {
+            nextList = currentList.filter((k) => k !== key);
+          }
+          await updateUserViewColumns(nextList);
+        }}
         onSave={async (patch) => {
           await updateColumnConfig(typeModal.colKey, patch);
         }}

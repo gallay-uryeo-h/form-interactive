@@ -14,6 +14,7 @@ interface SpreadsheetGridProps {
   tasks: Task[];
   columnConfigs: Record<string, ColumnConfig>;
   userViewColumns: string[] | null;
+  onUpdateUserViewColumns?: (cols: string[] | null) => Promise<void>;
   onUpdateCell: (taskId: string, colKey: string, value: any) => Promise<void>;
   onBatchUpdateCells?: (updates: { taskId: string; colKey: string; nextValue: any }[]) => Promise<void>;
   onDeleteRow: (taskId: string) => Promise<void>;
@@ -32,6 +33,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   tasks,
   columnConfigs,
   userViewColumns,
+  onUpdateUserViewColumns,
   onUpdateCell,
   onBatchUpdateCells,
   onDeleteRow,
@@ -1033,6 +1035,43 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
               <span className="material-symbols-outlined text-[17px] text-outline">filter_alt</span>
               <span>필터 및 정렬</span>
             </button>
+
+            {/* Toggle Mobile User View Visibility */}
+            {onUpdateUserViewColumns && (
+              <button
+                type="button"
+                onClick={async () => {
+                  const key = contextMenu.colKey;
+                  setContextMenu(null);
+                  const isHidden = Array.isArray(userViewColumns) && !userViewColumns.includes(key);
+                  const allKeys = columns.map((c) => c.key);
+                  const currentList = userViewColumns || allKeys;
+                  let nextList: string[] | null;
+
+                  if (isHidden) {
+                    // Show it
+                    const added = [...currentList, key];
+                    nextList = added.length >= allKeys.length ? null : added;
+                  } else {
+                    // Hide it
+                    nextList = currentList.filter((k) => k !== key);
+                  }
+                  await onUpdateUserViewColumns(nextList);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-surface-container transition-colors text-left cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[17px] text-primary">
+                  {Array.isArray(userViewColumns) && !userViewColumns.includes(contextMenu.colKey)
+                    ? 'visibility'
+                    : 'visibility_off'}
+                </span>
+                <span>
+                  {Array.isArray(userViewColumns) && !userViewColumns.includes(contextMenu.colKey)
+                    ? '모바일 화면에 표시'
+                    : '모바일 화면에서 숨기기'}
+                </span>
+              </button>
+            )}
 
             {onDeleteColumn && (
               <>
