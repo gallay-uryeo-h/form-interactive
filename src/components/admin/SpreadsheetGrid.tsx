@@ -161,6 +161,22 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
     };
   }, [resizingActive, onUpdateColumnWidth]);
 
+  // Auto-scroll to keep active cell in view (like Google Sheets)
+  useEffect(() => {
+    if (!activeCell || !gridContainerRef.current) return;
+
+    // tbody rows start at index 0; td[0] is row number, so col td index = cIdx + 1
+    const rows = gridContainerRef.current.querySelectorAll('tbody tr');
+    const row = rows[activeCell.rIdx] as HTMLElement | undefined;
+    if (!row) return;
+
+    const cells = row.querySelectorAll('td');
+    const cell = cells[activeCell.cIdx + 1] as HTMLElement | undefined; // +1 for row number column
+    if (!cell) return;
+
+    cell.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [activeCell]);
+
   // Helper: Get Range Bounds
   const getBounds = useCallback(() => {
     if (selectionRange) {
