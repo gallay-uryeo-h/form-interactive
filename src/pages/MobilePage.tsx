@@ -76,10 +76,10 @@ const SwitchToggle: React.FC<{
       disabled={disabled}
       onClick={() => !disabled && onChange(!checked)}
       className={`w-full h-[40px] px-3 rounded-xl border flex items-center justify-between transition-all select-none ${disabled
-          ? 'bg-neutral-100 border-neutral-200 opacity-60 cursor-not-allowed'
-          : checked
-            ? 'bg-emerald-50/70 border-emerald-300 text-emerald-950 shadow-2xs hover:bg-emerald-100/60 cursor-pointer'
-            : 'bg-white border-neutral-200 text-neutral-700 shadow-2xs hover:bg-neutral-50 cursor-pointer'
+        ? 'bg-neutral-100 border-neutral-200 opacity-60 cursor-not-allowed'
+        : checked
+          ? 'bg-emerald-50/70 border-emerald-300 text-emerald-950 shadow-2xs hover:bg-emerald-100/60 cursor-pointer'
+          : 'bg-white border-neutral-200 text-neutral-700 shadow-2xs hover:bg-neutral-50 cursor-pointer'
         }`}
     >
       <span className="text-xs font-semibold flex items-center gap-1.5">
@@ -154,8 +154,8 @@ const BottomSheetSelect: React.FC<{
               onClose();
             }}
             className={`w-full text-left px-4 py-3 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors ${!value
-                ? 'bg-primary/10 text-primary font-bold border border-primary/20'
-                : 'text-neutral-500 hover:bg-neutral-100'
+              ? 'bg-primary/10 text-primary font-bold border border-primary/20'
+              : 'text-neutral-500 hover:bg-neutral-100'
               }`}
           >
             <span>(선택 해제)</span>
@@ -175,8 +175,8 @@ const BottomSheetSelect: React.FC<{
                   onClose();
                 }}
                 className={`w-full text-left px-4 py-3.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors ${isSelected
-                    ? 'bg-primary/10 text-primary font-bold border border-primary/30'
-                    : 'text-on-surface hover:bg-neutral-50 active:bg-neutral-100 border border-transparent'
+                  ? 'bg-primary/10 text-primary font-bold border border-primary/30'
+                  : 'text-on-surface hover:bg-neutral-50 active:bg-neutral-100 border border-transparent'
                   }`}
               >
                 <span className="truncate">{opt}</span>
@@ -221,7 +221,7 @@ export const MobilePage: React.FC<MobilePageProps> = ({
   } = useSheet(currentSheetId);
 
   // Fetch all tasks for current sheet, filter strictly by googleId column on client
-  const { tasks, loading, saving, updateCell, addRow } = useTasks(currentSheetId, null);
+  const { tasks, loading, saving, updateCell, addRow, deleteRow } = useTasks(currentSheetId, null);
 
   const [search, setSearch] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -411,7 +411,9 @@ export const MobilePage: React.FC<MobilePageProps> = ({
 
     try {
       setIsAddingDirect(true);
-      const dataToSave: Record<string, any> = {};
+      const dataToSave: Record<string, any> = {
+        isUserCreated: true, // 사용자가 직접 추가한 새 카드 표시
+      };
       if (user?.email) {
         dataToSave[googleIdCol.key] = user.email;
       }
@@ -430,6 +432,23 @@ export const MobilePage: React.FC<MobilePageProps> = ({
       alert('카드 추가 중 오류가 발생했습니다.');
     } finally {
       setIsAddingDirect(false);
+    }
+  };
+
+  const handleDeleteCard = async (taskId: string, cardTitle: string) => {
+    if (isSheetEffectivelyClosed) {
+      alert('마감되어 카드를 삭제할 수 없습니다.');
+      return;
+    }
+    if (!window.confirm(`정말 "${cardTitle}" 카드를 삭제하시겠습니까?\n삭제된 카드는 어드민 시트에서도 제거됩니다.`)) {
+      return;
+    }
+    try {
+      await deleteRow(taskId);
+      showToast('카드가 삭제되었습니다');
+    } catch (err) {
+      console.error(err);
+      alert('카드 삭제 중 오류가 발생했습니다.');
     }
   };
 
@@ -497,11 +516,10 @@ export const MobilePage: React.FC<MobilePageProps> = ({
                 setIsSearchOpen(!isSearchOpen);
                 if (isSearchOpen) setSearch('');
               }}
-              className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
-                isSearchOpen || search
+              className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer ${isSearchOpen || search
                   ? 'bg-primary text-white shadow-2xs'
                   : 'text-neutral-600 hover:text-primary hover:bg-neutral-100'
-              }`}
+                }`}
               title="내용 검색"
             >
               <span className="material-symbols-outlined text-[18px]">
@@ -515,11 +533,10 @@ export const MobilePage: React.FC<MobilePageProps> = ({
             <button
               onClick={handleToggleStudentComplete}
               disabled={submittingStatus}
-              className={`flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer shrink-0 ${
-                isUserClosed
+              className={`flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer shrink-0 ${isUserClosed
                   ? 'bg-neutral-100 hover:bg-neutral-200 text-neutral-700 border-neutral-300'
                   : 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent shadow-2xs'
-              }`}
+                }`}
               title={isUserClosed ? '작성 잠금 해제' : '작성 완료 및 잠금'}
             >
               <span className="material-symbols-outlined text-[15px]">
@@ -690,34 +707,73 @@ export const MobilePage: React.FC<MobilePageProps> = ({
             </button>
           </div>
         ) : (
-          displayTasks.map((task, idx) => (
-            <article
-              key={task.id}
-              className="bg-white rounded-2xl border border-[#dadce0] p-4 shadow-2xs space-y-3 hover:shadow-xs transition-shadow"
-            >
-              {/* Card Top Title (#1 + cardHeader value) */}
-              <div className="flex items-center justify-between pb-2.5 border-b border-[#f1f3f4]">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full shrink-0">
-                    #{idx + 1}
-                  </span>
-                  <span className="font-bold text-sm text-on-surface truncate">
-                    {headerCol ? task[headerCol.key] || '제목 없음' : `항목 #${idx + 1}`}
-                  </span>
-                </div>
-              </div>
+          displayTasks.map((task, idx) => {
+            const isUserCreated = !!task.isUserCreated;
+            const cardTitle = headerCol ? task[headerCol.key] || '제목 없음' : `항목 #${idx + 1}`;
 
-              {/* Card Fields: 2-Column Grid (짧은 열은 col-span-1으로 1행에 2개 셀, 긴 열은 col-span-2) */}
-              <div className="grid grid-cols-2 gap-2.5">
-                {bodyColumns.map((col) => {
-                  const cfg = columnConfigs[col.key] || { type: 'text' };
-                  const val = task[col.key];
-                  const strVal = val != null ? String(val) : '';
-                  const isLocked =
-                    isSheetEffectivelyClosed ||
-                    cfg.type === 'locked' ||
-                    (userReadOnlyColumns?.includes(col.key) ?? false);
-                  const half = isHalfWidth(col);
+            return (
+              <article
+                key={task.id}
+                className="bg-white rounded-2xl border border-[#dadce0] p-4 shadow-2xs space-y-3 hover:shadow-xs transition-shadow"
+              >
+                {/* Card Top Title (#1 + cardHeader value + 삭제 버튼) */}
+                <div className="flex items-center justify-between pb-2.5 border-b border-[#f1f3f4]">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full shrink-0">
+                      #{idx + 1}
+                    </span>
+                    {/* 카드 대표 제목 (headerCol이 있는 경우) */}
+                    {headerCol ? (
+                      isUserCreated && !isSheetEffectivelyClosed ? (
+                        <div className="flex-1 min-w-0">
+                          <BlurSaveInput
+                            type="text"
+                            disabled={false}
+                            value={task[headerCol.key] != null ? String(task[headerCol.key]) : ''}
+                            onCommit={(val) => handleCellCommit(task.id, headerCol.key, val)}
+                            className="w-full text-xs font-bold text-on-surface px-2 py-1 rounded-lg border border-primary/35 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-white"
+                            placeholder="카드 제목 입력"
+                          />
+                        </div>
+                      ) : (
+                        <span className="font-bold text-sm text-on-surface truncate">
+                          {task[headerCol.key] || '제목 없음'}
+                        </span>
+                      )
+                    ) : (
+                      <span className="font-bold text-sm text-on-surface truncate">
+                        항목 #{idx + 1}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* 사용자가 직접 생성한 새 카드 삭제 버튼 */}
+                  {isUserCreated && !isSheetEffectivelyClosed && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCard(task.id, cardTitle)}
+                      className="flex items-center gap-1 text-[11px] font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2 py-1 rounded-lg border border-red-200 transition-colors cursor-pointer shrink-0 ml-2"
+                      title="카드 삭제"
+                    >
+                      <span className="material-symbols-outlined text-[15px]">delete</span>
+                      <span>삭제</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Card Fields: 2-Column Grid (짧은 열은 col-span-1으로 1행에 2개 셀, 긴 열은 col-span-2) */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  {bodyColumns.map((col) => {
+                    const cfg = columnConfigs[col.key] || { type: 'text' };
+                    const val = task[col.key];
+                    const strVal = val != null ? String(val) : '';
+                    // 사용자가 직접 생성한 카드는 읽기전용 제약을 무시하고 모든 항목 수정 가능!
+                    const isLocked = isSheetEffectivelyClosed
+                      ? true
+                      : isUserCreated
+                      ? false
+                      : cfg.type === 'locked' || (userReadOnlyColumns?.includes(col.key) ?? false);
+                    const half = isHalfWidth(col);
 
                   return (
                     <div
@@ -766,8 +822,8 @@ export const MobilePage: React.FC<MobilePageProps> = ({
                               })
                             }
                             className={`w-full h-[40px] text-xs px-3 rounded-xl flex items-center justify-between font-medium shadow-2xs text-left transition-all ${!isLocked
-                                ? 'bg-white border border-primary/35 hover:border-primary focus:border-primary ring-1 ring-primary/10 hover:bg-primary/5 cursor-pointer'
-                                : 'bg-neutral-100/70 border border-neutral-200 text-neutral-500 opacity-75 cursor-not-allowed'
+                              ? 'bg-white border border-primary/35 hover:border-primary focus:border-primary ring-1 ring-primary/10 hover:bg-primary/5 cursor-pointer'
+                              : 'bg-neutral-100/70 border border-neutral-200 text-neutral-500 opacity-75 cursor-not-allowed'
                               }`}
                           >
                             <span className={`truncate ${strVal ? (!isLocked ? 'text-on-surface font-semibold' : 'text-neutral-600') : 'text-neutral-400'}`}>
@@ -796,20 +852,20 @@ export const MobilePage: React.FC<MobilePageProps> = ({
                                 })
                               }
                               className={`w-full h-[40px] text-xs px-3 rounded-xl flex items-center justify-between font-bold shadow-2xs text-left transition-all ${!isLocked
-                                  ? 'bg-white border border-primary/35 hover:border-primary focus:border-primary ring-1 ring-primary/10 hover:bg-primary/5 cursor-pointer'
-                                  : 'bg-neutral-100/70 border border-neutral-200 opacity-75 cursor-not-allowed'
+                                ? 'bg-white border border-primary/35 hover:border-primary focus:border-primary ring-1 ring-primary/10 hover:bg-primary/5 cursor-pointer'
+                                : 'bg-neutral-100/70 border border-neutral-200 opacity-75 cursor-not-allowed'
                                 }`}
                             >
                               <span
                                 className={`truncate ${strVal === '긴급'
-                                    ? 'text-red-600'
-                                    : strVal === '높음'
-                                      ? 'text-amber-600'
-                                      : strVal === '보통'
-                                        ? 'text-blue-600'
-                                        : strVal === '낮음'
-                                          ? 'text-neutral-600'
-                                          : 'text-neutral-400 font-normal'
+                                  ? 'text-red-600'
+                                  : strVal === '높음'
+                                    ? 'text-amber-600'
+                                    : strVal === '보통'
+                                      ? 'text-blue-600'
+                                      : strVal === '낮음'
+                                        ? 'text-neutral-600'
+                                        : 'text-neutral-400 font-normal'
                                   }`}
                               >
                                 {strVal || '(선택 안 됨)'}
@@ -826,8 +882,8 @@ export const MobilePage: React.FC<MobilePageProps> = ({
                                 value={strVal}
                                 onChange={(e) => handleCellCommit(task.id, col.key, e.target.value)}
                                 className={`w-full h-[40px] text-xs px-2.5 rounded-xl outline-none font-mono shadow-2xs transition-all ${!isLocked
-                                    ? 'bg-white border border-primary/35 focus:border-primary focus:ring-2 focus:ring-primary/20 text-on-surface'
-                                    : 'bg-neutral-100/70 border border-neutral-200 text-neutral-500 opacity-75 cursor-not-allowed'
+                                  ? 'bg-white border border-primary/35 focus:border-primary focus:ring-2 focus:ring-primary/20 text-on-surface'
+                                  : 'bg-neutral-100/70 border border-neutral-200 text-neutral-500 opacity-75 cursor-not-allowed'
                                   }`}
                               />
                             ) : /* 5. 숫자 -> BlurSaveInput + 그린 피드백 */
@@ -838,8 +894,8 @@ export const MobilePage: React.FC<MobilePageProps> = ({
                                   value={strVal}
                                   onCommit={(val) => handleCellCommit(task.id, col.key, val)}
                                   className={`w-full h-[40px] text-xs px-2.5 rounded-xl outline-none font-mono text-right shadow-2xs transition-all ${!isLocked
-                                      ? 'bg-white border border-primary/35 focus:border-primary focus:ring-2 focus:ring-primary/20 text-on-surface'
-                                      : 'bg-neutral-100/70 border border-neutral-200 text-neutral-500 opacity-75 cursor-not-allowed'
+                                    ? 'bg-white border border-primary/35 focus:border-primary focus:ring-2 focus:ring-primary/20 text-on-surface'
+                                    : 'bg-neutral-100/70 border border-neutral-200 text-neutral-500 opacity-75 cursor-not-allowed'
                                     }`}
                                   placeholder={!isLocked ? '0' : '-'}
                                 />
@@ -851,8 +907,8 @@ export const MobilePage: React.FC<MobilePageProps> = ({
                                   value={strVal}
                                   onCommit={(val) => handleCellCommit(task.id, col.key, val)}
                                   className={`w-full h-[40px] text-xs px-2.5 rounded-xl outline-none font-sans shadow-2xs transition-all ${!isLocked
-                                      ? 'bg-white border border-primary/35 focus:border-primary focus:ring-2 focus:ring-primary/20 text-on-surface'
-                                      : 'bg-neutral-100/70 border border-neutral-200 text-neutral-500 opacity-75 cursor-not-allowed'
+                                    ? 'bg-white border border-primary/35 focus:border-primary focus:ring-2 focus:ring-primary/20 text-on-surface'
+                                    : 'bg-neutral-100/70 border border-neutral-200 text-neutral-500 opacity-75 cursor-not-allowed'
                                     }`}
                                   placeholder={!isLocked ? '입력하세요' : '-'}
                                 />
@@ -862,8 +918,9 @@ export const MobilePage: React.FC<MobilePageProps> = ({
                 })}
               </div>
             </article>
-          ))
-        )}
+          );
+        })
+      )}
 
         {/* 스크롤 하단 새 항목 추가 버튼 */}
         {accessibleSheets.length > 0 && googleIdCol && !isSheetEffectivelyClosed && (
