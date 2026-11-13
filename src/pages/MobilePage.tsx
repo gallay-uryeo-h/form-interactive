@@ -239,6 +239,63 @@ export const MobilePage: React.FC<MobilePageProps> = ({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // PWA 원클릭 설치 프롬프트 상태
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  useEffect(() => {
+    // 이미 standalone(설치된 앱) 모드인지 확인
+    const isApp =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true;
+    setIsStandalone(isApp);
+
+    if (isApp) return;
+
+    // iOS Safari 감지
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
+    setIsIOS(isIosDevice);
+
+    // Chrome/Edge/Samsung Internet: beforeinstallprompt 이벤트 가로채기
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBanner(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // iOS 기기에서는 배너를 항상 노출 (설치 안내 팝업 유도)
+    if (isIosDevice) {
+      setShowInstallBanner(true);
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      // Android / Chrome / Edge 등: 원클릭 네이티브 설치 다이얼로그 호출
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        showToast('앱 설치가 시작되었습니다');
+      }
+      setDeferredPrompt(null);
+      setShowInstallBanner(false);
+    } else if (isIOS) {
+      // iOS 사파리 안내 다이얼로그
+      alert(
+        '아이폰(Safari)에서는 화면 하단의 [공유 버튼(네모+화살표)]을 누른 후, [홈 화면에 추가]를 선택하시면 앱으로 설치할 수 있습니다!'
+      );
+    }
+  };
+
   const showToast = (msg: string) => {
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     setToastMessage(msg);
@@ -461,6 +518,42 @@ export const MobilePage: React.FC<MobilePageProps> = ({
           </button>
         </div>
       </header>
+
+      {/* PWA 원클릭 설치 유도 스마트 배너 */}
+      {showInstallBanner && !isStandalone && (
+        <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-white border-b border-primary/20 px-4 py-2.5 flex items-center justify-between gap-3 max-w-lg w-full mx-auto animate-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-primary text-white flex items-center justify-center shrink-0 shadow-2xs">
+              <span className="material-symbols-outlined text-[16px]">install_mobile</span>
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-bold text-on-surface truncate">
+                모바일 앱으로 바로가기
+              </span>
+              <span className="text-[10px] text-outline truncate">
+                {isIOS ? '홈 화면에 추가하여 앱처럼 사용' : '홈 화면에 1초 만에 설치하세요'}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={handleInstallClick}
+              className="bg-primary hover:bg-primary/90 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-2xs flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+            >
+              <span className="material-symbols-outlined text-[15px]">download</span>
+              <span>앱 설치</span>
+            </button>
+            <button
+              onClick={() => setShowInstallBanner(false)}
+              className="w-6 h-6 rounded-full flex items-center justify-center text-outline hover:bg-neutral-200/50 cursor-pointer"
+              title="닫기"
+            >
+              <span className="material-symbols-outlined text-[16px]">close</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Closed Deadline Banner */}
       {isSheetEffectivelyClosed && (

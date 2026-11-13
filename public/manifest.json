@@ -1,9 +1,9 @@
 {
   "name": "모바일 시트",
   "short_name": "모바일 시트",
-  "description": "간편하고 빠른 모바일 설문 및 시트 입력",
-  "id": "/mobile.html",
-  "start_url": "/mobile.html",
+  "description": "간편하고 빠른 모바일 업무 양식 및 시트 입력",
+  "id": "/?mode=mobile",
+  "start_url": "/?mode=mobile",
   "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -30,4 +30,3 @@
     }
   ]
 }
-
