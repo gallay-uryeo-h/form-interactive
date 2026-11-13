@@ -611,11 +611,19 @@ export const MobilePage: React.FC<MobilePageProps> = ({
                       className={`${half ? 'col-span-1' : 'col-span-2'} flex flex-col gap-1 text-xs`}
                     >
                       <div className="flex items-center justify-between">
-                        <label className="text-[11px] font-semibold text-outline truncate">
-                          {col.title}
+                        <label className="text-[11px] font-semibold flex items-center gap-1.5 truncate">
+                          {!isLocked ? (
+                            <>
+                              <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                              <span className="text-on-surface font-bold">{col.title}</span>
+                              <span className="text-[9px] font-medium text-primary bg-primary/10 px-1 rounded">입력</span>
+                            </>
+                          ) : (
+                            <span className="text-outline font-medium">{col.title}</span>
+                          )}
                         </label>
                         {isLocked && (
-                          <span className="material-symbols-outlined text-[13px] text-neutral-400" title="수정 불가">
+                          <span className="material-symbols-outlined text-[13px] text-neutral-400" title="수정 불가 (읽기 전용)">
                             lock
                           </span>
                         )}
@@ -643,12 +651,16 @@ export const MobilePage: React.FC<MobilePageProps> = ({
                               options: cfg.options || [],
                             })
                           }
-                          className="w-full h-[40px] text-xs px-3 bg-surface-container-low border border-surface-variant rounded-xl flex items-center justify-between font-medium shadow-2xs hover:bg-neutral-50 disabled:opacity-60 cursor-pointer text-left transition-colors"
+                          className={`w-full h-[40px] text-xs px-3 rounded-xl flex items-center justify-between font-medium shadow-2xs text-left transition-all ${
+                            !isLocked
+                              ? 'bg-white border border-primary/35 hover:border-primary focus:border-primary ring-1 ring-primary/10 hover:bg-primary/5 cursor-pointer'
+                              : 'bg-neutral-100/70 border border-neutral-200 text-neutral-500 opacity-75 cursor-not-allowed'
+                          }`}
                         >
-                          <span className={`truncate ${strVal ? 'text-on-surface font-semibold' : 'text-neutral-400'}`}>
+                          <span className={`truncate ${strVal ? (!isLocked ? 'text-on-surface font-semibold' : 'text-neutral-600') : 'text-neutral-400'}`}>
                             {strVal || '(선택 안 됨)'}
                           </span>
-                          <span className="material-symbols-outlined text-[18px] text-outline shrink-0">
+                          <span className={`material-symbols-outlined text-[18px] shrink-0 ${!isLocked ? 'text-primary' : 'text-neutral-400'}`}>
                             expand_more
                           </span>
                         </button>
@@ -670,7 +682,11 @@ export const MobilePage: React.FC<MobilePageProps> = ({
                                   : ['긴급', '높음', '보통', '낮음'],
                             })
                           }
-                          className="w-full h-[40px] text-xs px-3 bg-surface-container-low border border-surface-variant rounded-xl flex items-center justify-between font-bold shadow-2xs hover:bg-neutral-50 disabled:opacity-60 cursor-pointer text-left transition-colors"
+                          className={`w-full h-[40px] text-xs px-3 rounded-xl flex items-center justify-between font-bold shadow-2xs text-left transition-all ${
+                            !isLocked
+                              ? 'bg-white border border-primary/35 hover:border-primary focus:border-primary ring-1 ring-primary/10 hover:bg-primary/5 cursor-pointer'
+                              : 'bg-neutral-100/70 border border-neutral-200 opacity-75 cursor-not-allowed'
+                          }`}
                         >
                           <span
                             className={`truncate ${
@@ -687,7 +703,7 @@ export const MobilePage: React.FC<MobilePageProps> = ({
                           >
                             {strVal || '(선택 안 됨)'}
                           </span>
-                          <span className="material-symbols-outlined text-[18px] text-outline shrink-0">
+                          <span className={`material-symbols-outlined text-[18px] shrink-0 ${!isLocked ? 'text-primary' : 'text-neutral-400'}`}>
                             expand_more
                           </span>
                         </button>
@@ -698,7 +714,11 @@ export const MobilePage: React.FC<MobilePageProps> = ({
                           disabled={isLocked}
                           value={strVal}
                           onChange={(e) => handleCellCommit(task.id, col.key, e.target.value)}
-                          className="w-full h-[40px] text-xs px-2.5 bg-surface-container-low border border-surface-variant rounded-xl outline-none focus:border-primary disabled:opacity-60 font-mono shadow-2xs"
+                          className={`w-full h-[40px] text-xs px-2.5 rounded-xl outline-none font-mono shadow-2xs transition-all ${
+                            !isLocked
+                              ? 'bg-white border border-primary/35 focus:border-primary focus:ring-2 focus:ring-primary/20 text-on-surface'
+                              : 'bg-neutral-100/70 border border-neutral-200 text-neutral-500 opacity-75 cursor-not-allowed'
+                          }`}
                         />
                       ) : /* 5. 숫자 -> BlurSaveInput + 그린 피드백 */
                       cfg.type === 'number' ? (
@@ -707,8 +727,12 @@ export const MobilePage: React.FC<MobilePageProps> = ({
                           disabled={isLocked}
                           value={strVal}
                           onCommit={(val) => handleCellCommit(task.id, col.key, val)}
-                          className="w-full h-[40px] text-xs px-2.5 bg-surface-container-low border border-surface-variant rounded-xl outline-none focus:border-primary disabled:opacity-60 font-mono text-right shadow-2xs"
-                          placeholder="0"
+                          className={`w-full h-[40px] text-xs px-2.5 rounded-xl outline-none font-mono text-right shadow-2xs transition-all ${
+                            !isLocked
+                              ? 'bg-white border border-primary/35 focus:border-primary focus:ring-2 focus:ring-primary/20 text-on-surface'
+                              : 'bg-neutral-100/70 border border-neutral-200 text-neutral-500 opacity-75 cursor-not-allowed'
+                          }`}
+                          placeholder={!isLocked ? '0' : '-'}
                         />
                       ) : (
                         /* 6. 일반 텍스트 -> BlurSaveInput + 그린 피드백 */
@@ -717,7 +741,12 @@ export const MobilePage: React.FC<MobilePageProps> = ({
                           disabled={isLocked}
                           value={strVal}
                           onCommit={(val) => handleCellCommit(task.id, col.key, val)}
-                          className="w-full h-[40px] text-xs px-2.5 bg-surface-container-low border border-surface-variant rounded-xl outline-none focus:border-primary disabled:opacity-60 font-sans shadow-2xs"
+                          className={`w-full h-[40px] text-xs px-2.5 rounded-xl outline-none font-sans shadow-2xs transition-all ${
+                            !isLocked
+                              ? 'bg-white border border-primary/35 focus:border-primary focus:ring-2 focus:ring-primary/20 text-on-surface'
+                              : 'bg-neutral-100/70 border border-neutral-200 text-neutral-500 opacity-75 cursor-not-allowed'
+                          }`}
+                          placeholder={!isLocked ? '입력하세요' : '-'}
                         />
                       )}
                     </div>
