@@ -600,60 +600,105 @@ export const TypeConfigModal: React.FC<TypeConfigModalProps> = ({
 
           {/* User View Visibility Option */}
           {onToggleUserView && (
-            <div className="p-3 bg-surface-container-low border border-surface-variant rounded-xl space-y-2.5">
-              <label className="flex items-center justify-between cursor-pointer select-none">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary text-[18px]">
-                    {userVisible ? 'visibility' : 'visibility_off'}
+            <div className="p-3.5 bg-surface-container-low border border-surface-variant rounded-xl space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                  <span className="material-symbols-outlined text-primary text-[20px]">
+                    {!userVisible ? 'visibility_off' : userReadOnly ? 'lock' : 'edit'}
                   </span>
                   <div>
-                    <div className="text-xs font-bold text-on-surface">모바일 사용자 화면에 표시</div>
+                    <div className="text-xs font-bold text-on-surface">모바일 화면 표시 및 권한</div>
                     <div className="text-[10px] text-outline">
-                      {userVisible
-                        ? '학생/사용자 모바일 카드에 이 열이 표시됩니다.'
-                        : '관리자 화면에서만 보이고 모바일 카드에서는 숨겨집니다.'}
+                      {!userVisible
+                        ? '모바일 카드에서 숨겨집니다.'
+                        : userReadOnly
+                        ? '모바일 카드에 표시되며 읽기 전용입니다.'
+                        : '모바일 카드에 표시되며 직접 수정 가능합니다.'}
                     </div>
                   </div>
                 </div>
-                <input
-                  type="checkbox"
-                  checked={userVisible}
-                  onChange={(e) => setUserVisible(e.target.checked)}
-                  className="rounded text-primary focus:ring-primary h-4 w-4 cursor-pointer"
-                />
-              </label>
 
-              {userVisible && (
-                <div className="pt-2 border-t border-surface-variant/60 flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-on-surface">모바일 수정 권한:</span>
-                  <div className="flex items-center rounded-lg border border-surface-variant p-0.5 bg-white shadow-2xs">
+                {/* 3-Segment Toggle Control + Status Text Badge */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center rounded-xl border border-surface-variant p-0.5 bg-white shadow-2xs">
+                    {/* 1. Hide Button */}
                     <button
                       type="button"
-                      onClick={() => setUserReadOnly(false)}
-                      className={`flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${
-                        !userReadOnly
-                          ? 'bg-emerald-100 text-emerald-800 shadow-xs'
-                          : 'text-outline hover:text-on-surface'
+                      onClick={() => {
+                        setUserVisible(false);
+                        setUserReadOnly(false);
+                      }}
+                      className={`flex items-center justify-center w-7 h-6 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        !userVisible
+                          ? 'bg-surface-variant text-outline shadow-xs'
+                          : 'text-outline hover:text-on-surface hover:bg-surface-container'
                       }`}
+                      title="모바일 숨김"
                     >
-                      <span className="material-symbols-outlined text-[13px]">edit</span>
-                      수정
+                      <span className="material-symbols-outlined text-[15px]">visibility_off</span>
                     </button>
+
+                    {/* 2. Editable Button */}
                     <button
                       type="button"
-                      onClick={() => setUserReadOnly(true)}
-                      className={`flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${
-                        userReadOnly
-                          ? 'bg-amber-100 text-amber-800 shadow-xs'
-                          : 'text-outline hover:text-on-surface'
+                      onClick={() => {
+                        setUserVisible(true);
+                        setUserReadOnly(false);
+                      }}
+                      className={`flex items-center justify-center w-7 h-6 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        userVisible && !userReadOnly
+                          ? 'bg-emerald-100 text-emerald-800 shadow-xs'
+                          : 'text-outline hover:text-emerald-700 hover:bg-emerald-50'
                       }`}
+                      title="모바일 표시 및 수정 가능"
                     >
-                      <span className="material-symbols-outlined text-[13px]">lock</span>
-                      읽기 🔒
+                      <span className="material-symbols-outlined text-[15px]">edit</span>
+                    </button>
+
+                    {/* 3. Read-Only Button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserVisible(true);
+                        setUserReadOnly(true);
+                      }}
+                      className={`flex items-center justify-center w-7 h-6 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        userVisible && userReadOnly
+                          ? 'bg-amber-100 text-amber-900 shadow-xs'
+                          : 'text-outline hover:text-amber-800 hover:bg-amber-50'
+                      }`}
+                      title="모바일 표시 및 읽기 전용"
+                    >
+                      <span className="material-symbols-outlined text-[15px]">lock</span>
                     </button>
                   </div>
+
+                  {/* Status Text Badge (Click to cycle) */}
+                  <span
+                    onClick={() => {
+                      if (!userVisible) {
+                        setUserVisible(true);
+                        setUserReadOnly(false);
+                      } else if (!userReadOnly) {
+                        setUserReadOnly(true);
+                      } else {
+                        setUserVisible(false);
+                        setUserReadOnly(false);
+                      }
+                    }}
+                    className={`text-[10px] px-2 py-0.5 rounded-lg font-bold cursor-pointer select-none transition-colors ${
+                      !userVisible
+                        ? 'bg-surface-container text-outline'
+                        : userReadOnly
+                        ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                        : 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                    }`}
+                    title="클릭하여 상태 순환 (숨김 → 수정 → 읽기)"
+                  >
+                    {!userVisible ? '숨김' : userReadOnly ? '읽기' : '수정'}
+                  </span>
                 </div>
-              )}
+              </div>
             </div>
           )}
         </div>
