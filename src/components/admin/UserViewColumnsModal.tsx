@@ -186,7 +186,7 @@ export const UserViewColumnsModal: React.FC<UserViewColumnsModalProps> = ({
                 onClick={handleSetAllEditable}
                 className="text-emerald-700 font-bold hover:underline cursor-pointer"
               >
-                모두 수정 가능
+                모두 수정
               </button>
               <span className="text-outline-variant">|</span>
               <button
@@ -194,7 +194,7 @@ export const UserViewColumnsModal: React.FC<UserViewColumnsModalProps> = ({
                 onClick={handleSetAllReadOnly}
                 className="text-amber-700 font-bold hover:underline cursor-pointer"
               >
-                모두 읽기 전용 🔒
+                모두 읽기 🔒
               </button>
             </div>
           </div>
@@ -204,8 +204,8 @@ export const UserViewColumnsModal: React.FC<UserViewColumnsModalProps> = ({
             <span>
               총 <strong className="text-on-surface">{columns.length}</strong>개 열 중{' '}
               <strong className="text-primary">{selected.length}</strong>개 모바일 표시 (
-              <strong className="text-emerald-700">{selected.length - readOnlyKeys.filter((k) => selected.includes(k)).length}</strong>개 수정 가능,{' '}
-              <strong className="text-amber-700">{readOnlyKeys.filter((k) => selected.includes(k)).length}</strong>개 읽기 전용)
+              <strong className="text-emerald-700">{selected.length - readOnlyKeys.filter((k) => selected.includes(k)).length}</strong>개 수정,{' '}
+              <strong className="text-amber-700">{readOnlyKeys.filter((k) => selected.includes(k)).length}</strong>개 읽기)
             </span>
           </div>
 
@@ -275,7 +275,7 @@ export const UserViewColumnsModal: React.FC<UserViewColumnsModalProps> = ({
                               ? 'bg-emerald-100 text-emerald-800 shadow-xs'
                               : 'text-outline hover:text-emerald-700 hover:bg-emerald-50'
                           }`}
-                          title="모바일 표시 및 수정 가능: 모바일에서 값을 직접 수정할 수 있습니다."
+                          title="모바일 표시 및 수정: 모바일에서 값을 직접 수정할 수 있습니다."
                         >
                           <span className="material-symbols-outlined text-[15px]">edit</span>
                         </button>
@@ -292,7 +292,7 @@ export const UserViewColumnsModal: React.FC<UserViewColumnsModalProps> = ({
                               ? 'bg-amber-100 text-amber-900 shadow-xs'
                               : 'text-outline hover:text-amber-800 hover:bg-amber-50'
                           }`}
-                          title="모바일 표시 및 읽기 전용: 모바일에서 값을 볼 수만 있고 수정은 불가합니다."
+                          title="모바일 표시 및 읽기: 모바일에서 값을 볼 수만 있고 수정은 불가합니다."
                         >
                           <span className="material-symbols-outlined text-[15px]">lock</span>
                         </button>
@@ -308,9 +308,9 @@ export const UserViewColumnsModal: React.FC<UserViewColumnsModalProps> = ({
                             ? 'bg-amber-100 text-amber-900 border border-amber-200'
                             : 'bg-emerald-100 text-emerald-900 border border-emerald-200'
                         }`}
-                        title="클릭하여 상태 순환 (숨김 → 수정가능 → 읽기전용)"
+                        title="클릭하여 상태 순환 (숨김 → 수정 → 읽기)"
                       >
-                        {!isChecked ? '숨김' : isReadOnly ? '읽기 전용' : '수정 가능'}
+                        {!isChecked ? '숨김' : isReadOnly ? '읽기' : '수정'}
                       </span>
                     </div>
                   </div>

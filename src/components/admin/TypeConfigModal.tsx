@@ -637,7 +637,7 @@ export const TypeConfigModal: React.FC<TypeConfigModalProps> = ({
                       }`}
                     >
                       <span className="material-symbols-outlined text-[13px]">edit</span>
-                      수정 가능
+                      수정
                     </button>
                     <button
                       type="button"
@@ -649,7 +649,7 @@ export const TypeConfigModal: React.FC<TypeConfigModalProps> = ({
                       }`}
                     >
                       <span className="material-symbols-outlined text-[13px]">lock</span>
-                      읽기 전용 🔒
+                      읽기 🔒
                     </button>
                   </div>
                 </div>
