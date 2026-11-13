@@ -40,11 +40,22 @@ export const UserViewColumnsModal: React.FC<UserViewColumnsModalProps> = ({
 
   if (!isOpen) return null;
 
-  const toggleCol = (key: string) => {
-    if (selected.includes(key)) {
-      setSelected(selected.filter((k) => k !== key));
-    } else {
+  // 3단 상태 순환 토글: 숨김(hidden) -> 보기/수정(editable) -> 보기/읽기전용(readonly) -> 숨김...
+  const cycleColState = (key: string) => {
+    const isVisible = selected.includes(key);
+    const isReadOnly = readOnlyKeys.includes(key);
+
+    if (!isVisible) {
+      // 숨김 -> 보기(수정 가능)
       setSelected([...selected, key]);
+      setReadOnlyKeys(readOnlyKeys.filter((k) => k !== key));
+    } else if (!isReadOnly) {
+      // 보기(수정 가능) -> 보기(읽기 전용)
+      setReadOnlyKeys([...readOnlyKeys, key]);
+    } else {
+      // 보기(읽기 전용) -> 숨김
+      setSelected(selected.filter((k) => k !== key));
+      setReadOnlyKeys(readOnlyKeys.filter((k) => k !== key));
     }
   };
 
@@ -220,72 +231,88 @@ export const UserViewColumnsModal: React.FC<UserViewColumnsModalProps> = ({
                         : 'hover:bg-surface-container border-surface-variant/40 text-outline opacity-60'
                     }`}
                   >
-                    {/* Left: Show/Hide Toggle Checkbox */}
-                    <label className="flex items-center gap-2.5 min-w-0 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => toggleCol(col.key)}
-                        className="rounded text-primary focus:ring-primary h-4 w-4 cursor-pointer"
-                      />
+                    {/* Left: Column Letter & Title (Click to cycle state) */}
+                    <div
+                      onClick={() => cycleColState(col.key)}
+                      className="flex items-center gap-2.5 min-w-0 cursor-pointer select-none py-0.5 flex-1 mr-2"
+                    >
                       <span className="w-5 text-outline font-mono text-[10px] font-bold shrink-0">
                         [{col.letter}]
                       </span>
                       <span className="truncate font-semibold">{col.title}</span>
-                    </label>
+                    </div>
 
-                    {/* Right: state icon badge + editable/read-only toggle */}
-                    {isChecked ? (
-                      <div className="flex items-center gap-1 shrink-0">
-                        {/* Current state badge */}
-                        <span
-                          className={`flex items-center justify-center w-6 h-6 rounded-lg text-[15px] transition-colors ${
-                            isReadOnly
-                              ? 'text-amber-600 bg-amber-50'
-                              : 'text-emerald-600 bg-emerald-50'
+                    {/* Right: State badge button with 3-segment toggle control */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {/* Segmented Control: [숨김 👁️‍🗨️] [수정 ✏️] [읽기 🔒] */}
+                      <div className="flex items-center rounded-xl border border-surface-variant p-0.5 bg-white shadow-2xs">
+                        {/* 1. Hide Button */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelected(selected.filter((k) => k !== col.key));
+                            setReadOnlyKeys(readOnlyKeys.filter((k) => k !== col.key));
+                          }}
+                          className={`flex items-center justify-center w-7 h-6 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            !isChecked
+                              ? 'bg-surface-variant text-outline shadow-xs'
+                              : 'text-outline hover:text-on-surface hover:bg-surface-container'
                           }`}
-                          title={isReadOnly ? '읽기 전용' : '수정 가능'}
+                          title="모바일 숨김: 모바일 카드에서 이 열을 보이지 않게 합니다."
                         >
-                          <span className="material-symbols-outlined text-[15px]">
-                            {isReadOnly ? 'lock' : 'edit'}
-                          </span>
-                        </span>
-                        {/* Toggle segmented control */}
-                        <div className="flex items-center rounded-lg border border-surface-variant p-0.5 bg-white shadow-2xs">
-                          <button
-                            type="button"
-                            onClick={() => setColReadOnly(col.key, false)}
-                            className={`flex items-center justify-center w-6 h-6 rounded transition-all cursor-pointer ${
-                              !isReadOnly
-                                ? 'bg-emerald-100 text-emerald-700 shadow-xs'
-                                : 'text-outline hover:text-emerald-600 hover:bg-emerald-50'
-                            }`}
-                            title="수정 가능 — 학생/사용자가 모바일에서 값을 수정할 수 있습니다."
-                          >
-                            <span className="material-symbols-outlined text-[14px]">edit</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setColReadOnly(col.key, true)}
-                            className={`flex items-center justify-center w-6 h-6 rounded transition-all cursor-pointer ${
-                              isReadOnly
-                                ? 'bg-amber-100 text-amber-700 shadow-xs'
-                                : 'text-outline hover:text-amber-600 hover:bg-amber-50'
-                            }`}
-                            title="읽기 전용 — 학생/사용자는 모바일에서 읽기만 가능합니다."
-                          >
-                            <span className="material-symbols-outlined text-[14px]">lock</span>
-                          </button>
-                        </div>
+                          <span className="material-symbols-outlined text-[15px]">visibility_off</span>
+                        </button>
+
+                        {/* 2. Editable Button */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!isChecked) setSelected([...selected, col.key]);
+                            setReadOnlyKeys(readOnlyKeys.filter((k) => k !== col.key));
+                          }}
+                          className={`flex items-center justify-center w-7 h-6 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            isChecked && !isReadOnly
+                              ? 'bg-emerald-100 text-emerald-800 shadow-xs'
+                              : 'text-outline hover:text-emerald-700 hover:bg-emerald-50'
+                          }`}
+                          title="모바일 표시 및 수정 가능: 모바일에서 값을 직접 수정할 수 있습니다."
+                        >
+                          <span className="material-symbols-outlined text-[15px]">edit</span>
+                        </button>
+
+                        {/* 3. Read-Only Button */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!isChecked) setSelected([...selected, col.key]);
+                            if (!readOnlyKeys.includes(col.key)) setReadOnlyKeys([...readOnlyKeys, col.key]);
+                          }}
+                          className={`flex items-center justify-center w-7 h-6 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            isChecked && isReadOnly
+                              ? 'bg-amber-100 text-amber-900 shadow-xs'
+                              : 'text-outline hover:text-amber-800 hover:bg-amber-50'
+                          }`}
+                          title="모바일 표시 및 읽기 전용: 모바일에서 값을 볼 수만 있고 수정은 불가합니다."
+                        >
+                          <span className="material-symbols-outlined text-[15px]">lock</span>
+                        </button>
                       </div>
-                    ) : (
+
+                      {/* Status Text Badge */}
                       <span
-                        className="flex items-center justify-center w-6 h-6 rounded-lg bg-surface-container text-outline shrink-0"
-                        title="모바일 숨김"
+                        onClick={() => cycleColState(col.key)}
+                        className={`text-[10px] px-2 py-0.5 rounded-lg font-bold cursor-pointer select-none transition-colors ${
+                          !isChecked
+                            ? 'bg-surface-container text-outline'
+                            : isReadOnly
+                            ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                            : 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                        }`}
+                        title="클릭하여 상태 순환 (숨김 → 수정가능 → 읽기전용)"
                       >
-                        <span className="material-symbols-outlined text-[15px]">visibility_off</span>
+                        {!isChecked ? '숨김' : isReadOnly ? '읽기 전용' : '수정 가능'}
                       </span>
-                    )}
+                    </div>
                   </div>
                 );
               })
