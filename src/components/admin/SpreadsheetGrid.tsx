@@ -13,6 +13,7 @@ interface SpreadsheetGridProps {
   columns: ColumnDef[];
   tasks: Task[];
   columnConfigs: Record<string, ColumnConfig>;
+  activeConfigColKey?: string | null;
   userViewColumns: string[] | null;
   userReadOnlyColumns: string[] | null;
   onUpdateUserViewColumns?: (cols: string[] | null) => Promise<void>;
@@ -33,6 +34,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   columns,
   tasks,
   columnConfigs,
+  activeConfigColKey,
   userViewColumns,
   userReadOnlyColumns,
   onUpdateUserViewColumns,
@@ -703,12 +705,17 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
               const isHidden = Array.isArray(userViewColumns) && !userViewColumns.includes(col.key);
               const isReadOnly = !isHidden && Array.isArray(userReadOnlyColumns) && userReadOnlyColumns.includes(col.key);
               const isVisibleEditable = !isHidden && !isReadOnly;
+              const isActiveConfig = activeConfigColKey === col.key;
 
               return (
                 <th
                   key={col.key}
                   onContextMenu={(e) => handleHeaderContextMenu(e, col, idx)}
-                  className="px-1 border-r border-surface-variant relative overflow-visible group"
+                  className={`px-1 border-r border-surface-variant relative overflow-visible group transition-all ${
+                    isActiveConfig
+                      ? 'bg-primary/15 ring-2 ring-primary ring-inset z-20'
+                      : ''
+                  }`}
                 >
                   <button
                     type="button"
@@ -718,7 +725,9 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                     }}
                     onContextMenu={(e) => handleHeaderContextMenu(e, col, idx)}
                     className={`w-full flex items-center justify-between px-1.5 py-0.5 rounded transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-[0.98] ${
-                      cfg.type === 'googleId'
+                      isActiveConfig
+                        ? 'ring-2 ring-primary bg-primary text-white font-bold shadow-md'
+                        : cfg.type === 'googleId'
                         ? 'text-[#1a73e8] bg-[#f8fafd] border border-[#dadce0] font-bold'
                         : cfg.type === 'cardHeader'
                         ? 'text-indigo-700 bg-indigo-50 border border-indigo-200 font-bold'
@@ -797,6 +806,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
             {columns.map((col, idx) => {
               const isDragging = draggedColKey === col.key;
               const isDragOver = dragOverColKey === col.key;
+              const isActiveConfig = activeConfigColKey === col.key;
 
               return (
                 <th
@@ -807,6 +817,10 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                   onDrop={(e) => handleDrop(e, col.key)}
                   onContextMenu={(e) => handleHeaderContextMenu(e, col, idx)}
                   className={`px-1.5 py-0.5 border-r border-surface-variant relative group overflow-visible transition-colors ${
+                    isActiveConfig
+                      ? 'bg-primary/20 ring-2 ring-primary ring-inset font-bold text-primary z-20'
+                      : ''
+                  } ${
                     isDragging ? 'opacity-40 bg-primary/10' : ''
                   } ${isDragOver ? 'border-l-2 border-l-primary bg-primary/5' : ''}`}
                 >

@@ -333,6 +333,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           columns={columns}
           tasks={filteredTasks}
           columnConfigs={columnConfigs}
+          activeConfigColKey={typeModal.isOpen ? typeModal.colKey : null}
           userViewColumns={userViewColumns}
           userReadOnlyColumns={userReadOnlyColumns}
           onUpdateUserViewColumns={updateUserViewColumns}
@@ -369,6 +370,16 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         config={columnConfigs[typeModal.colKey] || { type: 'text' }}
         allColumns={columns}
         tasks={tasks}
+        onNavigateCol={async (targetColKey) => {
+          const targetCol = columns.find((c) => c.key === targetColKey);
+          if (targetCol) {
+            setTypeModal({
+              isOpen: true,
+              colKey: targetCol.key,
+              colTitle: targetCol.title,
+            });
+          }
+        }}
         onOpenRosterModal={() => setIsRosterModalOpen(true)}
         onApplyMatchingToSheet={async (updates) => {
           const batch = updates.map((u) => ({

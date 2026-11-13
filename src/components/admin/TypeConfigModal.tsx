@@ -17,6 +17,7 @@ interface TypeConfigModalProps {
   config: ColumnConfig;
   allColumns?: ColumnDef[];
   tasks?: Task[];
+  onNavigateCol?: (targetColKey: string) => Promise<void>;
   onApplyMatchingToSheet?: (updates: { taskId: string; email: string }[]) => Promise<void>;
   onOpenRosterModal?: () => void;
   isVisibleInUserView?: boolean;
@@ -34,6 +35,7 @@ export const TypeConfigModal: React.FC<TypeConfigModalProps> = ({
   config,
   allColumns = [],
   tasks = [],
+  onNavigateCol,
   onApplyMatchingToSheet,
   onOpenRosterModal,
   isVisibleInUserView = true,
@@ -219,6 +221,81 @@ export const TypeConfigModal: React.FC<TypeConfigModalProps> = ({
     }
   };
 
+  // 현재 열의 인덱스 및 이전/다음 열 계산
+  const currentColIdx = allColumns.findIndex((c) => c.key === colKey);
+  const prevCol = currentColIdx > 0 ? allColumns[currentColIdx - 1] : null;
+  const nextCol = currentColIdx >= 0 && currentColIdx < allColumns.length - 1 ? allColumns[currentColIdx + 1] : null;
+  const currentColDef = allColumns[currentColIdx];
+
+  // 다른 열로 전환하기 전 현재 열의 변경사항을 먼저 저장하고 이동
+  const handleNavigate = async (targetColKey: string) => {
+    if (!onNavigateCol || saving) return;
+
+    const options = optionsStr
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const typeChanged = type !== (config.type || 'text');
+    const prevOptions = config.options || [];
+    const optionsChanged =
+      (type === 'select' || type === 'priority' || (type === 'googleId' && matchingConfig.mode === 'manual')) &&
+      (options.length !== prevOptions.length || options.some((opt, i) => opt !== prevOptions[i]));
+    const prevMatching = config.googleIdMatching || { mode: 'manual' };
+    const matchingChanged =
+      type === 'googleId' &&
+      JSON.stringify(matchingConfig) !== JSON.stringify(prevMatching);
+    const configChanged = typeChanged || optionsChanged || matchingChanged;
+
+    const userViewChanged =
+      !!onToggleUserView &&
+      (userVisible !== isVisibleInUserView || userReadOnly !== isReadOnlyInUserView);
+
+    if (configChanged || userViewChanged) {
+      setSaving(true);
+      try {
+        if (configChanged) {
+          const patch: Partial<ColumnConfig> = { type };
+          if (type === 'select' || type === 'priority') {
+            patch.options = options;
+          }
+          if (type === 'googleId') {
+            patch.googleIdMatching = matchingConfig;
+            if (matchingConfig.mode === 'manual' && options.length > 0) {
+              patch.options = options;
+            }
+          }
+          await onSave(patch);
+        }
+        if (userViewChanged) {
+          await onToggleUserView!(userVisible, userReadOnly);
+        }
+      } catch (err: any) {
+        console.error('열 전환 중 저장 에러:', err);
+      } finally {
+        setSaving(false);
+      }
+    }
+
+    await onNavigateCol(targetColKey);
+  };
+
+  // 단축키 지원 (Alt + 화살표 좌/우 로 이전/다음 열 이동)
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && e.key === 'ArrowLeft' && prevCol) {
+        e.preventDefault();
+        handleNavigate(prevCol.key);
+      } else if (e.altKey && e.key === 'ArrowRight' && nextCol) {
+        e.preventDefault();
+        handleNavigate(nextCol.key);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, prevCol, nextCol, type, optionsStr, matchingConfig, userVisible, userReadOnly, config]);
+
   // 닫힐 때 변경 사항이 있는 경우에만 자동으로 저장하고 닫기
   const handleSaveAndClose = async () => {
     if (saving) return;
@@ -292,18 +369,58 @@ export const TypeConfigModal: React.FC<TypeConfigModalProps> = ({
         className="bg-white rounded-2xl shadow-2xl border border-surface-variant max-w-xl w-full overflow-hidden flex flex-col max-h-[92vh] cursor-default"
       >
         {/* Header */}
-        <div className="px-5 py-4 border-b border-surface-variant flex items-center justify-between bg-surface-container-low">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary text-[20px]">tune</span>
-            <h3 className="font-bold text-sm text-on-surface">[{colTitle}] 데이터 타입 및 옵션 설정</h3>
+        <div className="px-5 py-3.5 border-b border-surface-variant flex items-center justify-between bg-surface-container-low">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="material-symbols-outlined text-primary text-[20px] shrink-0">tune</span>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="font-mono text-xs font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded shrink-0">
+                {currentColDef ? `[${currentColDef.letter}]` : ''}
+              </span>
+              <h3 className="font-bold text-sm text-on-surface truncate">
+                {colTitle}
+              </h3>
+              <span className="text-[11px] text-outline font-medium shrink-0">
+                ({currentColIdx + 1}/{allColumns.length})
+              </span>
+            </div>
           </div>
-          <button
-            onClick={handleSaveAndClose}
-            className="w-7 h-7 rounded-full flex items-center justify-center text-outline hover:bg-surface-variant transition-colors cursor-pointer"
-            title="저장하고 닫기"
-          >
-            <span className="material-symbols-outlined text-[18px]">close</span>
-          </button>
+
+          {/* Navigation & Close */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Prev Column Button */}
+            <button
+              type="button"
+              disabled={!prevCol || saving}
+              onClick={() => prevCol && handleNavigate(prevCol.key)}
+              className="flex items-center gap-1 px-2 py-1 rounded-lg border border-surface-variant bg-white hover:bg-surface-container text-xs font-semibold text-on-surface disabled:opacity-30 disabled:pointer-events-none transition-all shadow-2xs cursor-pointer"
+              title={prevCol ? `이전 열 [${prevCol.letter}: ${prevCol.title}] (Alt + ←)` : '첫 번째 열입니다'}
+            >
+              <span className="material-symbols-outlined text-[15px]">arrow_back</span>
+              <span className="hidden sm:inline">이전 열</span>
+            </button>
+
+            {/* Next Column Button */}
+            <button
+              type="button"
+              disabled={!nextCol || saving}
+              onClick={() => nextCol && handleNavigate(nextCol.key)}
+              className="flex items-center gap-1 px-2 py-1 rounded-lg border border-surface-variant bg-white hover:bg-surface-container text-xs font-semibold text-on-surface disabled:opacity-30 disabled:pointer-events-none transition-all shadow-2xs cursor-pointer"
+              title={nextCol ? `다음 열 [${nextCol.letter}: ${nextCol.title}] (Alt + →)` : '마지막 열입니다'}
+            >
+              <span className="hidden sm:inline">다음 열</span>
+              <span className="material-symbols-outlined text-[15px]">arrow_forward</span>
+            </button>
+
+            <div className="h-4 w-[1px] bg-outline-variant mx-1"></div>
+
+            <button
+              onClick={handleSaveAndClose}
+              className="w-7 h-7 rounded-full flex items-center justify-center text-outline hover:bg-surface-variant transition-colors cursor-pointer"
+              title="저장하고 닫기"
+            >
+              <span className="material-symbols-outlined text-[18px]">close</span>
+            </button>
+          </div>
         </div>
 
         {/* Body */}
