@@ -224,6 +224,15 @@ export const MobilePage: React.FC<MobilePageProps> = ({
   const { tasks, loading, saving, updateCell, addRow } = useTasks(currentSheetId, null);
 
   const [search, setSearch] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // 돋보기 버튼 클릭 시 인풋 포커스
+  useEffect(() => {
+    if (isSearchOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isSearchOpen]);
 
   // 바텀시트 Select 상태
   const [activeSelect, setActiveSelect] = useState<{
@@ -473,7 +482,7 @@ export const MobilePage: React.FC<MobilePageProps> = ({
           </div>
         </div>
 
-        {/* Right status & Actions: [제출 완료] -> Admin -> 로그아웃 */}
+        {/* Right status & Actions: [돋보기 검색] -> [제출 완료] -> Admin -> 로그아웃 */}
         <div className="flex items-center gap-1.5">
           {saving && (
             <span className="text-[10px] font-mono text-amber-700 font-bold animate-pulse px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200">
@@ -481,7 +490,27 @@ export const MobilePage: React.FC<MobilePageProps> = ({
             </span>
           )}
 
-          {/* 학생 최종 제출 완료 / 수정 버튼 (로그아웃 왼쪽으로 이동) */}
+          {/* 돋보기 검색 토글 버튼 */}
+          {accessibleSheets.length > 0 && (
+            <button
+              onClick={() => {
+                setIsSearchOpen(!isSearchOpen);
+                if (isSearchOpen) setSearch('');
+              }}
+              className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
+                isSearchOpen || search
+                  ? 'bg-primary text-white shadow-2xs'
+                  : 'text-neutral-600 hover:text-primary hover:bg-neutral-100'
+              }`}
+              title="내용 검색"
+            >
+              <span className="material-symbols-outlined text-[18px]">
+                {isSearchOpen ? 'close' : 'search'}
+              </span>
+            </button>
+          )}
+
+          {/* 학생 최종 제출 완료 / 수정 버튼 (로그아웃 왼쪽) */}
           {!deadlineInfo.isClosed && accessibleSheets.length > 0 && (
             <button
               onClick={handleToggleStudentComplete}
@@ -518,6 +547,33 @@ export const MobilePage: React.FC<MobilePageProps> = ({
           </button>
         </div>
       </header>
+
+      {/* 돋보기 클릭 시 상단에 부드럽게 펼쳐지는 검색 텍스트박스 (팝업 아님) */}
+      {isSearchOpen && accessibleSheets.length > 0 && (
+        <div className="bg-white border-b border-[#dadce0] px-4 py-2.5 shadow-2xs animate-in slide-in-from-top-2 duration-150">
+          <div className="relative max-w-lg mx-auto">
+            <span className="material-symbols-outlined absolute left-3 top-2.5 text-[18px] text-primary">
+              search
+            </span>
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="찾으실 내용을 입력하세요..."
+              className="w-full text-xs pl-9 pr-9 py-2 bg-neutral-50 border border-primary/40 rounded-xl outline-none focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 shadow-2xs transition-all"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-2.5 text-neutral-400 hover:text-neutral-600 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[16px]">cancel</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* PWA 원클릭 설치 유도 스마트 배너 */}
       {showInstallBanner && !isStandalone && (
@@ -579,23 +635,7 @@ export const MobilePage: React.FC<MobilePageProps> = ({
         </div>
       )}
 
-      {/* Search Bar */}
-      {accessibleSheets.length > 0 && (
-        <div className="p-4 pb-2 max-w-lg w-full mx-auto">
-          <div className="relative">
-            <span className="material-symbols-outlined absolute left-3 top-2.5 text-[18px] text-outline">
-              search
-            </span>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="내용 검색..."
-              className="w-full text-xs pl-9 pr-3 py-2 bg-white border border-[#dadce0] rounded-xl outline-none focus:border-primary shadow-2xs"
-            />
-          </div>
-        </div>
-      )}
+
 
       {/* Card List */}
       <main className="px-4 max-w-lg w-full mx-auto space-y-3 flex-1">
