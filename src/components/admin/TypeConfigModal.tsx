@@ -219,34 +219,59 @@ export const TypeConfigModal: React.FC<TypeConfigModalProps> = ({
     }
   };
 
-  // 닫힐 때 자동으로 저장하고 닫기
+  // 닫힐 때 변경 사항이 있는 경우에만 자동으로 저장하고 닫기
   const handleSaveAndClose = async () => {
     if (saving) return;
+
+    const options = optionsStr
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    // 1. ColumnConfig 변경 여부 검사
+    const typeChanged = type !== (config.type || 'text');
+
+    const prevOptions = config.options || [];
+    const optionsChanged =
+      (type === 'select' || type === 'priority' || (type === 'googleId' && matchingConfig.mode === 'manual')) &&
+      (options.length !== prevOptions.length || options.some((opt, i) => opt !== prevOptions[i]));
+
+    const prevMatching = config.googleIdMatching || { mode: 'manual' };
+    const matchingChanged =
+      type === 'googleId' &&
+      JSON.stringify(matchingConfig) !== JSON.stringify(prevMatching);
+
+    const configChanged = typeChanged || optionsChanged || matchingChanged;
+
+    // 2. 모바일 표시/권한 변경 여부 검사
+    const userViewChanged =
+      !!onToggleUserView &&
+      (userVisible !== isVisibleInUserView || userReadOnly !== isReadOnlyInUserView);
+
+    // 변경 사항이 전혀 없으면 Firestore 저장 없이 즉시 닫기
+    if (!configChanged && !userViewChanged) {
+      onClose();
+      return;
+    }
+
     setSaving(true);
     try {
-      const options = optionsStr
-        .split('\n')
-        .map((s) => s.trim())
-        .filter(Boolean);
-
-      const patch: Partial<ColumnConfig> = { type };
-      if (type === 'select' || type === 'priority') {
-        patch.options = options;
-      }
-      if (type === 'googleId') {
-        patch.googleIdMatching = matchingConfig;
-        if (matchingConfig.mode === 'manual' && options.length > 0) {
+      if (configChanged) {
+        const patch: Partial<ColumnConfig> = { type };
+        if (type === 'select' || type === 'priority') {
           patch.options = options;
         }
+        if (type === 'googleId') {
+          patch.googleIdMatching = matchingConfig;
+          if (matchingConfig.mode === 'manual' && options.length > 0) {
+            patch.options = options;
+          }
+        }
+        await onSave(patch);
       }
 
-      await onSave(patch);
-
-      if (
-        onToggleUserView &&
-        (userVisible !== isVisibleInUserView || userReadOnly !== isReadOnlyInUserView)
-      ) {
-        await onToggleUserView(userVisible, userReadOnly);
+      if (userViewChanged) {
+        await onToggleUserView!(userVisible, userReadOnly);
       }
 
       onClose();
