@@ -328,3 +328,4 @@ export const UserClosingModal: React.FC<UserClosingModalProps> = ({
     </div>
   );
 };
+

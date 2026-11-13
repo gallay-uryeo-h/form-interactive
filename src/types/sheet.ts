@@ -30,12 +30,22 @@ export const AVAILABLE_TYPES: ColumnTypeInfo[] = [
   { id: 'locked', label: '잠금 (읽기전용)', icon: 'lock', desc: '수정 불가 읽기전용 셀' },
 ];
 
+export interface GoogleIdMatchingConfig {
+  mode: 'manual' | 'gradeClassNum' | 'studentCode';
+  gradeColKey?: string;
+  classColKey?: string;
+  numColKey?: string;
+  studentCodeColKey?: string;
+  nameColKey?: string;
+}
+
 export interface ColumnConfig {
   label?: string;
   type: ColumnType;
   options?: string[];
   width?: number;
   locked?: boolean;
+  googleIdMatching?: GoogleIdMatchingConfig;
 }
 
 export interface ColumnDef {

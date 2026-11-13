@@ -9,6 +9,14 @@ import { FilterSortModal } from '../components/admin/FilterSortModal';
 import { ExcelImportModal } from '../components/admin/ExcelImportModal';
 import { UserViewColumnsModal } from '../components/admin/UserViewColumnsModal';
 import { UserClosingModal } from '../components/admin/UserClosingModal';
+import { StudentRosterModal } from '../components/admin/StudentRosterModal';
+import {
+  subscribeStudentRoster,
+  StudentRecord,
+  buildStudentLookupMaps,
+  normalizeGradeClassNumKey,
+  normalizeStudentCodeKey,
+} from '../services/studentMasterService';
 
 interface AdminPageProps {
   currentSheetId: string;
@@ -76,6 +84,39 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     const prevValue = task ? task[colKey] : '';
     if (prevValue === nextValue) return;
 
+    // 만약 학생 정보 열이 수정되었고, 구글 ID 열에 매칭이 설정되어 있다면 자동 매칭 계산
+    const nextTaskState = { ...(task || {}), [colKey]: nextValue };
+    const googleIdCol = columns.find((c) => columnConfigs[c.key]?.type === 'googleId');
+    const matchingCfg = googleIdCol ? columnConfigs[googleIdCol.key]?.googleIdMatching : null;
+
+    let autoMatchedEmail: string | null = null;
+    if (googleIdCol && matchingCfg && matchingCfg.mode !== 'manual' && colKey !== googleIdCol.key) {
+      if (matchingCfg.mode === 'gradeClassNum') {
+        const key = normalizeGradeClassNumKey(
+          nextTaskState[matchingCfg.gradeColKey || ''],
+          nextTaskState[matchingCfg.classColKey || ''],
+          nextTaskState[matchingCfg.numColKey || ''],
+          nextTaskState[matchingCfg.nameColKey || '']
+        );
+        autoMatchedEmail = lookupMaps.byGradeClassNum.get(key) || null;
+      } else if (matchingCfg.mode === 'studentCode') {
+        const key = normalizeStudentCodeKey(
+          nextTaskState[matchingCfg.studentCodeColKey || ''],
+          nextTaskState[matchingCfg.nameColKey || '']
+        );
+        autoMatchedEmail = lookupMaps.byStudentCode.get(key) || null;
+      }
+    }
+
+    if (autoMatchedEmail && autoMatchedEmail !== task?.[googleIdCol!.key]) {
+      // 2개 셀 일괄 업데이트 (현재 셀 + 자동 매칭된 구글 ID)
+      await handleBatchUpdateWithHistory([
+        { taskId, colKey, nextValue },
+        { taskId, colKey: googleIdCol!.key, nextValue: autoMatchedEmail },
+      ]);
+      return;
+    }
+
     pushAction({
       type: 'cell_edit',
       taskId,
@@ -130,6 +171,20 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
   const [isUserViewModalOpen, setIsUserViewModalOpen] = useState(false);
   const [isUserClosingModalOpen, setIsUserClosingModalOpen] = useState(false);
+  const [isRosterModalOpen, setIsRosterModalOpen] = useState(false);
+
+  // 학생 명렬 마스터 구독
+  const [roster, setRoster] = useState<StudentRecord[]>([]);
+  React.useEffect(() => {
+    const unsub = subscribeStudentRoster((list) => {
+      setRoster(list);
+    });
+    return () => unsub();
+  }, []);
+
+  const lookupMaps = React.useMemo(() => {
+    return buildStudentLookupMaps(roster);
+  }, [roster]);
 
   // Extract unique user emails from googleId column
   const sheetUsers = React.useMemo(() => {
@@ -204,6 +259,22 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           >
             <span className="material-symbols-outlined text-[16px] text-emerald-600">upload_file</span>
             엑셀 파일 업로드
+          </button>
+
+          {/* Student Roster Master DB Button */}
+          <button
+            type="button"
+            onClick={() => setIsRosterModalOpen(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-surface-container border border-surface-variant rounded-lg text-xs font-semibold text-indigo-900 transition-colors shadow-2xs cursor-pointer"
+            title="학교 학생 구글 계정 명렬 등록 및 관리"
+          >
+            <span className="material-symbols-outlined text-[16px] text-indigo-600">school</span>
+            학생 명렬 관리
+            {roster.length > 0 && (
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-800 font-bold">
+                {roster.length}명
+              </span>
+            )}
           </button>
 
           {/* User View Columns Setting */}
@@ -296,6 +367,17 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         colKey={typeModal.colKey}
         colTitle={typeModal.colTitle}
         config={columnConfigs[typeModal.colKey] || { type: 'text' }}
+        allColumns={columns}
+        tasks={tasks}
+        onOpenRosterModal={() => setIsRosterModalOpen(true)}
+        onApplyMatchingToSheet={async (updates) => {
+          const batch = updates.map((u) => ({
+            taskId: u.taskId,
+            colKey: typeModal.colKey,
+            nextValue: u.email,
+          }));
+          await handleBatchUpdateWithHistory(batch);
+        }}
         isVisibleInUserView={
           !userViewColumns || userViewColumns.includes(typeModal.colKey)
         }
@@ -370,6 +452,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         onToggleSheetClosed={async (closed) => {
           await setSheetClosed(closed, deadlineInfo.deadline, deadlineInfo.closedMessage);
         }}
+      />
+
+      <StudentRosterModal
+        isOpen={isRosterModalOpen}
+        onClose={() => setIsRosterModalOpen(false)}
       />
     </div>
   );
