@@ -219,7 +219,9 @@ export const TypeConfigModal: React.FC<TypeConfigModalProps> = ({
     }
   };
 
-  const handleSave = async () => {
+  // 닫힐 때 자동으로 저장하고 닫기
+  const handleSaveAndClose = async () => {
+    if (saving) return;
     setSaving(true);
     try {
       const options = optionsStr
@@ -257,7 +259,7 @@ export const TypeConfigModal: React.FC<TypeConfigModalProps> = ({
 
   return (
     <div
-      onClick={onClose}
+      onClick={handleSaveAndClose}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150 cursor-pointer"
     >
       <div
@@ -271,8 +273,9 @@ export const TypeConfigModal: React.FC<TypeConfigModalProps> = ({
             <h3 className="font-bold text-sm text-on-surface">[{colTitle}] 데이터 타입 및 옵션 설정</h3>
           </div>
           <button
-            onClick={onClose}
-            className="w-7 h-7 rounded-full flex items-center justify-center text-outline hover:bg-surface-variant transition-colors"
+            onClick={handleSaveAndClose}
+            className="w-7 h-7 rounded-full flex items-center justify-center text-outline hover:bg-surface-variant transition-colors cursor-pointer"
+            title="저장하고 닫기"
           >
             <span className="material-symbols-outlined text-[18px]">close</span>
           </button>
@@ -704,8 +707,8 @@ export const TypeConfigModal: React.FC<TypeConfigModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3.5 border-t border-surface-variant flex items-center justify-between bg-surface-container-low">
-          {onDeleteColumn ? (
+        {onDeleteColumn && (
+          <div className="px-5 py-3 border-t border-surface-variant flex items-center justify-between bg-surface-container-low">
             <button
               type="button"
               onClick={() => {
@@ -718,26 +721,11 @@ export const TypeConfigModal: React.FC<TypeConfigModalProps> = ({
             >
               열 삭제
             </button>
-          ) : <div />}
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-xs font-medium text-outline hover:bg-surface-variant rounded-xl transition-colors cursor-pointer"
-            >
-              취소
-            </button>
-            <button
-              type="button"
-              disabled={saving}
-              onClick={handleSave}
-              className="px-4 py-2 text-xs font-bold text-white bg-primary hover:bg-primary/90 rounded-xl shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
-            >
-              {saving ? '저장 중...' : '설정 저장'}
-            </button>
+            <span className="text-[11px] text-outline">
+              * 창을 닫거나 바깥을 클릭하면 자동으로 설정이 저장됩니다.
+            </span>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
