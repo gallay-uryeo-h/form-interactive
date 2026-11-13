@@ -90,6 +90,14 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
     letter: string;
   } | null>(null);
 
+  // Row Header Right-Click Context Menu State
+  const [rowContextMenu, setRowContextMenu] = useState<{
+    x: number;
+    y: number;
+    rIdx: number;
+    taskId: string;
+  } | null>(null);
+
   const gridContainerRef = useRef<HTMLDivElement>(null);
 
   // Stop mouse drag selection on window mouseup
@@ -103,11 +111,17 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
 
   // Close Context Menu on Global Click / Escape / Scroll
   useEffect(() => {
-    if (!contextMenu) return;
+    if (!contextMenu && !rowContextMenu) return;
 
-    const handleCloseMenu = () => setContextMenu(null);
+    const handleCloseMenu = () => {
+      setContextMenu(null);
+      setRowContextMenu(null);
+    };
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setContextMenu(null);
+      if (e.key === 'Escape') {
+        setContextMenu(null);
+        setRowContextMenu(null);
+      }
     };
 
     window.addEventListener('click', handleCloseMenu);
@@ -119,7 +133,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('scroll', handleCloseMenu, true);
     };
-  }, [contextMenu]);
+  }, [contextMenu, rowContextMenu]);
 
   // Open Header Context Menu Helper
   const handleHeaderContextMenu = useCallback((e: React.MouseEvent, col: ColumnDef, idx: number) => {
@@ -129,6 +143,18 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
     const menuHeight = 280;
     const x = Math.min(e.clientX, window.innerWidth - menuWidth - 10);
     const y = Math.min(e.clientY, window.innerHeight - menuHeight - 10);
+
+    // 열 전체 선택
+    if (tasks.length > 0) {
+      setActiveCell({ rIdx: 0, cIdx: idx });
+      setSelectionRange({
+        startR: 0,
+        startC: idx,
+        endR: tasks.length - 1,
+        endC: idx,
+      });
+    }
+
     setContextMenu({
       x: Math.max(10, x),
       y: Math.max(10, y),
@@ -137,7 +163,59 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
       colIndex: idx,
       letter: col.letter,
     });
-  }, []);
+  }, [tasks.length]);
+
+  // Open Row Header Context Menu Helper
+  const handleRowHeaderContextMenu = useCallback((e: React.MouseEvent, rIdx: number, taskId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const menuWidth = 210;
+    const menuHeight = 200;
+    const x = Math.min(e.clientX, window.innerWidth - menuWidth - 10);
+    const y = Math.min(e.clientY, window.innerHeight - menuHeight - 10);
+
+    // 행 전체 선택
+    if (columns.length > 0) {
+      setActiveCell({ rIdx, cIdx: 0 });
+      setSelectionRange({
+        startR: rIdx,
+        startC: 0,
+        endR: rIdx,
+        endC: columns.length - 1,
+      });
+    }
+
+    setRowContextMenu({
+      x: Math.max(10, x),
+      y: Math.max(10, y),
+      rIdx,
+      taskId,
+    });
+  }, [columns.length]);
+
+  // 열 번호(문자) 클릭 시 해당 열 전체 선택
+  const handleSelectEntireColumn = useCallback((cIdx: number) => {
+    if (tasks.length === 0) return;
+    setActiveCell({ rIdx: 0, cIdx });
+    setSelectionRange({
+      startR: 0,
+      startC: cIdx,
+      endR: tasks.length - 1,
+      endC: cIdx,
+    });
+  }, [tasks.length]);
+
+  // 행 번호 클릭 시 해당 행 전체 선택
+  const handleSelectEntireRow = useCallback((rIdx: number) => {
+    if (columns.length === 0) return;
+    setActiveCell({ rIdx, cIdx: 0 });
+    setSelectionRange({
+      startR: rIdx,
+      startC: 0,
+      endR: rIdx,
+      endC: columns.length - 1,
+    });
+  }, [columns.length]);
 
   // Handle Global Mouse Movements for Column Resizing
   useEffect(() => {
@@ -830,9 +908,19 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                       <span className="material-symbols-outlined text-[12px] text-outline opacity-40 group-hover:opacity-100 cursor-grab shrink-0">
                         drag_indicator
                       </span>
-                      <span className="font-mono text-[10px] font-bold text-outline shrink-0">
+                      {/* 열 번호/문자 뱃지 (클릭 시 열 전체 선택, 우클릭 시 메뉴) */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelectEntireColumn(idx);
+                        }}
+                        onContextMenu={(e) => handleHeaderContextMenu(e, col, idx)}
+                        className="font-mono text-[10px] font-bold text-outline hover:text-primary hover:bg-primary/10 px-1 py-0.5 rounded shrink-0 transition-colors cursor-pointer select-none"
+                        title={`클릭하여 ${col.letter}열 전체 선택 (우클릭: 열 작업 메뉴)`}
+                      >
                         {col.letter}
-                      </span>
+                      </button>
 
                       {editingHeaderKey === col.key ? (
                         <input
@@ -937,6 +1025,8 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                 onCancelCellEdit={cancelCellEdit}
                 onToggleCheckbox={handleToggleCheckbox}
                 onDeleteRow={handleDeleteRowClick}
+                onSelectEntireRow={handleSelectEntireRow}
+                onRowContextMenu={handleRowHeaderContextMenu}
               />
             );
           })}
@@ -1136,6 +1226,79 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
           </div>
         </>
       )}
+
+      {/* Row Header Right-Click Context Menu */}
+      {rowContextMenu && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setRowContextMenu(null)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setRowContextMenu(null);
+            }}
+          />
+          <div
+            style={{ top: `${rowContextMenu.y}px`, left: `${rowContextMenu.x}px` }}
+            className="fixed z-50 bg-white border border-surface-variant rounded-xl shadow-2xl py-1.5 min-w-[200px] text-xs font-medium text-on-surface select-none animate-in fade-in zoom-in-95 duration-75"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-3 py-1.5 border-b border-surface-variant/70 flex items-center justify-between text-outline bg-surface-container-low/60 rounded-t-lg">
+              <span className="font-bold text-on-surface text-[11px]">
+                {rowContextMenu.rIdx + 1}번 행
+              </span>
+              <span className="text-[10px] font-mono text-outline">Row</span>
+            </div>
+
+            {/* Insert Row Above / Add Row */}
+            <button
+              type="button"
+              onClick={async () => {
+                setRowContextMenu(null);
+                await onAddRow();
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-primary/10 hover:text-primary transition-colors text-left cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[17px] text-primary">add_circle</span>
+              <span>새 행 추가</span>
+            </button>
+
+            {/* Clear Row Contents */}
+            <button
+              type="button"
+              onClick={async () => {
+                const { rIdx, taskId } = rowContextMenu;
+                setRowContextMenu(null);
+                if (confirm(`${rIdx + 1}번 행의 모든 입력값을 비우시겠습니까?`)) {
+                  for (const col of columns) {
+                    await onUpdateCell(taskId, col.key, '');
+                  }
+                }
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-surface-container transition-colors text-left cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[17px] text-outline">backspace</span>
+              <span>행 내용 지우기</span>
+            </button>
+
+            <div className="my-1 border-t border-surface-variant/60"></div>
+
+            {/* Delete Row */}
+            <button
+              type="button"
+              onClick={() => {
+                const { rIdx, taskId } = rowContextMenu;
+                setRowContextMenu(null);
+                handleDeleteRowClick(taskId, rIdx);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-red-50 text-red-600 transition-colors text-left cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[17px] text-red-500">delete</span>
+              <span>행 삭제</span>
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 };
@@ -1210,6 +1373,8 @@ interface GridRowProps {
   onCancelCellEdit: () => void;
   onToggleCheckbox: (taskId: string, colKey: string, checked: boolean) => Promise<void>;
   onDeleteRow: (taskId: string, rIdx: number) => void;
+  onSelectEntireRow: (rIdx: number) => void;
+  onRowContextMenu: (e: React.MouseEvent, rIdx: number, taskId: string) => void;
 }
 
 const areRowsEqual = (prev: GridRowProps, next: GridRowProps) => {
@@ -1249,14 +1414,21 @@ const GridRow = React.memo<GridRowProps>(({
   onCancelCellEdit,
   onToggleCheckbox,
   onDeleteRow,
+  onSelectEntireRow,
+  onRowContextMenu,
 }) => {
   return (
     <tr
       className="h-7 hover:bg-surface-container-low/40 group transition-colors select-none"
       style={{ contentVisibility: 'auto', containIntrinsicSize: '28px' }}
     >
-      {/* Row Number */}
-      <td className="border-r border-surface-variant text-center text-outline text-[11px] font-semibold bg-surface-container-lowest select-none">
+      {/* Row Number (클릭 시 행 전체 선택, 우클릭 시 행 메뉴) */}
+      <td
+        onClick={() => onSelectEntireRow(rIdx)}
+        onContextMenu={(e) => onRowContextMenu(e, rIdx, task.id)}
+        className="border-r border-surface-variant text-center text-outline hover:text-primary hover:bg-primary/10 text-[11px] font-semibold bg-surface-container-lowest select-none cursor-pointer transition-colors"
+        title={`클릭하여 ${rIdx + 1}번 행 전체 선택 (우클릭: 행 작업 메뉴)`}
+      >
         {rIdx + 1}
       </td>
 
